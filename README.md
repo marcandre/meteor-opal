@@ -1,6 +1,6 @@
 # Meteor Opal
 
-This package brings [Opal][http://opalrb.org/] to Meteor.
+This package brings [Opal](http://opalrb.org/) to Meteor.
 
 ## Installation
 
