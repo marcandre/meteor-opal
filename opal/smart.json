@@ -3,7 +3,7 @@
   "description": "Ruby runtime and core library for javascript",
   "homepage": "https://github.com/marcandre/meteor-opal",
   "author": "Marc-André Lafortune <meteor-opal@marc-andre.ca>",
-  "version": "0.5.5.1",
+  "version": "0.6.2.1",
   "git": "https://github.com/marcandre/meteor-opal.git",
   "packages": {}
 }
