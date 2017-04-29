@@ -41,7 +41,7 @@
   var bridged_classes = [];
 
   // TopScope is used for inheriting constants from the top scope
-  var TopScope = function(){};
+  var TopScope = () => {};
 
   // Opal just acts as the top scope
   TopScope.prototype = Opal;
@@ -62,9 +62,7 @@
   var unique_id = 0;
 
   // Return next unique id
-  Opal.uid = function() {
-    return unique_id++;
-  };
+  Opal.uid = () => unique_id++;
 
   // Table holds all class variables
   Opal.cvars = {};
@@ -78,7 +76,7 @@
    * scope will be the outer scope of the new klass.
    */
   function create_scope(base, klass, id) {
-    var const_alloc   = function() {};
+    var const_alloc   = () => {};
     var const_scope   = const_alloc.prototype = new base.constructor();
     klass._scope      = const_scope;
     const_scope.base  = klass;
@@ -120,7 +118,7 @@
    * @param [Function] constructor function to use as constructor
    * @return [Class] new or existing ruby class
    */
-  Opal.klass = function(base, superklass, id, constructor) {
+  Opal.klass = (base, superklass, id, constructor) => {
 
     // If base is an object, use its class
     if (!base._isClass) {
@@ -179,9 +177,9 @@
   };
 
   // Create generic class with given superclass.
-  var boot_class = Opal.boot = function(superklass, constructor) {
+  var boot_class = Opal.boot = (superklass, constructor) => {
     // instances
-    var ctor = function() {};
+    var ctor = () => {};
         ctor.prototype = superklass._proto;
 
     constructor.prototype = new ctor();
@@ -193,7 +191,7 @@
 
   // class itself
   function boot_class_meta(superklass, constructor) {
-    var mtor = function() {};
+    var mtor = () => {};
     mtor.prototype = superklass.constructor.prototype;
 
     function OpalClass() {};
@@ -217,7 +215,7 @@
   }
 
   // Define new module (or return existing module)
-  Opal.module = function(base, id) {
+  Opal.module = (base, id) => {
     var module;
 
     if (!base._isClass) {
@@ -249,7 +247,7 @@
    * the prototype hierarchy and method tables.
    */
   function boot_module() {
-    var mtor = function() {};
+    var mtor = () => {};
     mtor.prototype = RubyModule.constructor.prototype;
 
     function OpalModule() {};
@@ -272,9 +270,9 @@
   }
 
   // Boot a base class (makes instances).
-  var boot_defclass = function(id, constructor, superklass) {
+  var boot_defclass = (id, constructor, superklass) => {
     if (superklass) {
-      var ctor           = function() {};
+      var ctor           = () => {};
           ctor.prototype = superklass.prototype;
 
       constructor.prototype = new ctor();
@@ -286,9 +284,9 @@
   };
 
   // Boot the actual (meta?) classes of core classes
-  var boot_makemeta = function(id, constructor, superklass) {
+  var boot_makemeta = (id, constructor, superklass) => {
 
-    var mtor = function() {};
+    var mtor = () => {};
     mtor.prototype  = superklass.prototype;
 
     function OpalClass() {};
@@ -359,7 +357,7 @@
   /*
    * constant assign
    */
-  Opal.casgn = function(base_module, name, value) {
+  Opal.casgn = (base_module, name, value) => {
     var scope = base_module._scope;
 
     if (value._isClass && value._name === nil) {
@@ -377,7 +375,7 @@
   /*
    * constant decl
    */
-  Opal.cdecl = function(base_scope, name, value) {
+  Opal.cdecl = (base_scope, name, value) => {
     base_scope.constants.push(name);
     return base_scope[name] = value;
   };
@@ -385,7 +383,7 @@
   /*
    * constant get
    */
-  Opal.cget = function(base_scope, path) {
+  Opal.cget = (base_scope, path) => {
     if (path == null) {
       path       = base_scope;
       base_scope = Opal.Object;
@@ -405,10 +403,10 @@
    * When a source module is included into the target module, we must also copy
    * its constants to the target.
    */
-  Opal.donate_constants = function(source_mod, target_mod) {
-    var source_constants = source_mod._scope.constants,
-        target_scope     = target_mod._scope,
-        target_constants = target_scope.constants;
+  Opal.donate_constants = (source_mod, target_mod) => {
+    var source_constants = source_mod._scope.constants;
+    var target_scope     = target_mod._scope;
+    var target_constants = target_scope.constants;
 
     for (var i = 0, length = source_constants.length; i < length; i++) {
       target_constants.push(source_constants[i]);
@@ -444,7 +442,7 @@
    *
    * @param [Array] stubs an array of method stubs to add
    */
-  Opal.add_stubs = function(stubs) {
+  Opal.add_stubs = stubs => {
     for (var i = 0, length = stubs.length; i < length; i++) {
       var stub = stubs[i];
 
@@ -463,7 +461,7 @@
    * @param [String] stub stub name to add (e.g. "$foo")
    */
   function add_stub_for(prototype, stub) {
-    function method_missing_stub() {
+    function method_missing_stub(...args) {
       // Copy any given block onto the method_missing dispatcher
       this.$method_missing._p = method_missing_stub._p;
 
@@ -471,7 +469,7 @@
       method_missing_stub._p = null;
 
       // call method missing with correct args (remove '$' prefix on method name)
-      return this.$method_missing.apply(this, [stub.slice(1)].concat($slice.call(arguments)));
+      return this.$method_missing(...[stub.slice(1)].concat($slice.call(args)));
     }
 
     method_missing_stub.rb_stub = true;
@@ -487,14 +485,14 @@
   };
 
   // Arity count error dispatcher
-  Opal.ac = function(actual, expected, object, meth) {
+  Opal.ac = (actual, expected, object, meth) => {
     var inspect = (object._isClass ? object._name + '.' : object._klass._name + '#') + meth;
     var msg = '[' + inspect + '] wrong number of arguments(' + actual + ' for ' + expected + ')';
     throw Opal.ArgumentError.$new(msg);
   };
 
   // Super dispatcher
-  Opal.find_super_dispatcher = function(obj, jsid, current_func, iter, defs) {
+  Opal.find_super_dispatcher = (obj, jsid, current_func, iter, defs) => {
     var dispatcher;
 
     if (defs) {
@@ -516,7 +514,7 @@
   };
 
   // Iter dispatcher for super in a block
-  Opal.find_iter_super_dispatcher = function(obj, jsid, current_func, iter, defs) {
+  Opal.find_iter_super_dispatcher = (obj, jsid, current_func, iter, defs) => {
     if (current_func._def) {
       return Opal.find_super_dispatcher(obj, current_func._jsid, current_func, iter, defs);
     }
@@ -525,7 +523,7 @@
     }
   };
 
-  var find_obj_super_dispatcher = function(obj, jsid, current_func) {
+  var find_obj_super_dispatcher = (obj, jsid, current_func) => {
     var klass = obj.__meta__ || obj._klass;
 
     while (klass) {
@@ -567,20 +565,20 @@
    * method. This approach is expensive, so it is only used when absolutely
    * needed.
    */
-  Opal.$return = function(val) {
+  Opal.$return = val => {
     Opal.returner.$v = val;
     throw Opal.returner;
   };
 
   // handles yield calls for 1 yielded arg
-  Opal.$yield1 = function(block, arg) {
+  Opal.$yield1 = (block, arg) => {
     if (typeof(block) !== "function") {
       throw Opal.LocalJumpError.$new("no block given");
     }
 
     if (block.length > 1) {
       if (arg._isArray) {
-        return block.apply(null, arg);
+        return block(...arg);
       }
       else {
         return block(arg);
@@ -592,14 +590,14 @@
   };
 
   // handles yield for > 1 yielded arg
-  Opal.$yieldX = function(block, args) {
+  Opal.$yieldX = (block, args) => {
     if (typeof(block) !== "function") {
       throw Opal.LocalJumpError.$new("no block given");
     }
 
     if (block.length > 1 && args.length == 1) {
       if (args[0]._isArray) {
-        return block.apply(null, args[0]);
+        return block(...args[0]);
       }
     }
 
@@ -607,10 +605,10 @@
       args = $slice.call(args);
     }
 
-    return block.apply(null, args);
+    return block(...args);
   };
 
-  Opal.is_a = function(object, klass) {
+  Opal.is_a = (object, klass) => {
     if (object.__meta__ === klass) {
       return true;
     }
@@ -629,7 +627,7 @@
   }
 
   // Helper to convert the given object to an array
-  Opal.to_ary = function(value) {
+  Opal.to_ary = value => {
     if (value._isArray) {
       return value;
     }
@@ -656,36 +654,37 @@
     @param [String] mid ruby method to call
   */
   Opal.send = function(recv, mid) {
-    var args = $slice.call(arguments, 2),
-        func = recv['$' + mid];
+    var args = $slice.call(arguments, 2);
+    var func = recv['$' + mid];
 
     if (func) {
       return func.apply(recv, args);
     }
 
-    return recv.$method_missing.apply(recv, [mid].concat(args));
+    return recv.$method_missing(...[mid].concat(args));
   };
 
   Opal.block_send = function(recv, mid, block) {
-    var args = $slice.call(arguments, 3),
-        func = recv['$' + mid];
+    var args = $slice.call(arguments, 3);
+    var func = recv['$' + mid];
 
     if (func) {
       func._p = block;
       return func.apply(recv, args);
     }
 
-    return recv.$method_missing.apply(recv, [mid].concat(args));
+    return recv.$method_missing(...[mid].concat(args));
   };
 
   /**
    * Donate methods for a class/module
    */
-  Opal.donate = function(klass, defined, indirect) {
-    var methods = klass._methods, included_in = klass.__dep__;
+  Opal.donate = (klass, defined, indirect) => {
+    var methods = klass._methods;
+    var included_in = klass.__dep__;
 
     // if (!indirect) {
-      klass._methods = methods.concat(defined);
+    klass._methods = methods.concat(defined);
     // }
 
     if (included_in) {
@@ -706,7 +705,7 @@
     }
   };
 
-  Opal.defn = function(obj, jsid, body) {
+  Opal.defn = (obj, jsid, body) => {
     if (obj.__mod__) {
       obj._proto[jsid] = body;
       Opal.donate(obj, [jsid]);
@@ -731,7 +730,7 @@
   /*
    * Define a singleton method on the given object.
    */
-  Opal.defs = function(obj, jsid, body) {
+  Opal.defs = (obj, jsid, body) => {
     if (obj._isClass || obj.__mod__) {
       obj.constructor.prototype[jsid] = body;
     }
@@ -752,9 +751,9 @@
       return arguments[0];
     }
 
-    var hash   = new Opal.Hash._alloc,
-        keys   = [],
-        assocs = {};
+    var hash   = new Opal.Hash._alloc;
+    var keys   = [];
+    var assocs = {};
 
     hash.map   = assocs;
     hash.keys  = keys;
@@ -764,7 +763,8 @@
         var args = arguments[0];
 
         for (var i = 0, length = args.length; i < length; i++) {
-          var key = args[i][0], obj = args[i][1];
+          var key = args[i][0];
+          var obj = args[i][1];
 
           if (assocs[key] == null) {
             keys.push(key);
@@ -783,8 +783,8 @@
     }
     else {
       for (var i = 0, length = arguments.length; i < length; i++) {
-        var key = arguments[i],
-            obj = arguments[++i];
+        var key = arguments[i];
+        var obj = arguments[++i];
 
         if (assocs[key] == null) {
           keys.push(key);
@@ -803,7 +803,7 @@
    * compile time, so they are just added here by the constructor
    * function
    */
-  Opal.hash2 = function(keys, map) {
+  Opal.hash2 = (keys, map) => {
     var hash = new Opal.Hash._alloc;
 
     hash.keys = keys;
@@ -816,7 +816,7 @@
    * Create a new range instance with first and last values, and whether the
    * range excludes the last value.
    */
-  Opal.range = function(first, last, exc) {
+  Opal.range = (first, last, exc) => {
     var range         = new Opal.Range._alloc;
         range.begin   = first;
         range.end     = last;
@@ -877,7 +877,7 @@
   Opal.klass(RubyObject, RubyObject, 'NilClass', NilClass);
 
   var nil = Opal.nil = new NilClass;
-  nil.call = nil.apply = function() { throw Opal.LocalJumpError.$new('no block given'); };
+  nil.call = nil.apply = () => { throw Opal.LocalJumpError.$new('no block given'); };
 
   Opal.breaker  = new Error('unexpected break');
   Opal.returner = new Error('unexpected return');
@@ -894,65 +894,79 @@
   TypeError._super = Error;
 }).call(this);
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs(['$===', '$respond_to?', '$raise', '$class', '$__send__', '$coerce_to', '$<=>', '$name']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
+    var def = self._proto;
+    var $scope = self._scope;
     $opal.defs(self, '$coerce_to', function(object, type, method) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = type['$==='](object)) !== false && $a !== nil) {
-        return object};
+        return object}
       if (($a = object['$respond_to?'](method)) === false || $a === nil) {
-        self.$raise($scope.TypeError, "no implicit conversion of " + (object.$class()) + " into " + (type))};
+        self.$raise($scope.TypeError, "no implicit conversion of " + (object.$class()) + " into " + (type))}
       return object.$__send__(method);
     });
 
     $opal.defs(self, '$coerce_to!', function(object, type, method) {
-      var $a, self = this, coerced = nil;
+      var $a;
+      var self = this;
+      var coerced = nil;
       coerced = self.$coerce_to(object, type, method);
       if (($a = type['$==='](coerced)) === false || $a === nil) {
-        self.$raise($scope.TypeError, "can't convert " + (object.$class()) + " into " + (type) + " (" + (object.$class()) + "#" + (method) + " gives " + (coerced.$class()))};
+        self.$raise($scope.TypeError, "can't convert " + (object.$class()) + " into " + (type) + " (" + (object.$class()) + "#" + (method) + " gives " + (coerced.$class()))}
       return coerced;
     });
 
     $opal.defs(self, '$try_convert', function(object, type, method) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = type['$==='](object)) !== false && $a !== nil) {
-        return object};
+        return object}
       if (($a = object['$respond_to?'](method)) !== false && $a !== nil) {
         return object.$__send__(method)
         } else {
         return nil
-      };
+      }
     });
 
     $opal.defs(self, '$compare', function(a, b) {
-      var $a, self = this, compare = nil;
+      var $a;
+      var self = this;
+      var compare = nil;
       compare = a['$<=>'](b);
       if (($a = compare === nil) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "comparison of " + (a.$class().$name()) + " with " + (b.$class().$name()) + " failed")};
+        self.$raise($scope.ArgumentError, "comparison of " + (a.$class().$name()) + " with " + (b.$class().$name()) + " failed")}
       return compare;
     });
 
     $opal.defs(self, '$fits_fixnum!', function(value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = value > 2147483648) !== false && $a !== nil) {
         return self.$raise($scope.RangeError, "bignum too big to convert into `long'")
         } else {
         return nil
-      };
+      }
     });
 
     $opal.defs(self, '$fits_array!', function(value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = value >= 536870910) !== false && $a !== nil) {
         return self.$raise($scope.ArgumentError, "argument too big")
         } else {
         return nil
-      };
+      }
     });
 
     $opal.defs(self, '$destructure', function(args) {
@@ -969,25 +983,36 @@
       }
     
     });
-    
-  })(self)
-})(Opal);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/helpers.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$attr_reader', '$attr_writer', '$=~', '$raise', '$const_missing', '$to_str', '$to_proc', '$append_features', '$included', '$name', '$new', '$to_s']);
-  return (function($base, $super) {
-    function $Module(){};
+  return ((($base, $super) => {
+    function $Module(){}
     var self = $Module = $klass($base, $super, 'Module', $Module);
 
-    var def = $Module._proto, $scope = $Module._scope, TMP_1, TMP_2, TMP_3, TMP_4;
+    var def = $Module._proto;
+    var $scope = $Module._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
     $opal.defs(self, '$new', TMP_1 = function() {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
-      
+
       function AnonModule(){}
       var klass     = Opal.boot(Opal.Module, AnonModule);
       klass._name   = nil;
@@ -1007,13 +1032,13 @@
       }
 
       return klass;
-    
     });
 
     def['$==='] = function(object) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = object == null) !== false && $a !== nil) {
-        return false};
+        return false}
       return $opal.is_a(object, self);
     };
 
@@ -1056,9 +1081,9 @@
 
     def.$ancestors = function() {
       var self = this;
-      
-      var parent = self,
-          result = [];
+
+      var parent = self;
+      var result = [];
 
       while (parent) {
         result.push(parent);
@@ -1068,14 +1093,13 @@
       }
 
       return result;
-    
     };
 
     def.$append_features = function(klass) {
       var self = this;
-      
-      var module   = self,
-          included = klass.__inc__;
+
+      var module   = self;
+      var included = klass.__inc__;
 
       // check if this module is already included in the klass
       for (var i = 0, length = included.length; i < length; i++) {
@@ -1098,9 +1122,9 @@
 
       klass.__parent = iclass;
 
-      var donator   = module._proto,
-          prototype = klass._proto,
-          methods   = module._methods;
+      var donator   = module._proto;
+      var prototype = klass._proto;
+      var methods   = module._methods;
 
       for (var i = 0, length = methods.length; i < length; i++) {
         var method = methods[i];
@@ -1121,12 +1145,14 @@
       }
 
       $opal.donate_constants(module, klass);
-    
+
       return self;
     };
 
     def.$attr_accessor = function(names) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       names = $slice.call(arguments, 0);
       ($a = self).$attr_reader.apply($a, [].concat(names));
       return ($b = self).$attr_writer.apply($b, [].concat(names));
@@ -1135,10 +1161,11 @@
     def.$attr_reader = function(names) {
       var self = this;
       names = $slice.call(arguments, 0);
-      
-      var proto = self._proto, cls = self;
+
+      var proto = self._proto;
+      var cls = self;
       for (var i = 0, length = names.length; i < length; i++) {
-        (function(name) {
+        ((name => {
           proto[name] = nil;
           var func = function() { return this[name] };
 
@@ -1149,19 +1176,19 @@
             proto['$' + name] = func;
             $opal.donate(self, ['$' + name ]);
           }
-        })(names[i]);
+        }))(names[i]);
       }
-    ;
       return nil;
     };
 
     def.$attr_writer = function(names) {
       var self = this;
       names = $slice.call(arguments, 0);
-      
-      var proto = self._proto, cls = self;
+
+      var proto = self._proto;
+      var cls = self;
       for (var i = 0, length = names.length; i < length; i++) {
-        (function(name) {
+        ((name => {
           proto[name] = nil;
           var func = function(value) { return this[name] = value; };
 
@@ -1172,9 +1199,8 @@
             proto['$' + name + '='] = func;
             $opal.donate(self, ['$' + name + '=']);
           }
-        })(names[i]);
+        }))(names[i]);
       }
-    ;
       return nil;
     };
 
@@ -1186,13 +1212,14 @@
     };
 
     def['$const_defined?'] = function(name, inherit) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (inherit == null) {
         inherit = true
       }
       if (($a = name['$=~'](/^[A-Z]\w*$/)) === false || $a === nil) {
-        self.$raise($scope.NameError, "wrong constant name " + (name))};
-      
+        self.$raise($scope.NameError, "wrong constant name " + (name))}
+
       scopes = [self._scope];
       if (inherit || self === Opal.Object) {
         var parent = self._super;
@@ -1209,17 +1236,17 @@
       }
 
       return false;
-    ;
     };
 
     def.$const_get = function(name, inherit) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (inherit == null) {
         inherit = true
       }
       if (($a = name['$=~'](/^[A-Z]\w*$/)) === false || $a === nil) {
-        self.$raise($scope.NameError, "wrong constant name " + (name))};
-      
+        self.$raise($scope.NameError, "wrong constant name " + (name))}
+
       var scopes = [self._scope];
       if (inherit || self == Opal.Object) {
         var parent = self._super;
@@ -1236,35 +1263,38 @@
       }
 
       return self.$const_missing(name);
-    ;
     };
 
     def.$const_missing = function(const$) {
-      var self = this, name = nil;
+      var self = this;
+      var name = nil;
       name = self._name;
       return self.$raise($scope.NameError, "uninitialized constant " + (name) + "::" + (const$));
     };
 
     def.$const_set = function(name, value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = name['$=~'](/^[A-Z]\w*$/)) === false || $a === nil) {
-        self.$raise($scope.NameError, "wrong constant name " + (name))};
+        self.$raise($scope.NameError, "wrong constant name " + (name))}
       try {
       name = name.$to_str()
       } catch ($err) {if (true) {
         self.$raise($scope.TypeError, "conversion with #to_str failed")
         }else { throw $err; }
-      };
-      
+      }
+
       $opal.casgn(self, name, value);
       return value
     ;
     };
 
     def.$define_method = TMP_2 = function(name, method) {
-      var self = this, $iter = TMP_2._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       TMP_2._p = null;
-      
+
       if (method) {
         block = method.$to_proc();
       }
@@ -1282,7 +1312,6 @@
       $opal.donate(self, [jsid]);
 
       return null;
-    ;
     };
 
     def.$remove_method = function(name) {
@@ -1301,8 +1330,9 @@
     def.$include = function(mods) {
       var self = this;
       mods = $slice.call(arguments, 0);
-      
-      var i = mods.length - 1, mod;
+
+      var i = mods.length - 1;
+      var mod;
       while (i >= 0) {
         mod = mods[i];
         i--;
@@ -1316,7 +1346,6 @@
       }
 
       return self;
-    
     };
 
     def.$instance_method = function(name) {
@@ -1337,8 +1366,9 @@
       if (include_super == null) {
         include_super = false
       }
-      
-      var methods = [], proto = self._proto;
+
+      var methods = [];
+      var proto = self._proto;
 
       for (var prop in self._proto) {
         if (!include_super && !proto.hasOwnProperty(prop)) {
@@ -1355,7 +1385,6 @@
       }
 
       return methods;
-    ;
     };
 
     def.$included = function(mod) {
@@ -1364,41 +1393,45 @@
     };
 
     def.$module_eval = TMP_3 = function() {
-      var self = this, $iter = TMP_3._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
-      
+
       if (block === nil) {
         throw new Error("no block given");
       }
 
-      var block_self = block._s, result;
+      var block_self = block._s;
+      var result;
 
       block._s = null;
       result = block.call(self);
       block._s = block_self;
 
       return result;
-    
     };
 
     $opal.defn(self, '$class_eval', def.$module_eval);
 
-    def.$module_exec = TMP_4 = function() {
-      var self = this, $iter = TMP_4._p, block = $iter || nil;
+    def.$module_exec = TMP_4 = function(...args) {
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
-      
+
       if (block === nil) {
         throw new Error("no block given");
       }
 
-      var block_self = block._s, result;
+      var block_self = block._s;
+      var result;
 
       block._s = null;
-      result = block.apply(self, $slice.call(arguments));
+      result = block.apply(self, $slice.call(args));
       block._s = block_self;
 
       return result;
-    
     };
 
     $opal.defn(self, '$class_exec', def.$module_exec);
@@ -1416,7 +1449,8 @@
       methods = $slice.call(arguments, 0);
       
       for (var i = 0, length = methods.length; i < length; i++) {
-        var meth = methods[i], func = self._proto['$' + meth];
+        var meth = methods[i];
+        var func = self._proto['$' + meth];
 
         self.constructor.prototype['$' + meth] = func;
       }
@@ -1427,12 +1461,13 @@
 
     def.$name = function() {
       var self = this;
-      
+
       if (self._full_name) {
         return self._full_name;
       }
 
-      var result = [], base = self;
+      var result = [];
+      var base = self;
 
       while (base) {
         if (base._name === nil) {
@@ -1453,7 +1488,6 @@
       }
 
       return self._full_name = result.join('::');
-    
     };
 
     def.$public = function() {
@@ -1505,32 +1539,42 @@
       $opal.add_stub_for(self._proto, "$" + symbol);
       return self;
     }, nil);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/module.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$raise', '$allocate']);
-  return (function($base, $super) {
-    function $Class(){};
+  return ((($base, $super) => {
+    function $Class(){}
     var self = $Class = $klass($base, $super, 'Class', $Class);
 
-    var def = $Class._proto, $scope = $Class._scope, TMP_1, TMP_2;
+    var def = $Class._proto;
+    var $scope = $Class._scope;
+    var TMP_1;
+    var TMP_2;
     $opal.defs(self, '$new', TMP_1 = function(sup) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       if (sup == null) {
         sup = $scope.Object
       }
       TMP_1._p = null;
-      
+
       if (!sup._isClass || sup.__mod__) {
         self.$raise($scope.TypeError, "superclass must be a Class");
       }
 
-      function AnonClass(){};
+      function AnonClass(){}
       var klass       = Opal.boot(sup, AnonClass)
       klass._name     = nil;
       klass.__parent  = sup;
@@ -1548,7 +1592,6 @@
       }
 
       return klass;
-    ;
     });
 
     def.$allocate = function() {
@@ -1566,36 +1609,47 @@
     };
 
     def.$new = TMP_2 = function(args) {
-      var self = this, $iter = TMP_2._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_2._p = null;
-      
+
       var obj = self.$allocate();
 
       obj.$initialize._p = block;
-      obj.$initialize.apply(obj, args);
+      obj.$initialize(...args);
       return obj;
-    ;
     };
 
     return (def.$superclass = function() {
       var self = this;
       return self._super || nil;
     }, nil);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/class.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$raise']);
-  return (function($base, $super) {
-    function $BasicObject(){};
+  return ((($base, $super) => {
+    function $BasicObject(){}
     var self = $BasicObject = $klass($base, $super, 'BasicObject', $BasicObject);
 
-    var def = $BasicObject._proto, $scope = $BasicObject._scope, TMP_1, TMP_2, TMP_3, TMP_4;
+    var def = $BasicObject._proto;
+    var $scope = $BasicObject._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
     $opal.defn(self, '$initialize', function() {
       var self = this;
       return nil;
@@ -1612,10 +1666,12 @@
     });
 
     $opal.defn(self, '$__send__', TMP_1 = function(symbol, args) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_1._p = null;
-      
+
       var func = self['$' + symbol]
 
       if (func) {
@@ -1630,8 +1686,7 @@
         self.$method_missing._p = block;
       }
 
-      return self.$method_missing.apply(self, [symbol].concat(args));
-    
+      return self.$method_missing(...[symbol].concat(args));
     });
 
     $opal.defn(self, '$eql?', def['$==']);
@@ -1639,61 +1694,82 @@
     $opal.defn(self, '$equal?', def['$==']);
 
     $opal.defn(self, '$instance_eval', TMP_2 = function() {
-      var $a, self = this, $iter = TMP_2._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       TMP_2._p = null;
       if (($a = block) === false || $a === nil) {
-        $scope.Kernel.$raise($scope.ArgumentError, "no block given")};
-      
-      var block_self = block._s,
-          result;
+        $scope.Kernel.$raise($scope.ArgumentError, "no block given")}
+      var block_self = block._s;
+      var result;
 
       block._s = null;
       result = block.call(self, self);
       block._s = block_self;
 
       return result;
-    
     });
 
     $opal.defn(self, '$instance_exec', TMP_3 = function(args) {
-      var $a, self = this, $iter = TMP_3._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_3._p = null;
       if (($a = block) === false || $a === nil) {
-        $scope.Kernel.$raise($scope.ArgumentError, "no block given")};
-      
-      var block_self = block._s,
-          result;
+        $scope.Kernel.$raise($scope.ArgumentError, "no block given")}
+      var block_self = block._s;
+      var result;
 
       block._s = null;
       result = block.apply(self, args);
       block._s = block_self;
 
       return result;
-    
     });
 
-    return ($opal.defn(self, '$method_missing', TMP_4 = function(symbol, args) {
-      var self = this, $iter = TMP_4._p, block = $iter || nil;
+    return $opal.defn(self, '$method_missing', TMP_4 = function(symbol, args) {
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_4._p = null;
       return $scope.Kernel.$raise($scope.NoMethodError, "undefined method `" + (symbol) + "' for BasicObject instance");
-    }), nil);
-  })(self, null)
-})(Opal);
+    }), nil;
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/basic_object.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$raise', '$inspect', '$==', '$name', '$class', '$new', '$respond_to?', '$to_ary', '$to_a', '$allocate', '$copy_instance_variables', '$initialize_clone', '$initialize_copy', '$private', '$singleton_class', '$initialize_dup', '$for', '$to_proc', '$include', '$to_i', '$to_s', '$to_f', '$*', '$===', '$empty?', '$ArgumentError', '$nan?', '$infinite?', '$to_int', '$>', '$length', '$print', '$format', '$puts', '$each', '$<=', '$[]', '$nil?', '$is_a?', '$rand', '$coerce_to']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Kernel');
 
-    var def = self._proto, $scope = self._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5, TMP_6, TMP_7, TMP_9;
+    var def = self._proto;
+    var $scope = self._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
+    var TMP_6;
+    var TMP_7;
+    var TMP_9;
     def.$method_missing = TMP_1 = function(symbol, args) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_1._p = null;
       return self.$raise($scope.NoMethodError, "undefined method `" + (symbol) + "' for " + (self.$inspect()));
@@ -1758,10 +1834,12 @@
     };
 
     def.$Array = TMP_2 = function(object, args) {
-      var self = this, $iter = TMP_2._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_2._p = null;
-      
+
       if (object == null || object === nil) {
         return [];
       }
@@ -1774,7 +1852,6 @@
       else {
         return [object];
       }
-    ;
     };
 
     def.$caller = function() {
@@ -1801,7 +1878,8 @@
     };
 
     def.$clone = function() {
-      var self = this, copy = nil;
+      var self = this;
+      var copy = nil;
       copy = self.$class().$allocate();
       copy.$copy_instance_variables(self);
       copy.$initialize_clone(self);
@@ -1816,11 +1894,14 @@
     self.$private("initialize_clone");
 
     def.$define_singleton_method = TMP_3 = function(name) {
-      var $a, self = this, $iter = TMP_3._p, body = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_3._p;
+      var body = $iter || nil;
       TMP_3._p = null;
       if (($a = body) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "tried to create Proc object without a block")};
-      
+        self.$raise($scope.ArgumentError, "tried to create Proc object without a block")}
+
       var jsid   = '$' + name;
       body._jsid = name;
       body._s    = null;
@@ -1829,11 +1910,11 @@
       self.$singleton_class()._proto[jsid] = body;
 
       return self;
-    
     };
 
     def.$dup = function() {
-      var self = this, copy = nil;
+      var self = this;
+      var copy = nil;
       copy = self.$class().$allocate();
       copy.$copy_instance_variables(self);
       copy.$initialize_dup(self);
@@ -1848,7 +1929,11 @@
     self.$private("initialize_dup");
 
     def.$enum_for = TMP_4 = function(method, args) {
-      var $a, $b, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       if (method == null) {
         method = "each"
@@ -1879,17 +1964,27 @@
       args = $slice.call(arguments, 1);
       
       var idx = 0;
-      return format.replace(/%(\d+\$)?([-+ 0]*)(\d*|\*(\d+\$)?)(?:\.(\d*|\*(\d+\$)?))?([cspdiubBoxXfgeEG])|(%%)/g, function(str, idx_str, flags, width_str, w_idx_str, prec_str, p_idx_str, spec, escaped) {
+      return format.replace(/%(\d+\$)?([-+ 0]*)(\d*|\*(\d+\$)?)(?:\.(\d*|\*(\d+\$)?))?([cspdiubBoxXfgeEG])|(%%)/g, (
+        str,
+        idx_str,
+        flags,
+        width_str,
+        w_idx_str,
+        prec_str,
+        p_idx_str,
+        spec,
+        escaped
+      ) => {
         if (escaped) {
           return '%';
         }
 
-        var width,
-        prec,
-        is_integer_spec = ("diubBoxX".indexOf(spec) != -1),
-        is_float_spec = ("eEfgG".indexOf(spec) != -1),
-        prefix = '',
-        obj;
+        var width;
+        var prec;
+        var is_integer_spec = ("diubBoxX".indexOf(spec) != -1);
+        var is_float_spec = ("eEfgG".indexOf(spec) != -1);
+        var prefix = '';
+        var obj;
 
         if (width_str === undefined) {
           width = undefined;
@@ -2062,17 +2157,20 @@
     };
 
     def.$Integer = function(value, base) {
-      var $a, $b, self = this, $case = nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $case = nil;
       if (base == null) {
         base = nil
       }
       if (($a = $scope.String['$==='](value)) !== false && $a !== nil) {
         if (($a = value['$empty?']()) !== false && $a !== nil) {
           self.$raise($scope.ArgumentError, "invalid value for Integer: (empty string)")};
-        return parseInt(value, ((($a = base) !== false && $a !== nil) ? $a : undefined));};
+        return parseInt(value, ((($a = base) !== false && $a !== nil) ? $a : undefined));}
       if (base !== false && base !== nil) {
-        self.$raise(self.$ArgumentError("base is only valid for String values"))};
-      return (function() {$case = value;if ($scope.Integer['$===']($case)) {return value}else if ($scope.Float['$===']($case)) {if (($a = ((($b = value['$nan?']()) !== false && $b !== nil) ? $b : value['$infinite?']())) !== false && $a !== nil) {
+        self.$raise(self.$ArgumentError("base is only valid for String values"))}
+      return ((() => {$case = value;if ($scope.Integer['$===']($case)) {return value}else if ($scope.Float['$===']($case)) {if (($a = ((($b = value['$nan?']()) !== false && $b !== nil) ? $b : value['$infinite?']())) !== false && $a !== nil) {
         self.$raise($scope.FloatDomainError, "unable to coerce " + (value) + " to Integer")};
       return value.$to_int();}else if ($scope.NilClass['$===']($case)) {return self.$raise($scope.TypeError, "can't convert nil into Integer")}else {if (($a = value['$respond_to?']("to_int")) !== false && $a !== nil) {
         return value.$to_int()
@@ -2080,18 +2178,19 @@
         return value.$to_i()
         } else {
         return self.$raise($scope.TypeError, "can't convert " + (value.$class()) + " into Integer")
-      }}})();
+      }}}))();
     };
 
     def.$Float = function(value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.String['$==='](value)) !== false && $a !== nil) {
         return parseFloat(value);
       } else if (($a = value['$respond_to?']("to_f")) !== false && $a !== nil) {
         return value.$to_f()
         } else {
         return self.$raise($scope.TypeError, "can't convert " + (value.$class()) + " into Float")
-      };
+      }
     };
 
     def['$is_a?'] = function(klass) {
@@ -2102,22 +2201,26 @@
     $opal.defn(self, '$kind_of?', def['$is_a?']);
 
     def.$lambda = TMP_5 = function() {
-      var self = this, $iter = TMP_5._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
       block.is_lambda = true;
       return block;
     };
 
     def.$loop = TMP_6 = function() {
-      var self = this, $iter = TMP_6._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
-      
+
       while (true) {
         if (block() === $breaker) {
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
@@ -2129,10 +2232,11 @@
     $opal.defn(self, '$object_id', def.$__id__);
 
     def.$printf = function(args) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       args = $slice.call(arguments, 0);
       if (args.$length()['$>'](0)) {
-        self.$print(($a = self).$format.apply($a, [].concat(args)))};
+        self.$print(($a = self).$format.apply($a, [].concat(args)))}
       return nil;
     };
 
@@ -2142,22 +2246,29 @@
     };
 
     def.$proc = TMP_7 = function() {
-      var $a, self = this, $iter = TMP_7._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       TMP_7._p = null;
       if (($a = block) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "tried to create Proc object without a block")};
+        self.$raise($scope.ArgumentError, "tried to create Proc object without a block")}
       block.is_lambda = false;
       return block;
     };
 
     def.$puts = function(strs) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       strs = $slice.call(arguments, 0);
       return ($a = $gvars["stdout"]).$puts.apply($a, [].concat(strs));
     };
 
     def.$p = function(args) {
-      var $a, $b, TMP_8, self = this;
+      var $a;
+      var $b;
+      var TMP_8;
+      var self = this;
       args = $slice.call(arguments, 0);
       ($a = ($b = args).$each, $a._p = (TMP_8 = function(obj){var self = TMP_8._s || this;if (obj == null) obj = nil;
       return $gvars["stdout"].$puts(obj.$inspect())}, TMP_8._s = self, TMP_8), $a).call($b);
@@ -2165,16 +2276,18 @@
         return args['$[]'](0)
         } else {
         return args
-      };
+      }
     };
 
     $opal.defn(self, '$print', def.$puts);
 
     def.$warn = function(strs) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       strs = $slice.call(arguments, 0);
       if (($a = ((($b = $gvars["VERBOSE"]['$nil?']()) !== false && $b !== nil) ? $b : strs['$empty?']())) === false || $a === nil) {
-        ($a = $gvars["stderr"]).$puts.apply($a, [].concat(strs))};
+        ($a = $gvars["stderr"]).$puts.apply($a, [].concat(strs))}
       return nil;
     };
 
@@ -2264,10 +2377,10 @@
       }
 
       else {
-        var orig_class = self._klass,
-            class_id   = "#<Class:#<" + orig_class._name + ":" + orig_class._id + ">>";
+        var orig_class = self._klass;
+        var class_id   = "#<Class:#<" + orig_class._name + ":" + orig_class._id + ">>";
 
-        var Singleton = function () {};
+        var Singleton = () => {};
         var meta = Opal.boot(orig_class, Singleton);
         meta._name = class_id;
 
@@ -2290,7 +2403,9 @@
     };
 
     def.$tap = TMP_9 = function() {
-      var self = this, $iter = TMP_9._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
       TMP_9._p = null;
       if ($opal.$yield1(block, self) === $breaker) return $breaker.$v;
       return self;
@@ -2313,7 +2428,8 @@
     };
 
     def['$frozen?'] = function() {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (self.___frozen___ == null) self.___frozen___ = nil;
 
       return ((($a = self.___frozen___) !== false && $a !== nil) ? $a : false);
@@ -2323,21 +2439,27 @@
       var self = this;
       return false;
     };
-        ;$opal.donate(self, ["$method_missing", "$=~", "$===", "$<=>", "$method", "$methods", "$Array", "$caller", "$class", "$copy_instance_variables", "$clone", "$initialize_clone", "$define_singleton_method", "$dup", "$initialize_dup", "$enum_for", "$equal?", "$extend", "$format", "$hash", "$initialize_copy", "$inspect", "$instance_of?", "$instance_variable_defined?", "$instance_variable_get", "$instance_variable_set", "$instance_variables", "$Integer", "$Float", "$is_a?", "$kind_of?", "$lambda", "$loop", "$nil?", "$object_id", "$printf", "$private_methods", "$proc", "$puts", "$p", "$print", "$warn", "$raise", "$fail", "$rand", "$srand", "$respond_to?", "$send", "$public_send", "$singleton_class", "$sprintf", "$String", "$tap", "$to_proc", "$to_s", "$freeze", "$frozen?", "$respond_to_missing?"]);
-  })(self)
-})(Opal);
+    $opal.donate(self, ["$method_missing", "$=~", "$===", "$<=>", "$method", "$methods", "$Array", "$caller", "$class", "$copy_instance_variables", "$clone", "$initialize_clone", "$define_singleton_method", "$dup", "$initialize_dup", "$enum_for", "$equal?", "$extend", "$format", "$hash", "$initialize_copy", "$inspect", "$instance_of?", "$instance_variable_defined?", "$instance_variable_get", "$instance_variable_set", "$instance_variables", "$Integer", "$Float", "$is_a?", "$kind_of?", "$lambda", "$loop", "$nil?", "$object_id", "$printf", "$private_methods", "$proc", "$puts", "$p", "$print", "$warn", "$raise", "$fail", "$rand", "$srand", "$respond_to?", "$send", "$public_send", "$singleton_class", "$sprintf", "$String", "$tap", "$to_proc", "$to_s", "$freeze", "$frozen?", "$respond_to_missing?"]);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/kernel.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$raise']);
-  (function($base, $super) {
-    function $NilClass(){};
+  ((($base, $super) => {
+    function $NilClass(){}
     var self = $NilClass = $klass($base, $super, 'NilClass', $NilClass);
 
-    var def = $NilClass._proto, $scope = $NilClass._scope;
+    var def = $NilClass._proto;
+    var $scope = $NilClass._scope;
     def['$&'] = function(other) {
       var self = this;
       return false;
@@ -2406,27 +2528,34 @@
     };
 
     return $opal.defn(self, '$hash', def.$object_id);
-  })(self, null);
+  }))(self, null);
   return $opal.cdecl($scope, 'NIL', nil);
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/nil_class.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$undef_method']);
-  (function($base, $super) {
-    function $Boolean(){};
+  ((($base, $super) => {
+    function $Boolean(){}
     var self = $Boolean = $klass($base, $super, 'Boolean', $Boolean);
 
-    var def = $Boolean._proto, $scope = $Boolean._scope;
+    var def = $Boolean._proto;
+    var $scope = $Boolean._scope;
     def._isBoolean = true;
 
-    (function(self) {
-      var $scope = self._scope, def = self._proto;
+    ((self => {
+      var $scope = self._scope;
+      var def = self._proto;
       return self.$undef_method("new")
-    })(self.$singleton_class());
+    }))(self.$singleton_class());
 
     def['$&'] = function(other) {
       var self = this;
@@ -2456,24 +2585,31 @@
       var self = this;
       return (self == true) ? 'true' : 'false';
     }, nil);
-  })(self, null);
+  }))(self, null);
   $opal.cdecl($scope, 'TrueClass', $scope.Boolean);
   $opal.cdecl($scope, 'FalseClass', $scope.Boolean);
   $opal.cdecl($scope, 'TRUE', true);
   return $opal.cdecl($scope, 'FALSE', false);
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/boolean.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $module = $opal.module;
   $opal.add_stubs(['$attr_reader', '$name', '$class']);
-  (function($base, $super) {
-    function $Exception(){};
+  ((($base, $super) => {
+    function $Exception(){}
     var self = $Exception = $klass($base, $super, 'Exception', $Exception);
 
-    var def = $Exception._proto, $scope = $Exception._scope;
+    var def = $Exception._proto;
+    var $scope = $Exception._scope;
     def.message = nil;
     self.$attr_reader("message");
 
@@ -2512,163 +2648,192 @@
     };
 
     return $opal.defn(self, '$to_s', def.$message);
-  })(self, null);
-  (function($base, $super) {
-    function $StandardError(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $StandardError(){}
     var self = $StandardError = $klass($base, $super, 'StandardError', $StandardError);
 
-    var def = $StandardError._proto, $scope = $StandardError._scope;
+    var def = $StandardError._proto;
+    var $scope = $StandardError._scope;
     return nil;
-  })(self, $scope.Exception);
-  (function($base, $super) {
-    function $SystemCallError(){};
+  }))(self, $scope.Exception);
+  ((($base, $super) => {
+    function $SystemCallError(){}
     var self = $SystemCallError = $klass($base, $super, 'SystemCallError', $SystemCallError);
 
-    var def = $SystemCallError._proto, $scope = $SystemCallError._scope;
+    var def = $SystemCallError._proto;
+    var $scope = $SystemCallError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $NameError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $NameError(){}
     var self = $NameError = $klass($base, $super, 'NameError', $NameError);
 
-    var def = $NameError._proto, $scope = $NameError._scope;
+    var def = $NameError._proto;
+    var $scope = $NameError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $NoMethodError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $NoMethodError(){}
     var self = $NoMethodError = $klass($base, $super, 'NoMethodError', $NoMethodError);
 
-    var def = $NoMethodError._proto, $scope = $NoMethodError._scope;
+    var def = $NoMethodError._proto;
+    var $scope = $NoMethodError._scope;
     return nil;
-  })(self, $scope.NameError);
-  (function($base, $super) {
-    function $RuntimeError(){};
+  }))(self, $scope.NameError);
+  ((($base, $super) => {
+    function $RuntimeError(){}
     var self = $RuntimeError = $klass($base, $super, 'RuntimeError', $RuntimeError);
 
-    var def = $RuntimeError._proto, $scope = $RuntimeError._scope;
+    var def = $RuntimeError._proto;
+    var $scope = $RuntimeError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $LocalJumpError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $LocalJumpError(){}
     var self = $LocalJumpError = $klass($base, $super, 'LocalJumpError', $LocalJumpError);
 
-    var def = $LocalJumpError._proto, $scope = $LocalJumpError._scope;
+    var def = $LocalJumpError._proto;
+    var $scope = $LocalJumpError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $TypeError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $TypeError(){}
     var self = $TypeError = $klass($base, $super, 'TypeError', $TypeError);
 
-    var def = $TypeError._proto, $scope = $TypeError._scope;
+    var def = $TypeError._proto;
+    var $scope = $TypeError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $ArgumentError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $ArgumentError(){}
     var self = $ArgumentError = $klass($base, $super, 'ArgumentError', $ArgumentError);
 
-    var def = $ArgumentError._proto, $scope = $ArgumentError._scope;
+    var def = $ArgumentError._proto;
+    var $scope = $ArgumentError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $IndexError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $IndexError(){}
     var self = $IndexError = $klass($base, $super, 'IndexError', $IndexError);
 
-    var def = $IndexError._proto, $scope = $IndexError._scope;
+    var def = $IndexError._proto;
+    var $scope = $IndexError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $StopIteration(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $StopIteration(){}
     var self = $StopIteration = $klass($base, $super, 'StopIteration', $StopIteration);
 
-    var def = $StopIteration._proto, $scope = $StopIteration._scope;
+    var def = $StopIteration._proto;
+    var $scope = $StopIteration._scope;
     return nil;
-  })(self, $scope.IndexError);
-  (function($base, $super) {
-    function $KeyError(){};
+  }))(self, $scope.IndexError);
+  ((($base, $super) => {
+    function $KeyError(){}
     var self = $KeyError = $klass($base, $super, 'KeyError', $KeyError);
 
-    var def = $KeyError._proto, $scope = $KeyError._scope;
+    var def = $KeyError._proto;
+    var $scope = $KeyError._scope;
     return nil;
-  })(self, $scope.IndexError);
-  (function($base, $super) {
-    function $RangeError(){};
+  }))(self, $scope.IndexError);
+  ((($base, $super) => {
+    function $RangeError(){}
     var self = $RangeError = $klass($base, $super, 'RangeError', $RangeError);
 
-    var def = $RangeError._proto, $scope = $RangeError._scope;
+    var def = $RangeError._proto;
+    var $scope = $RangeError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $FloatDomainError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $FloatDomainError(){}
     var self = $FloatDomainError = $klass($base, $super, 'FloatDomainError', $FloatDomainError);
 
-    var def = $FloatDomainError._proto, $scope = $FloatDomainError._scope;
+    var def = $FloatDomainError._proto;
+    var $scope = $FloatDomainError._scope;
     return nil;
-  })(self, $scope.RangeError);
-  (function($base, $super) {
-    function $IOError(){};
+  }))(self, $scope.RangeError);
+  ((($base, $super) => {
+    function $IOError(){}
     var self = $IOError = $klass($base, $super, 'IOError', $IOError);
 
-    var def = $IOError._proto, $scope = $IOError._scope;
+    var def = $IOError._proto;
+    var $scope = $IOError._scope;
     return nil;
-  })(self, $scope.StandardError);
-  (function($base, $super) {
-    function $ScriptError(){};
+  }))(self, $scope.StandardError);
+  ((($base, $super) => {
+    function $ScriptError(){}
     var self = $ScriptError = $klass($base, $super, 'ScriptError', $ScriptError);
 
-    var def = $ScriptError._proto, $scope = $ScriptError._scope;
+    var def = $ScriptError._proto;
+    var $scope = $ScriptError._scope;
     return nil;
-  })(self, $scope.Exception);
-  (function($base, $super) {
-    function $SyntaxError(){};
+  }))(self, $scope.Exception);
+  ((($base, $super) => {
+    function $SyntaxError(){}
     var self = $SyntaxError = $klass($base, $super, 'SyntaxError', $SyntaxError);
 
-    var def = $SyntaxError._proto, $scope = $SyntaxError._scope;
+    var def = $SyntaxError._proto;
+    var $scope = $SyntaxError._scope;
     return nil;
-  })(self, $scope.ScriptError);
-  (function($base, $super) {
-    function $NotImplementedError(){};
+  }))(self, $scope.ScriptError);
+  ((($base, $super) => {
+    function $NotImplementedError(){}
     var self = $NotImplementedError = $klass($base, $super, 'NotImplementedError', $NotImplementedError);
 
-    var def = $NotImplementedError._proto, $scope = $NotImplementedError._scope;
+    var def = $NotImplementedError._proto;
+    var $scope = $NotImplementedError._scope;
     return nil;
-  })(self, $scope.ScriptError);
-  (function($base, $super) {
-    function $SystemExit(){};
+  }))(self, $scope.ScriptError);
+  ((($base, $super) => {
+    function $SystemExit(){}
     var self = $SystemExit = $klass($base, $super, 'SystemExit', $SystemExit);
 
-    var def = $SystemExit._proto, $scope = $SystemExit._scope;
+    var def = $SystemExit._proto;
+    var $scope = $SystemExit._scope;
     return nil;
-  })(self, $scope.Exception);
-  return (function($base) {
+  }))(self, $scope.Exception);
+  return (($base => {
     var self = $module($base, 'Errno');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $EINVAL(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $EINVAL(){}
       var self = $EINVAL = $klass($base, $super, 'EINVAL', $EINVAL);
 
-      var def = $EINVAL._proto, $scope = $EINVAL._scope, TMP_1;
-      return ($opal.defs(self, '$new', TMP_1 = function() {
-        var self = this, $iter = TMP_1._p, $yield = $iter || nil;
+      var def = $EINVAL._proto;
+      var $scope = $EINVAL._scope;
+      var TMP_1;
+      return $opal.defs(self, '$new', TMP_1 = function() {
+        var self = this;
+        var $iter = TMP_1._p;
+        var $yield = $iter || nil;
         TMP_1._p = null;
         return $opal.find_super_dispatcher(self, 'new', TMP_1, null, $EINVAL).apply(self, ["Invalid argument"]);
-      }), nil)
-    })(self, $scope.SystemCallError)
-    
-  })(self);
-})(Opal);
+      }), nil;
+    }))(self, $scope.SystemCallError)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/error.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$respond_to?', '$to_str', '$to_s', '$coerce_to', '$new', '$raise', '$class']);
-  return (function($base, $super) {
-    function $Regexp(){};
+  return ((($base, $super) => {
+    function $Regexp(){}
     var self = $Regexp = $klass($base, $super, 'Regexp', $Regexp);
 
-    var def = $Regexp._proto, $scope = $Regexp._scope;
+    var def = $Regexp._proto;
+    var $scope = $Regexp._scope;
     def._isRegexp = true;
 
     $opal.defs(self, '$escape', function(string) {
@@ -2693,21 +2858,24 @@
     };
 
     def['$==='] = function(str) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       if (($a = ($b = str._isString == null, $b !== false && $b !== nil ?str['$respond_to?']("to_str") : $b)) !== false && $a !== nil) {
-        str = str.$to_str()};
+        str = str.$to_str()}
       if (($a = str._isString == null) !== false && $a !== nil) {
-        return false};
+        return false}
       return self.test(str);
     };
 
     def['$=~'] = function(string) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = string === nil) !== false && $a !== nil) {
         $gvars["~"] = $gvars["`"] = $gvars["'"] = nil;
-        return nil;};
+        return nil;}
       string = $scope.Opal.$coerce_to(string, $scope.String, "to_str").$to_s();
-      
+
       var re = self;
 
       if (re.global) {
@@ -2729,7 +2897,6 @@
       }
 
       return result ? result.index : nil;
-    
     };
 
     $opal.defn(self, '$eql?', def['$==']);
@@ -2740,15 +2907,16 @@
     };
 
     def.$match = function(string, pos) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = string === nil) !== false && $a !== nil) {
         $gvars["~"] = $gvars["`"] = $gvars["'"] = nil;
-        return nil;};
+        return nil;}
       if (($a = string._isString == null) !== false && $a !== nil) {
         if (($a = string['$respond_to?']("to_str")) === false || $a === nil) {
           self.$raise($scope.TypeError, "no implicit conversion of " + (string.$class()) + " into String")};
-        string = string.$to_str();};
-      
+        string = string.$to_str();}
+
       var re = self;
 
       if (re.global) {
@@ -2767,7 +2935,6 @@
       else {
         return $gvars["~"] = $gvars["`"] = $gvars["'"] = nil;
       }
-    
     };
 
     def.$source = function() {
@@ -2776,32 +2943,41 @@
     };
 
     return $opal.defn(self, '$to_s', def.$source);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/regexp.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs(['$===', '$>', '$<', '$equal?', '$<=>', '$==', '$normalize', '$raise', '$class', '$>=', '$<=']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Comparable');
 
-    var def = self._proto, $scope = self._scope;
+    var def = self._proto;
+    var $scope = self._scope;
     $opal.defs(self, '$normalize', function(what) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Integer['$==='](what)) !== false && $a !== nil) {
-        return what};
+        return what}
       if (what['$>'](0)) {
-        return 1};
+        return 1}
       if (what['$<'](0)) {
-        return -1};
+        return -1}
       return 0;
     });
 
     def['$=='] = function(other) {
-      var $a, self = this, cmp = nil;
+      var $a;
+      var self = this;
+      var cmp = nil;
       try {
       if (($a = self['$equal?'](other)) !== false && $a !== nil) {
           return true};
@@ -2811,34 +2987,42 @@
       } catch ($err) {if ($scope.StandardError['$===']($err)) {
         return false
         }else { throw $err; }
-      };
+      }
     };
 
     def['$>'] = function(other) {
-      var $a, self = this, cmp = nil;
+      var $a;
+      var self = this;
+      var cmp = nil;
       if (($a = cmp = (self['$<=>'](other))) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")};
+        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}
       return $scope.Comparable.$normalize(cmp)['$>'](0);
     };
 
     def['$>='] = function(other) {
-      var $a, self = this, cmp = nil;
+      var $a;
+      var self = this;
+      var cmp = nil;
       if (($a = cmp = (self['$<=>'](other))) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")};
+        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}
       return $scope.Comparable.$normalize(cmp)['$>='](0);
     };
 
     def['$<'] = function(other) {
-      var $a, self = this, cmp = nil;
+      var $a;
+      var self = this;
+      var cmp = nil;
       if (($a = cmp = (self['$<=>'](other))) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")};
+        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}
       return $scope.Comparable.$normalize(cmp)['$<'](0);
     };
 
     def['$<='] = function(other) {
-      var $a, self = this, cmp = nil;
+      var $a;
+      var self = this;
+      var cmp = nil;
       if (($a = cmp = (self['$<=>'](other))) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")};
+        self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}
       return $scope.Comparable.$normalize(cmp)['$<='](0);
     };
 
@@ -2850,29 +3034,72 @@
         return false};
       return true;
     };
-        ;$opal.donate(self, ["$==", "$>", "$>=", "$<", "$<=", "$between?"]);
-  })(self)
-})(Opal);
+    $opal.donate(self, ["$==", "$>", "$>=", "$<", "$<=", "$between?"]);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/comparable.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs(['$raise', '$enum_for', '$==', '$destructure', '$nil?', '$coerce_to!', '$coerce_to', '$===', '$new', '$<<', '$[]', '$[]=', '$inspect', '$__send__', '$yield', '$enumerator_size', '$respond_to?', '$size', '$private', '$compare', '$<=>', '$dup', '$map', '$sort', '$call', '$first']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Enumerable');
 
-    var def = self._proto, $scope = self._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5, TMP_6, TMP_7, TMP_8, TMP_9, TMP_10, TMP_11, TMP_12, TMP_13, TMP_14, TMP_15, TMP_16, TMP_17, TMP_18, TMP_19, TMP_21, TMP_22, TMP_23, TMP_24, TMP_25, TMP_26, TMP_27, TMP_28, TMP_29, TMP_30, TMP_31, TMP_33, TMP_34, TMP_38, TMP_39;
+    var def = self._proto;
+    var $scope = self._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
+    var TMP_6;
+    var TMP_7;
+    var TMP_8;
+    var TMP_9;
+    var TMP_10;
+    var TMP_11;
+    var TMP_12;
+    var TMP_13;
+    var TMP_14;
+    var TMP_15;
+    var TMP_16;
+    var TMP_17;
+    var TMP_18;
+    var TMP_19;
+    var TMP_21;
+    var TMP_22;
+    var TMP_23;
+    var TMP_24;
+    var TMP_25;
+    var TMP_26;
+    var TMP_27;
+    var TMP_28;
+    var TMP_29;
+    var TMP_30;
+    var TMP_31;
+    var TMP_33;
+    var TMP_34;
+    var TMP_38;
+    var TMP_39;
     def['$all?'] = TMP_1 = function() {
-      var $a, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
-      
+
       var result = true;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var value = $opal.$yieldX(block, arguments);
+        self.$each._p = function(...args) {
+          var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
             result = $breaker.$v;
@@ -2897,18 +3124,20 @@
       self.$each();
 
       return result;
-    
     };
 
     def['$any?'] = TMP_2 = function() {
-      var $a, self = this, $iter = TMP_2._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       TMP_2._p = null;
-      
+
       var result = false;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var value = $opal.$yieldX(block, arguments);
+        self.$each._p = function(...args) {
+          var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
             result = $breaker.$v;
@@ -2933,25 +3162,28 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$chunk = TMP_3 = function(state) {
-      var self = this, $iter = TMP_3._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$collect = TMP_4 = function() {
-      var self = this, $iter = TMP_4._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (block === nil) {
-        return self.$enum_for("collect")};
-      
+        return self.$enum_for("collect")}
+
       var result = [];
 
-      self.$each._p = function() {
-        var value = $opal.$yieldX(block, arguments);
+      self.$each._p = function(...args) {
+        var value = $opal.$yieldX(block, args);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -2964,32 +3196,36 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$collect_concat = TMP_5 = function() {
-      var self = this, $iter = TMP_5._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$count = TMP_6 = function(object) {
-      var $a, self = this, $iter = TMP_6._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
-      
+
       var result = 0;
 
       if (object != null) {
-        block = function() {
-          return $scope.Opal.$destructure(arguments)['$=='](object);
+        block = function(...args) {
+          return $scope.Opal.$destructure(args)['$=='](object);
         };
       }
       else if (block === nil) {
-        block = function() { return true; };
+        block = () => true;
       }
 
-      self.$each._p = function() {
-        var value = $opal.$yieldX(block, arguments);
+      self.$each._p = function(...args) {
+        var value = $opal.$yieldX(block, args);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3004,28 +3240,29 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$cycle = TMP_7 = function(n) {
-      var $a, self = this, $iter = TMP_7._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       if (n == null) {
         n = nil
       }
       TMP_7._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("cycle", n)};
+        return self.$enum_for("cycle", n)}
       if (($a = n['$nil?']()) === false || $a === nil) {
         n = $scope.Opal['$coerce_to!'](n, $scope.Integer, "to_int");
         if (($a = n <= 0) !== false && $a !== nil) {
-          return nil};};
-      
-      var result,
-          all  = [];
+          return nil};}
+      var result;
+      var all  = [];
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3044,7 +3281,7 @@
       if (all.length === 0) {
         return nil;
       }
-    
+
       if (($a = n['$nil?']()) !== false && $a !== nil) {
         
         while (true) {
@@ -3071,20 +3308,23 @@
           n--;
         }
       
-      };
+      }
     };
 
     def.$detect = TMP_8 = function(ifnone) {
-      var $a, self = this, $iter = TMP_8._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_8._p;
+      var block = $iter || nil;
       TMP_8._p = null;
       if (block === nil) {
-        return self.$enum_for("detect", ifnone)};
-      
+        return self.$enum_for("detect", ifnone)}
+
       var result = undefined;
 
-      self.$each._p = function() {
-        var params = $scope.Opal.$destructure(arguments),
-            value  = $opal.$yield1(block, params);
+      self.$each._p = function(...args) {
+        var params = $scope.Opal.$destructure(args);
+        var value  = $opal.$yield1(block, params);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3109,21 +3349,20 @@
       }
 
       return result === undefined ? nil : result;
-    
     };
 
     def.$drop = function(number) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       number = $scope.Opal.$coerce_to(number, $scope.Integer, "to_int");
       if (($a = number < 0) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "attempt to drop negative size")};
-      
-      var result  = [],
-          current = 0;
+        self.$raise($scope.ArgumentError, "attempt to drop negative size")}
+      var result  = [];
+      var current = 0;
 
-      self.$each._p = function() {
+      self.$each._p = function(...args) {
         if (number <= current) {
-          result.push($scope.Opal.$destructure(arguments));
+          result.push($scope.Opal.$destructure(args));
         }
 
         current++;
@@ -3132,20 +3371,21 @@
       self.$each()
 
       return result;
-    
     };
 
     def.$drop_while = TMP_9 = function() {
-      var $a, self = this, $iter = TMP_9._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
       TMP_9._p = null;
       if (block === nil) {
-        return self.$enum_for("drop_while")};
-      
-      var result   = [],
-          dropping = true;
+        return self.$enum_for("drop_while")}
+      var result   = [];
+      var dropping = true;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
 
         if (dropping) {
           var value = $opal.$yield1(block, param);
@@ -3168,35 +3408,40 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$each_cons = TMP_10 = function(n) {
-      var self = this, $iter = TMP_10._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_10._p;
+      var block = $iter || nil;
       TMP_10._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$each_entry = TMP_11 = function() {
-      var self = this, $iter = TMP_11._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_11._p;
+      var block = $iter || nil;
       TMP_11._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$each_slice = TMP_12 = function(n) {
-      var $a, self = this, $iter = TMP_12._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_12._p;
+      var block = $iter || nil;
       TMP_12._p = null;
       n = $scope.Opal.$coerce_to(n, $scope.Integer, "to_int");
       if (($a = n <= 0) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "invalid slice size")};
+        self.$raise($scope.ArgumentError, "invalid slice size")}
       if (block === nil) {
-        return self.$enum_for("each_slice", n)};
-      
-      var result,
-          slice = []
+        return self.$enum_for("each_slice", n)}
+      var result;
+      var slice = [];
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
 
         slice.push(param);
 
@@ -3222,23 +3467,24 @@
           return $breaker.$v;
         }
       }
-    ;
       return nil;
     };
 
     def.$each_with_index = TMP_13 = function(args) {
-      var $a, self = this, $iter = TMP_13._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_13._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_13._p = null;
       if (block === nil) {
-        return ($a = self).$enum_for.apply($a, ["each_with_index"].concat(args))};
-      
-      var result,
-          index = 0;
+        return ($a = self).$enum_for.apply($a, ["each_with_index"].concat(args))}
+      var result;
+      var index = 0;
 
       self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = block(param, index);
+        var param = $scope.Opal.$destructure(arguments);
+        var value = block(param, index);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3248,26 +3494,28 @@
         index++;
       };
 
-      self.$each.apply(self, args);
+      self.$each(...args);
 
       if (result !== undefined) {
         return result;
       }
-    
+
       return self;
     };
 
     def.$each_with_object = TMP_14 = function(object) {
-      var self = this, $iter = TMP_14._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_14._p;
+      var block = $iter || nil;
       TMP_14._p = null;
       if (block === nil) {
-        return self.$enum_for("each_with_object", object)};
-      
+        return self.$enum_for("each_with_object", object)}
+
       var result;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = block(param, object);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = block(param, object);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3280,7 +3528,7 @@
       if (result !== undefined) {
         return result;
       }
-    
+
       return object;
     };
 
@@ -3294,7 +3542,7 @@
         result.push($scope.Opal.$destructure(arguments));
       };
 
-      self.$each.apply(self, args);
+      self.$each(...args);
 
       return result;
     
@@ -3303,16 +3551,19 @@
     $opal.defn(self, '$find', def.$detect);
 
     def.$find_all = TMP_15 = function() {
-      var $a, self = this, $iter = TMP_15._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_15._p;
+      var block = $iter || nil;
       TMP_15._p = null;
       if (block === nil) {
-        return self.$enum_for("find_all")};
-      
+        return self.$enum_for("find_all")}
+
       var result = [];
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3327,21 +3578,22 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$find_index = TMP_16 = function(object) {
-      var $a, self = this, $iter = TMP_16._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_16._p;
+      var block = $iter || nil;
       TMP_16._p = null;
       if (($a = object === undefined && block === nil) !== false && $a !== nil) {
-        return self.$enum_for("find_index")};
-      
-      var result = nil,
-          index  = 0;
+        return self.$enum_for("find_index")}
+      var result = nil;
+      var index  = 0;
 
       if (object != null) {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
 
           if ((param)['$=='](object)) {
             result = index;
@@ -3352,8 +3604,8 @@
         };
       }
       else if (block !== nil) {
-        self.$each._p = function() {
-          var value = $opal.$yieldX(block, arguments);
+        self.$each._p = function(...args) {
+          var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
             result = $breaker.$v;
@@ -3372,16 +3624,17 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$first = function(number) {
-      var $a, self = this, result = nil;
+      var $a;
+      var self = this;
+      var result = nil;
       if (($a = number === undefined) !== false && $a !== nil) {
         result = nil;
         
-        self.$each._p = function() {
-          result = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          result = $scope.Opal.$destructure(args);
 
           return $breaker;
         };
@@ -3392,15 +3645,14 @@
         result = [];
         number = $scope.Opal.$coerce_to(number, $scope.Integer, "to_int");
         if (($a = number < 0) !== false && $a !== nil) {
-          self.$raise($scope.ArgumentError, "attempt to take negative size")};
+          self.$raise($scope.ArgumentError, "attempt to take negative size")}
         if (($a = number == 0) !== false && $a !== nil) {
-          return []};
-        
-        var current = 0,
-            number  = $scope.Opal.$coerce_to(number, $scope.Integer, "to_int");
+          return []}
+        var current = 0;
+        var number  = $scope.Opal.$coerce_to(number, $scope.Integer, "to_int");
 
-        self.$each._p = function() {
-          result.push($scope.Opal.$destructure(arguments));
+        self.$each._p = function(...args) {
+          result.push($scope.Opal.$destructure(args));
 
           if (number <= ++current) {
             return $breaker;
@@ -3408,23 +3660,25 @@
         };
 
         self.$each();
-      ;
-      };
+      }
       return result;
     };
 
     $opal.defn(self, '$flat_map', def.$collect_concat);
 
     def.$grep = TMP_17 = function(pattern) {
-      var $a, self = this, $iter = TMP_17._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_17._p;
+      var block = $iter || nil;
       TMP_17._p = null;
-      
+
       var result = [];
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments),
-              value = pattern['$==='](param);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
+          var value = pattern['$==='](param);
 
           if (($a = value) !== false && $a !== nil) {
             value = $opal.$yield1(block, param);
@@ -3439,9 +3693,9 @@
         };
       }
       else {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments),
-              value = pattern['$==='](param);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
+          var value = pattern['$==='](param);
 
           if (($a = value) !== false && $a !== nil) {
             result.push(param);
@@ -3452,21 +3706,26 @@
       self.$each();
 
       return result;
-    ;
     };
 
     def.$group_by = TMP_18 = function() {
-      var $a, $b, $c, self = this, $iter = TMP_18._p, block = $iter || nil, hash = nil;
+      var $a;
+      var $b;
+      var $c;
+      var self = this;
+      var $iter = TMP_18._p;
+      var block = $iter || nil;
+      var hash = nil;
       TMP_18._p = null;
       if (block === nil) {
-        return self.$enum_for("group_by")};
+        return self.$enum_for("group_by")}
       hash = $scope.Hash.$new();
-      
+
       var result;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3481,7 +3740,7 @@
       if (result !== undefined) {
         return result;
       }
-    
+
       return hash;
     };
 
@@ -3490,8 +3749,8 @@
       
       var result = false;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
 
         if ((param)['$=='](obj)) {
           result = true;
@@ -3506,14 +3765,16 @@
     };
 
     def.$inject = TMP_19 = function(object, sym) {
-      var self = this, $iter = TMP_19._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_19._p;
+      var block = $iter || nil;
       TMP_19._p = null;
-      
+
       var result = object;
 
       if (block !== nil && sym === undefined) {
-        self.$each._p = function() {
-          var value = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var value = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = value;
@@ -3540,8 +3801,8 @@
           result = undefined;
         }
 
-        self.$each._p = function() {
-          var value = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var value = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = value;
@@ -3555,22 +3816,29 @@
       self.$each();
 
       return result;
-    ;
     };
 
     def.$lazy = function() {
-      var $a, $b, TMP_20, self = this;
-      return ($a = ($b = ($scope.Enumerator)._scope.Lazy).$new, $a._p = (TMP_20 = function(enum$, args){var self = TMP_20._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-      return ($a = enum$).$yield.apply($a, [].concat(args))}, TMP_20._s = self, TMP_20), $a).call($b, self, self.$enumerator_size());
+      var $a;
+      var $b;
+      var TMP_20;
+      var self = this;
+      return ($a = ($b = ($scope.Enumerator)._scope.Lazy).$new, $a._p = (TMP_20 = function(enum$, args){
+        var self = TMP_20._s || this;
+        var $a;
+        if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+        return ($a = enum$).$yield.apply($a, [].concat(args))
+      }, TMP_20._s = self, TMP_20), $a).call($b, self, self.$enumerator_size());
     };
 
     def.$enumerator_size = function() {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = self['$respond_to?']("size")) !== false && $a !== nil) {
         return self.$size()
         } else {
         return nil
-      };
+      }
     };
 
     self.$private("enumerator_size");
@@ -3578,14 +3846,16 @@
     $opal.defn(self, '$map', def.$collect);
 
     def.$max = TMP_21 = function() {
-      var self = this, $iter = TMP_21._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_21._p;
+      var block = $iter || nil;
       TMP_21._p = null;
-      
+
       var result;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = param;
@@ -3609,8 +3879,8 @@
         };
       }
       else {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = param;
@@ -3626,21 +3896,22 @@
       self.$each();
 
       return result === undefined ? nil : result;
-    
     };
 
     def.$max_by = TMP_22 = function() {
-      var $a, self = this, $iter = TMP_22._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_22._p;
+      var block = $iter || nil;
       TMP_22._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("max_by")};
-      
-      var result,
-          by;
+        return self.$enum_for("max_by")}
+      var result;
+      var by;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (result === undefined) {
           result = param;
@@ -3662,20 +3933,21 @@
       self.$each();
 
       return result === undefined ? nil : result;
-    
     };
 
     $opal.defn(self, '$member?', def['$include?']);
 
     def.$min = TMP_23 = function() {
-      var self = this, $iter = TMP_23._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_23._p;
+      var block = $iter || nil;
       TMP_23._p = null;
-      
+
       var result;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = param;
@@ -3699,8 +3971,8 @@
         };
       }
       else {
-        self.$each._p = function() {
-          var param = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var param = $scope.Opal.$destructure(args);
 
           if (result === undefined) {
             result = param;
@@ -3716,21 +3988,22 @@
       self.$each();
 
       return result === undefined ? nil : result;
-    
     };
 
     def.$min_by = TMP_24 = function() {
-      var $a, self = this, $iter = TMP_24._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_24._p;
+      var block = $iter || nil;
       TMP_24._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("min_by")};
-      
-      var result,
-          by;
+        return self.$enum_for("min_by")}
+      var result;
+      var by;
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (result === undefined) {
           result = param;
@@ -3752,30 +4025,36 @@
       self.$each();
 
       return result === undefined ? nil : result;
-    
     };
 
     def.$minmax = TMP_25 = function() {
-      var self = this, $iter = TMP_25._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_25._p;
+      var block = $iter || nil;
       TMP_25._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$minmax_by = TMP_26 = function() {
-      var self = this, $iter = TMP_26._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_26._p;
+      var block = $iter || nil;
       TMP_26._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def['$none?'] = TMP_27 = function() {
-      var $a, self = this, $iter = TMP_27._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_27._p;
+      var block = $iter || nil;
       TMP_27._p = null;
-      
+
       var result = true;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var value = $opal.$yieldX(block, arguments);
+        self.$each._p = function(...args) {
+          var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
             result = $breaker.$v;
@@ -3789,8 +4068,8 @@
         }
       }
       else {
-        self.$each._p = function() {
-          var value = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var value = $scope.Opal.$destructure(args);
 
           if (($a = value) !== false && $a !== nil) {
             result = false;
@@ -3802,18 +4081,20 @@
       self.$each();
 
       return result;
-    
     };
 
     def['$one?'] = TMP_28 = function() {
-      var $a, self = this, $iter = TMP_28._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_28._p;
+      var block = $iter || nil;
       TMP_28._p = null;
-      
+
       var result = false;
 
       if (block !== nil) {
-        self.$each._p = function() {
-          var value = $opal.$yieldX(block, arguments);
+        self.$each._p = function(...args) {
+          var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
             result = $breaker.$v;
@@ -3831,8 +4112,8 @@
         }
       }
       else {
-        self.$each._p = function() {
-          var value = $scope.Opal.$destructure(arguments);
+        self.$each._p = function(...args) {
+          var value = $scope.Opal.$destructure(args);
 
           if (($a = value) !== false && $a !== nil) {
             if (result === true) {
@@ -3848,11 +4129,12 @@
       self.$each();
 
       return result;
-    
     };
 
     def.$partition = TMP_29 = function() {
-      var self = this, $iter = TMP_29._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_29._p;
+      var block = $iter || nil;
       TMP_29._p = null;
       return self.$raise($scope.NotImplementedError);
     };
@@ -3860,7 +4142,9 @@
     $opal.defn(self, '$reduce', def.$inject);
 
     def.$reverse_each = TMP_30 = function() {
-      var self = this, $iter = TMP_30._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_30._p;
+      var block = $iter || nil;
       TMP_30._p = null;
       return self.$raise($scope.NotImplementedError);
     };
@@ -3868,19 +4152,27 @@
     $opal.defn(self, '$select', def.$find_all);
 
     def.$slice_before = TMP_31 = function(pattern) {
-      var $a, $b, TMP_32, self = this, $iter = TMP_31._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_32;
+      var self = this;
+      var $iter = TMP_31._p;
+      var block = $iter || nil;
       TMP_31._p = null;
       if (($a = pattern === undefined && block === nil || arguments.length > 1) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "wrong number of arguments (" + (arguments.length) + " for 1)")};
-      return ($a = ($b = $scope.Enumerator).$new, $a._p = (TMP_32 = function(e){var self = TMP_32._s || this, $a;if (e == null) e = nil;
-      
+        self.$raise($scope.ArgumentError, "wrong number of arguments (" + (arguments.length) + " for 1)")}
+      return ($a = ($b = $scope.Enumerator).$new, $a._p = (TMP_32 = function(e){
+        var self = TMP_32._s || this;
+        var $a;
+        if (e == null) e = nil;
+
         var slice = [];
 
         if (block !== nil) {
           if (pattern === undefined) {
-            self.$each._p = function() {
-              var param = $scope.Opal.$destructure(arguments),
-                  value = $opal.$yield1(block, param);
+            self.$each._p = function(...args) {
+              var param = $scope.Opal.$destructure(args);
+              var value = $opal.$yield1(block, param);
 
               if (($a = value) !== false && $a !== nil && slice.length > 0) {
                 e['$<<'](slice);
@@ -3891,9 +4183,9 @@
             };
           }
           else {
-            self.$each._p = function() {
-              var param = $scope.Opal.$destructure(arguments),
-                  value = block(param, pattern.$dup());
+            self.$each._p = function(...args) {
+              var param = $scope.Opal.$destructure(args);
+              var value = block(param, pattern.$dup());
 
               if (($a = value) !== false && $a !== nil && slice.length > 0) {
                 e['$<<'](slice);
@@ -3905,9 +4197,9 @@
           }
         }
         else {
-          self.$each._p = function() {
-            var param = $scope.Opal.$destructure(arguments),
-                value = pattern['$==='](param);
+          self.$each._p = function(...args) {
+            var param = $scope.Opal.$destructure(args);
+            var value = pattern['$==='](param);
 
             if (($a = value) !== false && $a !== nil && slice.length > 0) {
               e['$<<'](slice);
@@ -3923,22 +4215,35 @@
         if (slice.length > 0) {
           e['$<<'](slice);
         }
-      ;}, TMP_32._s = self, TMP_32), $a).call($b);
+      }, TMP_32._s = self, TMP_32), $a).call($b);
     };
 
     def.$sort = TMP_33 = function() {
-      var self = this, $iter = TMP_33._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_33._p;
+      var block = $iter || nil;
       TMP_33._p = null;
       return self.$raise($scope.NotImplementedError);
     };
 
     def.$sort_by = TMP_34 = function() {
-      var $a, $b, TMP_35, $c, $d, TMP_36, $e, $f, TMP_37, self = this, $iter = TMP_34._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_35;
+      var $c;
+      var $d;
+      var TMP_36;
+      var $e;
+      var $f;
+      var TMP_37;
+      var self = this;
+      var $iter = TMP_34._p;
+      var block = $iter || nil;
       TMP_34._p = null;
       if (block === nil) {
-        return self.$enum_for("sort_by")};
-      return ($a = ($b = ($c = ($d = ($e = ($f = self).$map, $e._p = (TMP_37 = function(){var self = TMP_37._s || this;
-      arg = $scope.Opal.$destructure(arguments);
+        return self.$enum_for("sort_by")}
+      return ($a = ($b = ($c = ($d = ($e = ($f = self).$map, $e._p = (TMP_37 = function(...args) {var self = TMP_37._s || this;
+      arg = $scope.Opal.$destructure(args);
         return [block.$call(arg), arg];}, TMP_37._s = self, TMP_37), $e).call($f)).$sort, $c._p = (TMP_36 = function(a, b){var self = TMP_36._s || this;if (a == null) a = nil;if (b == null) b = nil;
       return a['$[]'](0)['$<=>'](b['$[]'](0))}, TMP_36._s = self, TMP_36), $c).call($d)).$map, $a._p = (TMP_35 = function(arg){var self = TMP_35._s || this;if (arg == null) arg = nil;
       return arg[1];}, TMP_35._s = self, TMP_35), $a).call($b);
@@ -3950,16 +4255,19 @@
     };
 
     def.$take_while = TMP_38 = function() {
-      var $a, self = this, $iter = TMP_38._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_38._p;
+      var block = $iter || nil;
       TMP_38._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("take_while")};
-      
+        return self.$enum_for("take_while")}
+
       var result = [];
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = $opal.$yield1(block, param);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = $opal.$yield1(block, param);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -3976,43 +4284,56 @@
       self.$each();
 
       return result;
-    
     };
 
     $opal.defn(self, '$to_a', def.$entries);
 
     def.$zip = TMP_39 = function(lists) {
-      var self = this, $iter = TMP_39._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_39._p;
+      var block = $iter || nil;
       lists = $slice.call(arguments, 0);
       TMP_39._p = null;
       return self.$raise($scope.NotImplementedError);
     };
-        ;$opal.donate(self, ["$all?", "$any?", "$chunk", "$collect", "$collect_concat", "$count", "$cycle", "$detect", "$drop", "$drop_while", "$each_cons", "$each_entry", "$each_slice", "$each_with_index", "$each_with_object", "$entries", "$find", "$find_all", "$find_index", "$first", "$flat_map", "$grep", "$group_by", "$include?", "$inject", "$lazy", "$enumerator_size", "$map", "$max", "$max_by", "$member?", "$min", "$min_by", "$minmax", "$minmax_by", "$none?", "$one?", "$partition", "$reduce", "$reverse_each", "$select", "$slice_before", "$sort", "$sort_by", "$take", "$take_while", "$to_a", "$zip"]);
-  })(self)
-})(Opal);
+    $opal.donate(self, ["$all?", "$any?", "$chunk", "$collect", "$collect_concat", "$count", "$cycle", "$detect", "$drop", "$drop_while", "$each_cons", "$each_entry", "$each_slice", "$each_with_index", "$each_with_object", "$entries", "$find", "$find_all", "$find_index", "$first", "$flat_map", "$grep", "$group_by", "$include?", "$inject", "$lazy", "$enumerator_size", "$map", "$max", "$max_by", "$member?", "$min", "$min_by", "$minmax", "$minmax_by", "$none?", "$one?", "$partition", "$reduce", "$reverse_each", "$select", "$slice_before", "$sort", "$sort_by", "$take", "$take_while", "$to_a", "$zip"]);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/enumerable.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$include', '$allocate', '$new', '$to_proc', '$coerce_to', '$__send__', '$===', '$call', '$enum_for', '$destructure', '$name', '$class', '$inspect', '$empty?', '$+', '$[]', '$raise', '$yield', '$each', '$enumerator_size', '$respond_to?', '$try_convert', '$<', '$for']);
-  return (function($base, $super) {
-    function $Enumerator(){};
+  return ((($base, $super) => {
+    function $Enumerator(){}
     var self = $Enumerator = $klass($base, $super, 'Enumerator', $Enumerator);
 
-    var def = $Enumerator._proto, $scope = $Enumerator._scope, TMP_1, TMP_2, TMP_3, TMP_4;
+    var def = $Enumerator._proto;
+    var $scope = $Enumerator._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
     def.size = def.object = def.method = def.args = nil;
     self.$include($scope.Enumerable);
 
     $opal.defs(self, '$for', TMP_1 = function(object, method, args) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 2);
       if (method == null) {
         method = "each"
       }
       TMP_1._p = null;
-      
+
       var obj = self.$allocate();
 
       obj.object = object;
@@ -4021,49 +4342,60 @@
       obj.args   = args;
 
       return obj;
-    ;
     });
 
-    def.$initialize = TMP_2 = function() {
-      var $a, $b, self = this, $iter = TMP_2._p, block = $iter || nil;
+    def.$initialize = TMP_2 = function(...args) {
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       TMP_2._p = null;
       if (block !== false && block !== nil) {
         self.object = ($a = ($b = $scope.Generator).$new, $a._p = block.$to_proc(), $a).call($b);
         self.method = "each";
         self.args = [];
-        self.size = arguments[0] || nil;
+        self.size = args[0] || nil;
         if (($a = self.size) !== false && $a !== nil) {
           return self.size = $scope.Opal.$coerce_to(self.size, $scope.Integer, "to_int")
           } else {
           return nil
         };
         } else {
-        self.object = arguments[0];
-        self.method = arguments[1] || "each";
-        self.args = $slice.call(arguments, 2);
+        self.object = args[0];
+        self.method = args[1] || "each";
+        self.args = $slice.call(args, 2);
         return self.size = nil;
-      };
+      }
     };
 
     def.$each = TMP_3 = function() {
-      var $a, $b, self = this, $iter = TMP_3._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
       if (($a = block) === false || $a === nil) {
-        return self};
+        return self}
       return ($a = ($b = self.object).$__send__, $a._p = block.$to_proc(), $a).apply($b, [self.method].concat(self.args));
     };
 
     def.$size = function() {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Proc['$==='](self.size)) !== false && $a !== nil) {
         return ($a = self.size).$call.apply($a, [].concat(self.args))
         } else {
         return self.size
-      };
+      }
     };
 
     def.$with_index = TMP_4 = function(offset) {
-      var $a, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       if (offset == null) {
         offset = 0
       }
@@ -4072,15 +4404,15 @@
         offset = $scope.Opal.$coerce_to(offset, $scope.Integer, "to_int")
         } else {
         offset = 0
-      };
+      }
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("with_index", offset)};
-      
+        return self.$enum_for("with_index", offset)}
+
       var result
 
-      self.$each._p = function() {
-        var param = $scope.Opal.$destructure(arguments),
-            value = block(param, index);
+      self.$each._p = function(...args) {
+        var param = $scope.Opal.$destructure(args);
+        var value = block(param, index);
 
         if (value === $breaker) {
           result = $breaker.$v;
@@ -4095,41 +4427,53 @@
       if (result !== undefined) {
         return result;
       }
-    ;
     };
 
     $opal.defn(self, '$with_object', def.$each_with_object);
 
     def.$inspect = function() {
-      var $a, self = this, result = nil;
+      var $a;
+      var self = this;
+      var result = nil;
       result = "#<" + (self.$class().$name()) + ": " + (self.object.$inspect()) + ":" + (self.method);
       if (($a = self.args['$empty?']()) === false || $a === nil) {
-        result = result['$+']("(" + (self.args.$inspect()['$[]']($scope.Range.$new(1, -2))) + ")")};
+        result = result['$+']("(" + (self.args.$inspect()['$[]']($scope.Range.$new(1, -2))) + ")")}
       return result['$+'](">");
     };
 
-    (function($base, $super) {
-      function $Generator(){};
+    ((($base, $super) => {
+      function $Generator(){}
       var self = $Generator = $klass($base, $super, 'Generator', $Generator);
 
-      var def = $Generator._proto, $scope = $Generator._scope, TMP_5, TMP_6;
+      var def = $Generator._proto;
+      var $scope = $Generator._scope;
+      var TMP_5;
+      var TMP_6;
       def.block = nil;
       self.$include($scope.Enumerable);
 
       def.$initialize = TMP_5 = function() {
-        var $a, self = this, $iter = TMP_5._p, block = $iter || nil;
+        var $a;
+        var self = this;
+        var $iter = TMP_5._p;
+        var block = $iter || nil;
         TMP_5._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.LocalJumpError, "no block given")};
+          self.$raise($scope.LocalJumpError, "no block given")}
         return self.block = block;
       };
 
-      return (def.$each = TMP_6 = function(args) {
-        var $a, $b, self = this, $iter = TMP_6._p, block = $iter || nil, yielder = nil;
+      return def.$each = TMP_6 = function(args) {
+        var $a;
+        var $b;
+        var self = this;
+        var $iter = TMP_6._p;
+        var block = $iter || nil;
+        var yielder = nil;
         args = $slice.call(arguments, 0);
         TMP_6._p = null;
         yielder = ($a = ($b = $scope.Yielder).$new, $a._p = block.$to_proc(), $a).call($b);
-        
+
         try {
           args.unshift(yielder);
 
@@ -4145,19 +4489,22 @@
             throw e;
           }
         }
-      ;
         return self;
-      }, nil);
-    })(self, null);
+      }, nil;
+    }))(self, null);
 
-    (function($base, $super) {
-      function $Yielder(){};
+    ((($base, $super) => {
+      function $Yielder(){}
       var self = $Yielder = $klass($base, $super, 'Yielder', $Yielder);
 
-      var def = $Yielder._proto, $scope = $Yielder._scope, TMP_7;
+      var def = $Yielder._proto;
+      var $scope = $Yielder._scope;
+      var TMP_7;
       def.block = nil;
       def.$initialize = TMP_7 = function() {
-        var self = this, $iter = TMP_7._p, block = $iter || nil;
+        var self = this;
+        var $iter = TMP_7._p;
+        var block = $iter || nil;
         TMP_7._p = null;
         return self.block = block;
       };
@@ -4176,51 +4523,72 @@
       ;
       };
 
-      return (def['$<<'] = function(values) {
-        var $a, self = this;
+      return def['$<<'] = function(values) {
+        var $a;
+        var self = this;
         values = $slice.call(arguments, 0);
         ($a = self).$yield.apply($a, [].concat(values));
         return self;
-      }, nil);
-    })(self, null);
+      }, nil;
+    }))(self, null);
 
-    return (function($base, $super) {
-      function $Lazy(){};
+    return ((($base, $super) => {
+      function $Lazy(){}
       var self = $Lazy = $klass($base, $super, 'Lazy', $Lazy);
 
-      var def = $Lazy._proto, $scope = $Lazy._scope, TMP_8, TMP_11, TMP_13, TMP_18, TMP_20, TMP_21, TMP_23, TMP_26, TMP_29;
+      var def = $Lazy._proto;
+      var $scope = $Lazy._scope;
+      var TMP_8;
+      var TMP_11;
+      var TMP_13;
+      var TMP_18;
+      var TMP_20;
+      var TMP_21;
+      var TMP_23;
+      var TMP_26;
+      var TMP_29;
       def.enumerator = nil;
-      (function($base, $super) {
-        function $StopLazyError(){};
+      ((($base, $super) => {
+        function $StopLazyError(){}
         var self = $StopLazyError = $klass($base, $super, 'StopLazyError', $StopLazyError);
 
-        var def = $StopLazyError._proto, $scope = $StopLazyError._scope;
+        var def = $StopLazyError._proto;
+        var $scope = $StopLazyError._scope;
         return nil;
-      })(self, $scope.Exception);
+      }))(self, $scope.Exception);
 
       def.$initialize = TMP_8 = function(object, size) {
-        var TMP_9, self = this, $iter = TMP_8._p, block = $iter || nil;
+        var TMP_9;
+        var self = this;
+        var $iter = TMP_8._p;
+        var block = $iter || nil;
         if (size == null) {
           size = nil
         }
         TMP_8._p = null;
         if (block === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy new without a block")};
+          self.$raise($scope.ArgumentError, "tried to call lazy new without a block")}
         self.enumerator = object;
-        return $opal.find_super_dispatcher(self, 'initialize', TMP_8, (TMP_9 = function(yielder, each_args){var self = TMP_9._s || this, $a, $b, TMP_10;if (yielder == null) yielder = nil;each_args = $slice.call(arguments, 1);
-        try {
-          return ($a = ($b = object).$each, $a._p = (TMP_10 = function(args){var self = TMP_10._s || this;args = $slice.call(arguments, 0);
-            
-              args.unshift(yielder);
+        return $opal.find_super_dispatcher(self, 'initialize', TMP_8, (TMP_9 = function(yielder, each_args){
+          var self = TMP_9._s || this;
+          var $a;
+          var $b;
+          var TMP_10;
+          if (yielder == null) yielder = nil;each_args = $slice.call(arguments, 1);
+          try {
+            return ($a = ($b = object).$each, $a._p = (TMP_10 = function(args){var self = TMP_10._s || this;args = $slice.call(arguments, 0);
+              
+                args.unshift(yielder);
 
-              if ($opal.$yieldX(block, args) === $breaker) {
-                return $breaker;
-              }
-            ;}, TMP_10._s = self, TMP_10), $a).apply($b, [].concat(each_args))
-          } catch ($err) {if ($scope.Exception['$===']($err)) {
-            return nil
-            }else { throw $err; }
-          }}, TMP_9._s = self, TMP_9)).apply(self, [size]);
+                if ($opal.$yieldX(block, args) === $breaker) {
+                  return $breaker;
+                }
+              ;}, TMP_10._s = self, TMP_10), $a).apply($b, [].concat(each_args))
+            } catch ($err) {if ($scope.Exception['$===']($err)) {
+              return nil
+              }else { throw $err; }
+            }
+        }, TMP_9._s = self, TMP_9)).apply(self, [size]);
       };
 
       $opal.defn(self, '$force', def.$to_a);
@@ -4231,10 +4599,15 @@
       };
 
       def.$collect = TMP_11 = function() {
-        var $a, $b, TMP_12, self = this, $iter = TMP_11._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_12;
+        var self = this;
+        var $iter = TMP_11._p;
+        var block = $iter || nil;
         TMP_11._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy map without a block")};
+          self.$raise($scope.ArgumentError, "tried to call lazy map without a block")}
         return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_12 = function(enum$, args){var self = TMP_12._s || this;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
         
           var value = $opal.$yieldX(block, args);
@@ -4248,12 +4621,24 @@
       };
 
       def.$collect_concat = TMP_13 = function() {
-        var $a, $b, TMP_14, self = this, $iter = TMP_13._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_14;
+        var self = this;
+        var $iter = TMP_13._p;
+        var block = $iter || nil;
         TMP_13._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy map without a block")};
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_14 = function(enum$, args){var self = TMP_14._s || this, $a, $b, TMP_15, $c, TMP_16;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        
+          self.$raise($scope.ArgumentError, "tried to call lazy map without a block")}
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_14 = function(enum$, args){
+          var self = TMP_14._s || this;
+          var $a;
+          var $b;
+          var TMP_15;
+          var $c;
+          var TMP_16;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
           var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
@@ -4275,16 +4660,22 @@
           return enum$.$yield(v)}, TMP_16._s = self, TMP_16), $a).call($c);
             }
           }
-        ;}, TMP_14._s = self, TMP_14), $a).call($b, self, nil);
+        }, TMP_14._s = self, TMP_14), $a).call($b, self, nil);
       };
 
       def.$drop = function(n) {
-        var $a, $b, TMP_17, self = this, current_size = nil, set_size = nil, dropped = nil;
+        var $a;
+        var $b;
+        var TMP_17;
+        var self = this;
+        var current_size = nil;
+        var set_size = nil;
+        var dropped = nil;
         n = $scope.Opal.$coerce_to(n, $scope.Integer, "to_int");
         if (n['$<'](0)) {
-          self.$raise($scope.ArgumentError, "attempt to drop negative size")};
+          self.$raise($scope.ArgumentError, "attempt to drop negative size")}
         current_size = self.$enumerator_size();
-        set_size = (function() {if (($a = $scope.Integer['$==='](current_size)) !== false && $a !== nil) {
+        set_size = ((() => {if (($a = $scope.Integer['$==='](current_size)) !== false && $a !== nil) {
           if (n['$<'](current_size)) {
             return n
             } else {
@@ -4292,44 +4683,63 @@
           }
           } else {
           return current_size
-        }; return nil; })();
+        }; return nil; }))();
         dropped = 0;
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_17 = function(enum$, args){var self = TMP_17._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        if (dropped['$<'](n)) {
-            return dropped = dropped['$+'](1)
-            } else {
-            return ($a = enum$).$yield.apply($a, [].concat(args))
-          }}, TMP_17._s = self, TMP_17), $a).call($b, self, set_size);
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_17 = function(enum$, args){
+          var self = TMP_17._s || this;
+          var $a;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+          if (dropped['$<'](n)) {
+              return dropped = dropped['$+'](1)
+              } else {
+              return ($a = enum$).$yield.apply($a, [].concat(args))
+            }
+        }, TMP_17._s = self, TMP_17), $a).call($b, self, set_size);
       };
 
       def.$drop_while = TMP_18 = function() {
-        var $a, $b, TMP_19, self = this, $iter = TMP_18._p, block = $iter || nil, succeeding = nil;
+        var $a;
+        var $b;
+        var TMP_19;
+        var self = this;
+        var $iter = TMP_18._p;
+        var block = $iter || nil;
+        var succeeding = nil;
         TMP_18._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy drop_while without a block")};
+          self.$raise($scope.ArgumentError, "tried to call lazy drop_while without a block")}
         succeeding = true;
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_19 = function(enum$, args){var self = TMP_19._s || this, $a, $b;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        if (succeeding !== false && succeeding !== nil) {
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_19 = function(enum$, args){
+          var self = TMP_19._s || this;
+          var $a;
+          var $b;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+          if (succeeding !== false && succeeding !== nil) {
+              
+              var value = $opal.$yieldX(block, args);
+
+              if (value === $breaker) {
+                return $breaker;
+              }
+
+              if (($a = value) === false || $a === nil) {
+                succeeding = false;
+
+                ($a = enum$).$yield.apply($a, [].concat(args));
+              }
             
-            var value = $opal.$yieldX(block, args);
-
-            if (value === $breaker) {
-              return $breaker;
+              } else {
+              return ($b = enum$).$yield.apply($b, [].concat(args))
             }
-
-            if (($a = value) === false || $a === nil) {
-              succeeding = false;
-
-              ($a = enum$).$yield.apply($a, [].concat(args));
-            }
-          
-            } else {
-            return ($b = enum$).$yield.apply($b, [].concat(args))
-          }}, TMP_19._s = self, TMP_19), $a).call($b, self, nil);
+        }, TMP_19._s = self, TMP_19), $a).call($b, self, nil);
       };
 
       def.$enum_for = TMP_20 = function(method, args) {
-        var $a, $b, self = this, $iter = TMP_20._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var self = this;
+        var $iter = TMP_20._p;
+        var block = $iter || nil;
         args = $slice.call(arguments, 1);
         if (method == null) {
           method = "each"
@@ -4339,12 +4749,20 @@
       };
 
       def.$find_all = TMP_21 = function() {
-        var $a, $b, TMP_22, self = this, $iter = TMP_21._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_22;
+        var self = this;
+        var $iter = TMP_21._p;
+        var block = $iter || nil;
         TMP_21._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy select without a block")};
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_22 = function(enum$, args){var self = TMP_22._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        
+          self.$raise($scope.ArgumentError, "tried to call lazy select without a block")}
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_22 = function(enum$, args){
+          var self = TMP_22._s || this;
+          var $a;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
           var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
@@ -4354,19 +4772,29 @@
           if (($a = value) !== false && $a !== nil) {
             ($a = enum$).$yield.apply($a, [].concat(args));
           }
-        ;}, TMP_22._s = self, TMP_22), $a).call($b, self, nil);
+        }, TMP_22._s = self, TMP_22), $a).call($b, self, nil);
       };
 
       $opal.defn(self, '$flat_map', def.$collect_concat);
 
       def.$grep = TMP_23 = function(pattern) {
-        var $a, $b, TMP_24, $c, TMP_25, self = this, $iter = TMP_23._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_24;
+        var $c;
+        var TMP_25;
+        var self = this;
+        var $iter = TMP_23._p;
+        var block = $iter || nil;
         TMP_23._p = null;
         if (block !== false && block !== nil) {
-          return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_24 = function(enum$, args){var self = TMP_24._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-          
-            var param = $scope.Opal.$destructure(args),
-                value = pattern['$==='](param);
+          return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_24 = function(enum$, args){
+            var self = TMP_24._s || this;
+            var $a;
+            if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
+            var param = $scope.Opal.$destructure(args);
+            var value = pattern['$==='](param);
 
             if (($a = value) !== false && $a !== nil) {
               value = $opal.$yield1(block, param);
@@ -4377,18 +4805,21 @@
 
               enum$.$yield($opal.$yield1(block, param));
             }
-          ;}, TMP_24._s = self, TMP_24), $a).call($b, self, nil)
+          }, TMP_24._s = self, TMP_24), $a).call($b, self, nil);
           } else {
-          return ($a = ($c = $scope.Lazy).$new, $a._p = (TMP_25 = function(enum$, args){var self = TMP_25._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-          
-            var param = $scope.Opal.$destructure(args),
-                value = pattern['$==='](param);
+          return ($a = ($c = $scope.Lazy).$new, $a._p = (TMP_25 = function(enum$, args){
+            var self = TMP_25._s || this;
+            var $a;
+            if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
+            var param = $scope.Opal.$destructure(args);
+            var value = pattern['$==='](param);
 
             if (($a = value) !== false && $a !== nil) {
               enum$.$yield(param);
             }
-          ;}, TMP_25._s = self, TMP_25), $a).call($c, self, nil)
-        };
+          }, TMP_25._s = self, TMP_25), $a).call($c, self, nil);
+        }
       };
 
       $opal.defn(self, '$map', def.$collect);
@@ -4396,12 +4827,20 @@
       $opal.defn(self, '$select', def.$find_all);
 
       def.$reject = TMP_26 = function() {
-        var $a, $b, TMP_27, self = this, $iter = TMP_26._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_27;
+        var self = this;
+        var $iter = TMP_26._p;
+        var block = $iter || nil;
         TMP_26._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy reject without a block")};
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_27 = function(enum$, args){var self = TMP_27._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        
+          self.$raise($scope.ArgumentError, "tried to call lazy reject without a block")}
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_27 = function(enum$, args){
+          var self = TMP_27._s || this;
+          var $a;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
           var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
@@ -4411,16 +4850,22 @@
           if (($a = value) === false || $a === nil) {
             ($a = enum$).$yield.apply($a, [].concat(args));
           }
-        ;}, TMP_27._s = self, TMP_27), $a).call($b, self, nil);
+        }, TMP_27._s = self, TMP_27), $a).call($b, self, nil);
       };
 
       def.$take = function(n) {
-        var $a, $b, TMP_28, self = this, current_size = nil, set_size = nil, taken = nil;
+        var $a;
+        var $b;
+        var TMP_28;
+        var self = this;
+        var current_size = nil;
+        var set_size = nil;
+        var taken = nil;
         n = $scope.Opal.$coerce_to(n, $scope.Integer, "to_int");
         if (n['$<'](0)) {
-          self.$raise($scope.ArgumentError, "attempt to take negative size")};
+          self.$raise($scope.ArgumentError, "attempt to take negative size")}
         current_size = self.$enumerator_size();
-        set_size = (function() {if (($a = $scope.Integer['$==='](current_size)) !== false && $a !== nil) {
+        set_size = ((() => {if (($a = $scope.Integer['$==='](current_size)) !== false && $a !== nil) {
           if (n['$<'](current_size)) {
             return n
             } else {
@@ -4428,24 +4873,36 @@
           }
           } else {
           return current_size
-        }; return nil; })();
+        }; return nil; }))();
         taken = 0;
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_28 = function(enum$, args){var self = TMP_28._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        if (taken['$<'](n)) {
-            ($a = enum$).$yield.apply($a, [].concat(args));
-            return taken = taken['$+'](1);
-            } else {
-            return self.$raise($scope.StopLazyError)
-          }}, TMP_28._s = self, TMP_28), $a).call($b, self, set_size);
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_28 = function(enum$, args){
+          var self = TMP_28._s || this;
+          var $a;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+          if (taken['$<'](n)) {
+              ($a = enum$).$yield.apply($a, [].concat(args));
+              return taken = taken['$+'](1);
+              } else {
+              return self.$raise($scope.StopLazyError)
+            }
+        }, TMP_28._s = self, TMP_28), $a).call($b, self, set_size);
       };
 
       def.$take_while = TMP_29 = function() {
-        var $a, $b, TMP_30, self = this, $iter = TMP_29._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var TMP_30;
+        var self = this;
+        var $iter = TMP_29._p;
+        var block = $iter || nil;
         TMP_29._p = null;
         if (($a = block) === false || $a === nil) {
-          self.$raise($scope.ArgumentError, "tried to call lazy take_while without a block")};
-        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_30 = function(enum$, args){var self = TMP_30._s || this, $a;if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
-        
+          self.$raise($scope.ArgumentError, "tried to call lazy take_while without a block")}
+        return ($a = ($b = $scope.Lazy).$new, $a._p = (TMP_30 = function(enum$, args){
+          var self = TMP_30._s || this;
+          var $a;
+          if (enum$ == null) enum$ = nil;args = $slice.call(arguments, 1);
+
           var value = $opal.$yieldX(block, args);
 
           if (value === $breaker) {
@@ -4458,7 +4915,7 @@
           else {
             self.$raise($scope.StopLazyError);
           }
-        ;}, TMP_30._s = self, TMP_30), $a).call($b, self, nil);
+        }, TMP_30._s = self, TMP_30), $a).call($b, self, nil);
       };
 
       $opal.defn(self, '$to_enum', def.$enum_for);
@@ -4467,30 +4924,59 @@
         var self = this;
         return "#<" + (self.$class().$name()) + ": " + (self.enumerator.$inspect()) + ">";
       }, nil);
-    })(self, self);
-  })(self, null)
-})(Opal);
+    }))(self, self);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/enumerator.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$include', '$new', '$class', '$raise', '$===', '$to_a', '$respond_to?', '$to_ary', '$coerce_to', '$==', '$to_str', '$clone', '$hash', '$<=>', '$fits_fixnum!', '$inspect', '$empty?', '$enum_for', '$nil?', '$coerce_to!', '$initialize_clone', '$initialize_dup', '$replace', '$eql?', '$length', '$begin', '$end', '$exclude_end?', '$fits_array!', '$flatten', '$object_id', '$[]', '$to_s', '$delete_if', '$to_proc', '$each', '$reverse', '$map', '$rand', '$keep_if', '$shuffle!', '$>', '$<', '$sort', '$times', '$[]=', '$<<', '$at', '$allocate', '$initialize', '$__send__', '$*', '$slice', '$uniq']);
-  (function($base, $super) {
-    function $Array(){};
+  ((($base, $super) => {
+    function $Array(){}
     var self = $Array = $klass($base, $super, 'Array', $Array);
 
-    var def = $Array._proto, $scope = $Array._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5, TMP_6, TMP_7, TMP_8, TMP_9, TMP_10, TMP_11, TMP_12, TMP_13, TMP_14, TMP_15, TMP_17, TMP_18, TMP_19, TMP_20, TMP_21, TMP_24;
+    var def = $Array._proto;
+    var $scope = $Array._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
+    var TMP_6;
+    var TMP_7;
+    var TMP_8;
+    var TMP_9;
+    var TMP_10;
+    var TMP_11;
+    var TMP_12;
+    var TMP_13;
+    var TMP_14;
+    var TMP_15;
+    var TMP_17;
+    var TMP_18;
+    var TMP_19;
+    var TMP_20;
+    var TMP_21;
+    var TMP_24;
     def.length = nil;
     self.$include($scope.Enumerable);
 
     def._isArray = true;
 
     $opal.defs(self, '$inherited', function(klass) {
-      var self = this, replace = nil;
+      var self = this;
+      var replace = nil;
       replace = $scope.Class.$new(($scope.Array)._scope.Wrapper);
-      
+
       klass._proto        = replace._proto;
       klass._proto._klass = klass;
       klass._alloc        = replace._alloc;
@@ -4499,7 +4985,6 @@
       klass.$allocate = replace.$allocate;
       klass.$new      = replace.$new;
       klass["$[]"]    = replace["$[]"];
-    
     });
 
     $opal.defs(self, '$[]', function(objects) {
@@ -4509,13 +4994,17 @@
     });
 
     def.$initialize = function(args) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       args = $slice.call(arguments, 0);
       return ($a = self.$class()).$new.apply($a, [].concat(args));
     };
 
     $opal.defs(self, '$new', TMP_1 = function(size, obj) {
-      var $a, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       if (size == null) {
         size = nil
       }
@@ -4524,18 +5013,18 @@
       }
       TMP_1._p = null;
       if (($a = arguments.length > 2) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "wrong number of arguments (" + (arguments.length) + " for 0..2)")};
+        self.$raise($scope.ArgumentError, "wrong number of arguments (" + (arguments.length) + " for 0..2)")}
       if (($a = arguments.length === 0) !== false && $a !== nil) {
-        return []};
+        return []}
       if (($a = arguments.length === 1) !== false && $a !== nil) {
         if (($a = $scope.Array['$==='](size)) !== false && $a !== nil) {
           return size.$to_a()
         } else if (($a = size['$respond_to?']("to_ary")) !== false && $a !== nil) {
-          return size.$to_ary()}};
+          return size.$to_ary()}}
       size = $scope.Opal.$coerce_to(size, $scope.Integer, "to_int");
       if (($a = size < 0) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "negative array size")};
-      
+        self.$raise($scope.ArgumentError, "negative array size")}
+
       var result = [];
 
       if (block === nil) {
@@ -4556,28 +5045,28 @@
       }
 
       return result;
-    
     });
 
     $opal.defs(self, '$try_convert', function(obj) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](obj)) !== false && $a !== nil) {
-        return obj};
+        return obj}
       if (($a = obj['$respond_to?']("to_ary")) !== false && $a !== nil) {
-        return obj.$to_ary()};
+        return obj.$to_ary()}
       return nil;
     });
 
     def['$&'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Array, "to_ary").$to_a()
-      };
-      
-      var result = [],
-          seen   = {};
+      }
+      var result = [];
+      var seen   = {};
 
       for (var i = 0, length = self.length; i < length; i++) {
         var item = self[i];
@@ -4595,19 +5084,19 @@
       }
 
       return result;
-    
     };
 
     def['$*'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = other['$respond_to?']("to_str")) !== false && $a !== nil) {
-        return self.join(other.$to_str())};
+        return self.join(other.$to_str())}
       if (($a = other['$respond_to?']("to_int")) === false || $a === nil) {
-        self.$raise($scope.TypeError, "no implicit conversion of " + (other.$class()) + " into Integer")};
+        self.$raise($scope.TypeError, "no implicit conversion of " + (other.$class()) + " into Integer")}
       other = $scope.Opal.$coerce_to(other, $scope.Integer, "to_int");
       if (($a = other < 0) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "negative argument")};
-      
+        self.$raise($scope.ArgumentError, "negative argument")}
+
       var result = [];
 
       for (var i = 0; i < other; i++) {
@@ -4615,33 +5104,33 @@
       }
 
       return result;
-    
     };
 
     def['$+'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Array, "to_ary").$to_a()
-      };
+      }
       return self.concat(other);
     };
 
     def['$-'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Array, "to_ary").$to_a()
-      };
+      }
       if (($a = self.length === 0) !== false && $a !== nil) {
-        return []};
+        return []}
       if (($a = other.length === 0) !== false && $a !== nil) {
-        return self.$clone()};
-      
-      var seen   = {},
-          result = [];
+        return self.$clone()}
+      var seen   = {};
+      var result = [];
 
       for (var i = 0, length = other.length; i < length; i++) {
         seen[other[i]] = true;
@@ -4656,7 +5145,6 @@
       }
 
       return result;
-    
     };
 
     def['$<<'] = function(object) {
@@ -4666,15 +5154,16 @@
     };
 
     def['$<=>'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
       } else if (($a = other['$respond_to?']("to_ary")) !== false && $a !== nil) {
         other = other.$to_ary().$to_a()
         } else {
         return nil
-      };
-      
+      }
+
       if (self.$hash() === other.$hash()) {
         return 0;
       }
@@ -4692,24 +5181,24 @@
       }
 
       return 0;
-    ;
     };
 
     def['$=='] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = self === other) !== false && $a !== nil) {
-        return true};
+        return true}
       if (($a = $scope.Array['$==='](other)) === false || $a === nil) {
         if (($a = other['$respond_to?']("to_ary")) === false || $a === nil) {
           return false};
-        return other['$=='](self);};
+        return other['$=='](self);}
       other = other.$to_a();
       if (($a = self.length === other.length) === false || $a === nil) {
-        return false};
-      
+        return false}
+
       for (var i = 0, length = self.length; i < length; i++) {
-        var a = self[i],
-            b = other[i];
+        var a = self[i];
+        var b = other[i];
 
         if (a._isArray && b._isArray && (a === self)) {
           continue;
@@ -4719,18 +5208,18 @@
           return false;
         }
       }
-    
+
       return true;
     };
 
     def['$[]'] = function(index, length) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Range['$==='](index)) !== false && $a !== nil) {
-        
-        var size    = self.length,
-            exclude = index.exclude,
-            from    = $scope.Opal.$coerce_to(index.begin, $scope.Integer, "to_int"),
-            to      = $scope.Opal.$coerce_to(index.end, $scope.Integer, "to_int");
+        var size    = self.length;
+        var exclude = index.exclude;
+        var from    = $scope.Opal.$coerce_to(index.begin, $scope.Integer, "to_int");
+        var to      = $scope.Opal.$coerce_to(index.end, $scope.Integer, "to_int");
 
         if (from < 0) {
           from += size;
@@ -4761,8 +5250,7 @@
         }
 
         return self.slice(from, to);
-      ;
-        } else {
+      } else {
         index = $scope.Opal.$coerce_to(index, $scope.Integer, "to_int");
         
         var size = self.length;
@@ -4796,11 +5284,14 @@
           return self.slice(index, index + length);
         }
       
-      };
+      }
     };
 
     def['$[]='] = function(index, value, extra) {
-      var $a, self = this, data = nil, length = nil;
+      var $a;
+      var self = this;
+      var data = nil;
+      var length = nil;
       if (($a = $scope.Range['$==='](index)) !== false && $a !== nil) {
         if (($a = $scope.Array['$==='](value)) !== false && $a !== nil) {
           data = value.$to_a()
@@ -4808,12 +5299,11 @@
           data = value.$to_ary().$to_a()
           } else {
           data = [value]
-        };
-        
-        var size    = self.length,
-            exclude = index.exclude,
-            from    = $scope.Opal.$coerce_to(index.begin, $scope.Integer, "to_int"),
-            to      = $scope.Opal.$coerce_to(index.end, $scope.Integer, "to_int");
+        }
+        var size    = self.length;
+        var exclude = index.exclude;
+        var from    = $scope.Opal.$coerce_to(index.begin, $scope.Integer, "to_int");
+        var to      = $scope.Opal.$coerce_to(index.end, $scope.Integer, "to_int");
 
         if (from < 0) {
           from += size;
@@ -4842,15 +5332,14 @@
         }
 
         if (to < 0) {
-          self.splice.apply(self, [from, 0].concat(data));
+          self.splice(...[from, 0].concat(data));
         }
         else {
-          self.splice.apply(self, [from, to - from].concat(data));
+          self.splice(...[from, to - from].concat(data));
         }
 
         return value;
-      ;
-        } else {
+      } else {
         if (($a = extra === undefined) !== false && $a !== nil) {
           length = 1
           } else {
@@ -4863,12 +5352,11 @@
             } else {
             data = [value]
           };
-        };
-        
-        var size   = self.length,
-            index  = $scope.Opal.$coerce_to(index, $scope.Integer, "to_int"),
-            length = $scope.Opal.$coerce_to(length, $scope.Integer, "to_int"),
-            old;
+        }
+        var size   = self.length;
+        var index  = $scope.Opal.$coerce_to(index, $scope.Integer, "to_int");
+        var length = $scope.Opal.$coerce_to(length, $scope.Integer, "to_int");
+        var old;
 
         if (index < 0) {
           old    = index;
@@ -4897,12 +5385,11 @@
           self[index] = value;
         }
         else {
-          self.splice.apply(self, [index, length].concat(data));
+          self.splice(...[index, length].concat(data));
         }
 
         return value;
-      ;
-      };
+      }
     };
 
     def.$assoc = function(object) {
@@ -4935,15 +5422,19 @@
     };
 
     def.$cycle = TMP_2 = function(n) {
-      var $a, $b, self = this, $iter = TMP_2._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       if (n == null) {
         n = nil
       }
       TMP_2._p = null;
       if (($a = ((($b = self['$empty?']()) !== false && $b !== nil) ? $b : n['$=='](0))) !== false && $a !== nil) {
-        return nil};
+        return nil}
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("cycle", n)};
+        return self.$enum_for("cycle", n)}
       if (($a = n['$nil?']()) !== false && $a !== nil) {
         
         while (true) {
@@ -4975,7 +5466,7 @@
           n--;
         }
       
-      };
+      }
       return self;
     };
 
@@ -4986,14 +5477,16 @@
     };
 
     def.$clone = function() {
-      var self = this, copy = nil;
+      var self = this;
+      var copy = nil;
       copy = [];
       copy.$initialize_clone(self);
       return copy;
     };
 
     def.$dup = function() {
-      var self = this, copy = nil;
+      var self = this;
+      var copy = nil;
       copy = [];
       copy.$initialize_dup(self);
       return copy;
@@ -5005,11 +5498,13 @@
     };
 
     def.$collect = TMP_3 = function() {
-      var self = this, $iter = TMP_3._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
       if (block === nil) {
-        return self.$enum_for("collect")};
-      
+        return self.$enum_for("collect")}
+
       var result = [];
 
       for (var i = 0, length = self.length; i < length; i++) {
@@ -5023,15 +5518,16 @@
       }
 
       return result;
-    
     };
 
     def['$collect!'] = TMP_4 = function() {
-      var self = this, $iter = TMP_4._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (block === nil) {
-        return self.$enum_for("collect!")};
-      
+        return self.$enum_for("collect!")}
+
       for (var i = 0, length = self.length; i < length; i++) {
         var value = Opal.$yield1(block, self[i]);
 
@@ -5041,7 +5537,7 @@
 
         self[i] = value;
       }
-    
+
       return self;
     };
 
@@ -5079,17 +5575,18 @@
     };
 
     def.$concat = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Array, "to_ary").$to_a()
-      };
-      
+      }
+
       for (var i = 0, length = other.length; i < length; i++) {
         self.push(other[i]);
       }
-    
+
       return self;
     };
 
@@ -5131,11 +5628,13 @@
     };
 
     def.$delete_if = TMP_5 = function() {
-      var self = this, $iter = TMP_5._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
       if (block === nil) {
-        return self.$enum_for("delete_if")};
-      
+        return self.$enum_for("delete_if")}
+
       for (var i = 0, length = self.length, value; i < length; i++) {
         if ((value = block(self[i])) === $breaker) {
           return $breaker.$v;
@@ -5148,7 +5647,7 @@
           i--;
         }
       }
-    
+
       return self;
     };
 
@@ -5166,11 +5665,13 @@
     $opal.defn(self, '$dup', def.$clone);
 
     def.$each = TMP_6 = function() {
-      var self = this, $iter = TMP_6._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
       if (block === nil) {
-        return self.$enum_for("each")};
-      
+        return self.$enum_for("each")}
+
       for (var i = 0, length = self.length; i < length; i++) {
         var value = $opal.$yield1(block, self[i]);
 
@@ -5178,16 +5679,18 @@
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
     def.$each_index = TMP_7 = function() {
-      var self = this, $iter = TMP_7._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       TMP_7._p = null;
       if (block === nil) {
-        return self.$enum_for("each_index")};
-      
+        return self.$enum_for("each_index")}
+
       for (var i = 0, length = self.length; i < length; i++) {
         var value = $opal.$yield1(block, i);
 
@@ -5195,7 +5698,7 @@
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
@@ -5205,18 +5708,19 @@
     };
 
     def['$eql?'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = self === other) !== false && $a !== nil) {
-        return true};
+        return true}
       if (($a = $scope.Array['$==='](other)) === false || $a === nil) {
-        return false};
+        return false}
       other = other.$to_a();
       if (($a = self.length === other.length) === false || $a === nil) {
-        return false};
-      
+        return false}
+
       for (var i = 0, length = self.length; i < length; i++) {
-        var a = self[i],
-            b = other[i];
+        var a = self[i];
+        var b = other[i];
 
         if (a._isArray && b._isArray && (a === self)) {
           continue;
@@ -5226,14 +5730,16 @@
           return false;
         }
       }
-    
+
       return true;
     };
 
     def.$fetch = TMP_8 = function(index, defaults) {
-      var self = this, $iter = TMP_8._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_8._p;
+      var block = $iter || nil;
       TMP_8._p = null;
-      
+
       var original = index;
 
       if (index < 0) {
@@ -5258,11 +5764,18 @@
       else {
         self.$raise($scope.IndexError, "index " + (original) + " outside of array bounds: -" + (self.length) + "..." + (self.length));
       }
-    ;
     };
 
     def.$fill = TMP_9 = function(args) {
-      var $a, self = this, $iter = TMP_9._p, block = $iter || nil, one = nil, two = nil, obj = nil, left = nil, right = nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
+      var one = nil;
+      var two = nil;
+      var obj = nil;
+      var left = nil;
+      var right = nil;
       args = $slice.call(arguments, 0);
       TMP_9._p = null;
       if (block !== false && block !== nil) {
@@ -5275,7 +5788,7 @@
         } else if (($a = args.length > 3) !== false && $a !== nil) {
           self.$raise($scope.ArgumentError, "wrong number of arguments (" + (args.$length()) + " for 1..3)")};
         $a = $opal.to_ary(args), obj = ($a[0] == null ? nil : $a[0]), one = ($a[1] == null ? nil : $a[1]), two = ($a[2] == null ? nil : $a[2]);
-      };
+      }
       if (($a = $scope.Range['$==='](one)) !== false && $a !== nil) {
         if (two !== false && two !== nil) {
           self.$raise($scope.TypeError, "length invalid with range")};
@@ -5308,7 +5821,7 @@
         } else {
         left = 0;
         right = self.length;
-      };
+      }
       $scope.Opal['$fits_fixnum!'](right);
       $scope.Opal['$fits_array!'](right);
       if (($a = left > self.length) !== false && $a !== nil) {
@@ -5316,9 +5829,9 @@
         for (var i = self.length; i < right; i++) {
           self[i] = nil;
         }
-      ;};
+      ;}
       if (($a = right > self.length) !== false && $a !== nil) {
-        self.length = right};
+        self.length = right}
       if (block !== false && block !== nil) {
         
         for (var length = self.length; left < right; left++) {
@@ -5337,7 +5850,7 @@
           self[left] = obj;
         }
       ;
-      };
+      }
       return self;
     };
 
@@ -5369,13 +5882,13 @@
           item = (item).$to_ary();
 
           if (level == null) {
-            result.push.apply(result, (item).$flatten().$to_a());
+            result.push(...(item).$flatten().$to_a());
           }
           else if (level == 0) {
             result.push(item);
           }
           else {
-            result.push.apply(result, (item).$flatten(level - 1).$to_a());
+            result.push(...(item).$flatten(level - 1).$to_a());
           }
         }
         else {
@@ -5428,9 +5941,11 @@
     };
 
     def.$index = TMP_10 = function(object) {
-      var self = this, $iter = TMP_10._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_10._p;
+      var block = $iter || nil;
       TMP_10._p = null;
-      
+
       if (object != null) {
         for (var i = 0, length = self.length; i < length; i++) {
           if ((self[i])['$=='](object)) {
@@ -5454,7 +5969,6 @@
       }
 
       return nil;
-    
     };
 
     def.$insert = function(index, objects) {
@@ -5475,7 +5989,7 @@
           }
         }
 
-        self.splice.apply(self, [index, 0].concat(objects));
+        self.splice(...[index, 0].concat(objects));
       }
     
       return self;
@@ -5483,8 +5997,13 @@
 
     def.$inspect = function() {
       var self = this;
-      
-      var i, inspect, el, el_insp, length, object_id;
+
+      var i;
+      var inspect;
+      var el;
+      var el_insp;
+      var length;
+      var object_id;
 
       inspect = [];
       object_id = self.$object_id();
@@ -5499,7 +6018,6 @@
         inspect.push(el_insp);
       }
       return '[' + inspect.join(', ') + ']';
-    ;
     };
 
     def.$join = function(sep) {
@@ -5519,11 +6037,13 @@
     };
 
     def.$keep_if = TMP_11 = function() {
-      var self = this, $iter = TMP_11._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_11._p;
+      var block = $iter || nil;
       TMP_11._p = null;
       if (block === nil) {
-        return self.$enum_for("keep_if")};
-      
+        return self.$enum_for("keep_if")}
+
       for (var i = 0, length = self.length, value; i < length; i++) {
         if ((value = block(self[i])) === $breaker) {
           return $breaker.$v;
@@ -5536,7 +6056,7 @@
           i--;
         }
       }
-    
+
       return self;
     };
 
@@ -5628,11 +6148,13 @@
     };
 
     def.$reject = TMP_12 = function() {
-      var self = this, $iter = TMP_12._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_12._p;
+      var block = $iter || nil;
       TMP_12._p = null;
       if (block === nil) {
-        return self.$enum_for("reject")};
-      
+        return self.$enum_for("reject")}
+
       var result = [];
 
       for (var i = 0, length = self.length, value; i < length; i++) {
@@ -5645,32 +6167,35 @@
         }
       }
       return result;
-    
     };
 
     def['$reject!'] = TMP_13 = function() {
-      var $a, $b, self = this, $iter = TMP_13._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_13._p;
+      var block = $iter || nil;
       TMP_13._p = null;
       if (block === nil) {
-        return self.$enum_for("reject!")};
-      
+        return self.$enum_for("reject!")}
+
       var original = self.length;
       ($a = ($b = self).$delete_if, $a._p = block.$to_proc(), $a).call($b);
       return self.length === original ? nil : self;
-    
     };
 
     def.$replace = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](other)) !== false && $a !== nil) {
         other = other.$to_a()
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Array, "to_ary").$to_a()
-      };
-      
+      }
+
       self.splice(0, self.length);
-      self.push.apply(self, other);
-    
+      self.push(...other);
+
       return self;
     };
 
@@ -5685,18 +6210,24 @@
     };
 
     def.$reverse_each = TMP_14 = function() {
-      var $a, $b, self = this, $iter = TMP_14._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_14._p;
+      var block = $iter || nil;
       TMP_14._p = null;
       if (block === nil) {
-        return self.$enum_for("reverse_each")};
+        return self.$enum_for("reverse_each")}
       ($a = ($b = self.$reverse()).$each, $a._p = block.$to_proc(), $a).call($b);
       return self;
     };
 
     def.$rindex = TMP_15 = function(object) {
-      var self = this, $iter = TMP_15._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_15._p;
+      var block = $iter || nil;
       TMP_15._p = null;
-      
+
       if (object != null) {
         for (var i = self.length - 1; i >= 0; i--) {
           if ((self[i])['$=='](object)) {
@@ -5720,32 +6251,37 @@
       }
 
       return nil;
-    
     };
 
     def.$sample = function(n) {
-      var $a, $b, $c, TMP_16, self = this;
+      var $a;
+      var $b;
+      var $c;
+      var TMP_16;
+      var self = this;
       if (n == null) {
         n = nil
       }
       if (($a = ($b = ($c = n, ($c === nil || $c === false)), $b !== false && $b !== nil ?self['$empty?']() : $b)) !== false && $a !== nil) {
-        return nil};
+        return nil}
       if (($a = (($b = n !== false && n !== nil) ? self['$empty?']() : $b)) !== false && $a !== nil) {
-        return []};
+        return []}
       if (n !== false && n !== nil) {
         return ($a = ($b = ($range(1, n, false))).$map, $a._p = (TMP_16 = function(){var self = TMP_16._s || this;
         return self['$[]'](self.$rand(self.$length()))}, TMP_16._s = self, TMP_16), $a).call($b)
         } else {
         return self['$[]'](self.$rand(self.$length()))
-      };
+      }
     };
 
     def.$select = TMP_17 = function() {
-      var self = this, $iter = TMP_17._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_17._p;
+      var block = $iter || nil;
       TMP_17._p = null;
       if (block === nil) {
-        return self.$enum_for("select")};
-      
+        return self.$enum_for("select")}
+
       var result = [];
 
       for (var i = 0, length = self.length, item, value; i < length; i++) {
@@ -5761,19 +6297,21 @@
       }
 
       return result;
-    
     };
 
     def['$select!'] = TMP_18 = function() {
-      var $a, $b, self = this, $iter = TMP_18._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_18._p;
+      var block = $iter || nil;
       TMP_18._p = null;
       if (block === nil) {
-        return self.$enum_for("select!")};
-      
+        return self.$enum_for("select!")}
+
       var original = self.length;
       ($a = ($b = self).$keep_if, $a._p = block.$to_proc(), $a).call($b);
       return self.length === original ? nil : self;
-    
     };
 
     def.$shift = function(count) {
@@ -5798,8 +6336,8 @@
       var self = this;
       
       for (var i = self.length - 1; i > 0; i--) {
-        var tmp = self[i],
-            j   = Math.floor(Math.random() * (i + 1));
+        var tmp = self[i];
+        var j   = Math.floor(Math.random() * (i + 1));
 
         self[i] = self[j];
         self[j] = tmp;
@@ -5830,19 +6368,20 @@
     };
 
     def.$sort = TMP_19 = function() {
-      var $a, self = this, $iter = TMP_19._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_19._p;
+      var block = $iter || nil;
       TMP_19._p = null;
       if (($a = self.length > 1) === false || $a === nil) {
-        return self};
-      
+        return self}
+
       if (!(block !== nil)) {
-        block = function(a, b) {
-          return (a)['$<=>'](b);
-        };
+        block = (a, b) => (a)['$<=>'](b);
       }
 
       try {
-        return self.slice().sort(function(x, y) {
+        return self.slice().sort((x, y) => {
           var ret = block(x, y);
 
           if (ret === $breaker) {
@@ -5863,13 +6402,16 @@
           throw e;
         }
       }
-    ;
     };
 
     def['$sort!'] = TMP_20 = function() {
-      var $a, $b, self = this, $iter = TMP_20._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_20._p;
+      var block = $iter || nil;
       TMP_20._p = null;
-      
+
       var result;
 
       if ((block !== nil)) {
@@ -5885,7 +6427,6 @@
       }
 
       return self;
-    ;
     };
 
     def.$take = function(count) {
@@ -5900,9 +6441,11 @@
     };
 
     def.$take_while = TMP_21 = function() {
-      var self = this, $iter = TMP_21._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_21._p;
+      var block = $iter || nil;
       TMP_21._p = null;
-      
+
       var result = [];
 
       for (var i = 0, length = self.length, item, value; i < length; i++) {
@@ -5920,7 +6463,6 @@
       }
 
       return result;
-    
     };
 
     def.$to_a = function() {
@@ -5933,31 +6475,49 @@
     $opal.defn(self, '$to_s', def.$inspect);
 
     def.$transpose = function() {
-      var $a, $b, TMP_22, self = this, result = nil, max = nil;
+      var $a;
+      var $b;
+      var TMP_22;
+      var self = this;
+      var result = nil;
+      var max = nil;
       if (($a = self['$empty?']()) !== false && $a !== nil) {
-        return []};
+        return []}
       result = [];
       max = nil;
-      ($a = ($b = self).$each, $a._p = (TMP_22 = function(row){var self = TMP_22._s || this, $a, $b, TMP_23;if (row == null) row = nil;
-      if (($a = $scope.Array['$==='](row)) !== false && $a !== nil) {
-          row = row.$to_a()
-          } else {
-          row = $scope.Opal.$coerce_to(row, $scope.Array, "to_ary").$to_a()
-        };
+      ($a = ($b = self).$each, $a._p = (TMP_22 = function(row){
+        var self = TMP_22._s || this;
+        var $a;
+        var $b;
+        var TMP_23;
+        if (row == null) row = nil;
+        if (($a = $scope.Array['$==='](row)) !== false && $a !== nil) {
+            row = row.$to_a()
+            } else {
+            row = $scope.Opal.$coerce_to(row, $scope.Array, "to_ary").$to_a()
+          }
         ((($a = max) !== false && $a !== nil) ? $a : max = row.length);
         if (($a = ($b = (row.length)['$=='](max), ($b === nil || $b === false))) !== false && $a !== nil) {
-          self.$raise($scope.IndexError, "element size differs (" + (row.length) + " should be " + (max))};
-        return ($a = ($b = (row.length)).$times, $a._p = (TMP_23 = function(i){var self = TMP_23._s || this, $a, $b, $c, entry = nil;if (i == null) i = nil;
-        entry = (($a = i, $b = result, ((($c = $b['$[]']($a)) !== false && $c !== nil) ? $c : $b['$[]=']($a, []))));
-          return entry['$<<'](row.$at(i));}, TMP_23._s = self, TMP_23), $a).call($b);}, TMP_22._s = self, TMP_22), $a).call($b);
+          self.$raise($scope.IndexError, "element size differs (" + (row.length) + " should be " + (max))}
+        return ($a = ($b = (row.length)).$times, $a._p = (TMP_23 = function(i){
+          var self = TMP_23._s || this;
+          var $a;
+          var $b;
+          var $c;
+          var entry = nil;
+          if (i == null) i = nil;
+          entry = (($a = i, $b = result, ((($c = $b['$[]']($a)) !== false && $c !== nil) ? $c : $b['$[]=']($a, []))));
+          return entry['$<<'](row.$at(i));
+        }, TMP_23._s = self, TMP_23), $a).call($b);
+      }, TMP_22._s = self, TMP_22), $a).call($b);
       return result;
     };
 
     def.$uniq = function() {
       var self = this;
-      
-      var result = [],
-          seen   = {};
+
+      var result = [];
+      var seen   = {};
 
       for (var i = 0, length = self.length, item, hash; i < length; i++) {
         item = self[i];
@@ -5971,14 +6531,13 @@
       }
 
       return result;
-    
     };
 
     def['$uniq!'] = function() {
       var self = this;
-      
-      var original = self.length,
-          seen     = {};
+
+      var original = self.length;
+      var seen     = {};
 
       for (var i = 0, length = original, item, hash; i < length; i++) {
         item = self[i];
@@ -5996,7 +6555,6 @@
       }
 
       return self.length === original ? nil : self;
-    
     };
 
     def.$unshift = function(objects) {
@@ -6010,12 +6568,17 @@
       return self;
     };
 
-    return (def.$zip = TMP_24 = function(others) {
-      var self = this, $iter = TMP_24._p, block = $iter || nil;
+    return def.$zip = TMP_24 = function(others) {
+      var self = this;
+      var $iter = TMP_24._p;
+      var block = $iter || nil;
       others = $slice.call(arguments, 0);
       TMP_24._p = null;
-      
-      var result = [], size = self.length, part, o;
+
+      var result = [];
+      var size = self.length;
+      var part;
+      var o;
 
       for (var i = 0; i < size; i++) {
         part = [self[i]];
@@ -6042,17 +6605,25 @@
       }
 
       return result;
-    
-    }, nil);
-  })(self, null);
-  return (function($base, $super) {
-    function $Wrapper(){};
+    }, nil;
+  }))(self, null);
+  return ((($base, $super) => {
+    function $Wrapper(){}
     var self = $Wrapper = $klass($base, $super, 'Wrapper', $Wrapper);
 
-    var def = $Wrapper._proto, $scope = $Wrapper._scope, TMP_25, TMP_26, TMP_27, TMP_28, TMP_29;
+    var def = $Wrapper._proto;
+    var $scope = $Wrapper._scope;
+    var TMP_25;
+    var TMP_26;
+    var TMP_27;
+    var TMP_28;
+    var TMP_29;
     def.literal = nil;
     $opal.defs(self, '$allocate', TMP_25 = function(array) {
-      var self = this, $iter = TMP_25._p, $yield = $iter || nil, obj = nil;
+      var self = this;
+      var $iter = TMP_25._p;
+      var $yield = $iter || nil;
+      var obj = nil;
       if (array == null) {
         array = []
       }
@@ -6063,7 +6634,12 @@
     });
 
     $opal.defs(self, '$new', TMP_26 = function(args) {
-      var $a, $b, self = this, $iter = TMP_26._p, block = $iter || nil, obj = nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_26._p;
+      var block = $iter || nil;
+      var obj = nil;
       args = $slice.call(arguments, 0);
       TMP_26._p = null;
       obj = self.$allocate();
@@ -6078,14 +6654,23 @@
     });
 
     def.$initialize = TMP_27 = function(args) {
-      var $a, $b, self = this, $iter = TMP_27._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_27._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_27._p = null;
       return self.literal = ($a = ($b = $scope.Array).$new, $a._p = block.$to_proc(), $a).apply($b, [].concat(args));
     };
 
     def.$method_missing = TMP_28 = function(args) {
-      var $a, $b, self = this, $iter = TMP_28._p, block = $iter || nil, result = nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_28._p;
+      var block = $iter || nil;
+      var result = nil;
       args = $slice.call(arguments, 0);
       TMP_28._p = null;
       result = ($a = ($b = self.literal).$__send__, $a._p = block.$to_proc(), $a).apply($b, [].concat(args));
@@ -6093,7 +6678,7 @@
         return self
         } else {
         return result
-      };
+      }
     };
 
     def.$initialize_copy = function(other) {
@@ -6101,8 +6686,12 @@
       return self.literal = (other.literal).$clone();
     };
 
-    def['$respond_to?'] = TMP_29 = function(name) {var $zuper = $slice.call(arguments, 0);
-      var $a, self = this, $iter = TMP_29._p, $yield = $iter || nil;
+    def['$respond_to?'] = TMP_29 = function(name) {
+      var $zuper = $slice.call(arguments, 0);
+      var $a;
+      var self = this;
+      var $iter = TMP_29._p;
+      var $yield = $iter || nil;
       TMP_29._p = null;
       return ((($a = $opal.find_super_dispatcher(self, 'respond_to?', TMP_29, $iter).apply(self, $zuper)) !== false && $a !== nil) ? $a : self.literal['$respond_to?'](name));
     };
@@ -6171,20 +6760,38 @@
       var self = this;
       return self.$class().$allocate(self.literal.$flatten(level));
     }, nil);
-  })($scope.Array, null);
-})(Opal);
+  }))($scope.Array, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/array.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$include', '$==', '$call', '$enum_for', '$raise', '$flatten', '$inspect', '$alias_method', '$clone']);
-  return (function($base, $super) {
-    function $Hash(){};
+  return ((($base, $super) => {
+    function $Hash(){}
     var self = $Hash = $klass($base, $super, 'Hash', $Hash);
 
-    var def = $Hash._proto, $scope = $Hash._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5, TMP_6, TMP_7, TMP_8, TMP_9, TMP_10, TMP_11, TMP_12;
+    var def = $Hash._proto;
+    var $scope = $Hash._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
+    var TMP_6;
+    var TMP_7;
+    var TMP_8;
+    var TMP_9;
+    var TMP_10;
+    var TMP_11;
+    var TMP_12;
     def.proc = def.none = nil;
     self.$include($scope.Enumerable);
 
@@ -6209,9 +6816,11 @@
     });
 
     def.$initialize = TMP_1 = function(defaults) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
-      
+
       if (defaults != null) {
         self.none = defaults;
       }
@@ -6220,12 +6829,12 @@
       }
 
       return self;
-    
     };
 
     def['$=='] = function(other) {
-      var $a, self = this;
-      
+      var $a;
+      var self = this;
+
       if (self === other) {
         return true;
       }
@@ -6238,11 +6847,13 @@
         return false;
       }
 
-      var map  = self.map,
-          map2 = other.map;
+      var map  = self.map;
+      var map2 = other.map;
 
       for (var i = 0, length = self.keys.length; i < length; i++) {
-        var key = self.keys[i], obj = map[key], obj2 = map2[key];
+        var key = self.keys[i];
+        var obj = map[key];
+        var obj2 = map2[key];
 
         if (($a = (obj)['$=='](obj2), ($a === nil || $a === false))) {
           return false;
@@ -6250,7 +6861,6 @@
       }
 
       return true;
-    
     };
 
     def['$[]'] = function(key) {
@@ -6289,8 +6899,9 @@
 
     def.$assoc = function(object) {
       var self = this;
-      
-      var keys = self.keys, key;
+
+      var keys = self.keys;
+      var key;
 
       for (var i = 0, length = keys.length; i < length; i++) {
         key = keys[i];
@@ -6301,7 +6912,6 @@
       }
 
       return nil;
-    
     };
 
     def.$clear = function() {
@@ -6315,13 +6925,13 @@
 
     def.$clone = function() {
       var self = this;
-      
-      var map  = {},
-          keys = [];
+
+      var map  = {};
+      var keys = [];
 
       for (var i = 0, length = self.keys.length; i < length; i++) {
-        var key   = self.keys[i],
-            value = self.map[key];
+        var key   = self.keys[i];
+        var value = self.map[key];
 
         keys.push(key);
         map[key] = value;
@@ -6335,7 +6945,6 @@
       hash.proc = self.proc;
 
       return hash;
-    
     };
 
     def.$default = function(val) {
@@ -6360,8 +6969,9 @@
 
     def.$delete = function(key) {
       var self = this;
-      
-      var map  = self.map, result = map[key];
+
+      var map  = self.map;
+      var result = map[key];
 
       if (result != null) {
         delete map[key];
@@ -6371,19 +6981,23 @@
       }
 
       return nil;
-    
     };
 
     def.$delete_if = TMP_2 = function() {
-      var $a, self = this, $iter = TMP_2._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       TMP_2._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("delete_if")};
-      
-      var map = self.map, keys = self.keys, value;
+        return self.$enum_for("delete_if")}
+      var map = self.map;
+      var keys = self.keys;
+      var value;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         if ((value = block(key, obj)) === $breaker) {
           return $breaker.$v;
@@ -6399,23 +7013,24 @@
       }
 
       return self;
-    
     };
 
     $opal.defn(self, '$dup', def.$clone);
 
     def.$each = TMP_3 = function() {
-      var $a, self = this, $iter = TMP_3._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("each")};
-      
-      var map  = self.map,
-          keys = self.keys;
+        return self.$enum_for("each")}
+      var map  = self.map;
+      var keys = self.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key   = keys[i],
-            value = $opal.$yield1(block, [key, map[key]]);
+        var key   = keys[i];
+        var value = $opal.$yield1(block, [key, map[key]]);
 
         if (value === $breaker) {
           return $breaker.$v;
@@ -6423,15 +7038,17 @@
       }
 
       return self;
-    
     };
 
     def.$each_key = TMP_4 = function() {
-      var $a, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("each_key")};
-      
+        return self.$enum_for("each_key")}
+
       var keys = self.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
@@ -6443,18 +7060,20 @@
       }
 
       return self;
-    
     };
 
     $opal.defn(self, '$each_pair', def.$each);
 
     def.$each_value = TMP_5 = function() {
-      var $a, self = this, $iter = TMP_5._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("each_value")};
-      
-      var map = self.map, keys = self.keys;
+        return self.$enum_for("each_value")}
+      var map = self.map;
+      var keys = self.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
         if (block(map[keys[i]]) === $breaker) {
@@ -6463,7 +7082,6 @@
       }
 
       return self;
-    
     };
 
     def['$empty?'] = function() {
@@ -6474,9 +7092,11 @@
     $opal.defn(self, '$eql?', def['$==']);
 
     def.$fetch = TMP_6 = function(key, defaults) {
-      var self = this, $iter = TMP_6._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
-      
+
       var value = self.map[key];
 
       if (value != null) {
@@ -6498,16 +7118,18 @@
       }
 
       self.$raise($scope.KeyError, "key not found");
-    
     };
 
     def.$flatten = function(level) {
       var self = this;
-      
-      var map = self.map, keys = self.keys, result = [];
+
+      var map = self.map;
+      var keys = self.keys;
+      var result = [];
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], value = map[key];
+        var key = keys[i];
+        var value = map[key];
 
         result.push(key);
 
@@ -6525,7 +7147,6 @@
       }
 
       return result;
-    
     };
 
     def['$has_key?'] = function(key) {
@@ -6555,8 +7176,9 @@
 
     def.$index = function(object) {
       var self = this;
-      
-      var map = self.map, keys = self.keys;
+
+      var map = self.map;
+      var keys = self.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
@@ -6567,17 +7189,19 @@
       }
 
       return nil;
-    
     };
 
     def.$indexes = function(keys) {
       var self = this;
       keys = $slice.call(arguments, 0);
-      
-      var result = [], map = self.map, val;
+
+      var result = [];
+      var map = self.map;
+      var val;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], val = map[key];
+        var key = keys[i];
+        var val = map[key];
 
         if (val != null) {
           result.push(val);
@@ -6588,18 +7212,20 @@
       }
 
       return result;
-    
     };
 
     $opal.defn(self, '$indices', def.$indexes);
 
     def.$inspect = function() {
       var self = this;
-      
-      var inspect = [], keys = self.keys, map = self.map;
+
+      var inspect = [];
+      var keys = self.keys;
+      var map = self.map;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], val = map[key];
+        var key = keys[i];
+        var val = map[key];
 
         if (val === self) {
           inspect.push((key).$inspect() + '=>' + '{...}');
@@ -6609,36 +7235,43 @@
       }
 
       return '{' + inspect.join(', ') + '}';
-    ;
     };
 
     def.$invert = function() {
       var self = this;
-      
-      var result = $opal.hash(), keys = self.keys, map = self.map,
-          keys2 = result.keys, map2 = result.map;
+
+      var result = $opal.hash();
+      var keys = self.keys;
+      var map = self.map;
+      var keys2 = result.keys;
+      var map2 = result.map;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         keys2.push(obj);
         map2[obj] = key;
       }
 
       return result;
-    
     };
 
     def.$keep_if = TMP_7 = function() {
-      var $a, self = this, $iter = TMP_7._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       TMP_7._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("keep_if")};
-      
-      var map = self.map, keys = self.keys, value;
+        return self.$enum_for("keep_if")}
+      var map = self.map;
+      var keys = self.keys;
+      var value;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         if ((value = block(key, obj)) === $breaker) {
           return $breaker.$v;
@@ -6654,7 +7287,6 @@
       }
 
       return self;
-    
     };
 
     $opal.defn(self, '$key', def.$index);
@@ -6674,11 +7306,16 @@
     $opal.defn(self, '$member?', def['$has_key?']);
 
     def.$merge = TMP_8 = function(other) {
-      var self = this, $iter = TMP_8._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_8._p;
+      var block = $iter || nil;
       TMP_8._p = null;
-      
-      var keys = self.keys, map = self.map,
-          result = $opal.hash(), keys2 = result.keys, map2 = result.map;
+
+      var keys = self.keys;
+      var map = self.map;
+      var result = $opal.hash();
+      var keys2 = result.keys;
+      var map2 = result.map;
 
       for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
@@ -6687,7 +7324,8 @@
         map2[key] = map[key];
       }
 
-      var keys = other.keys, map = other.map;
+      var keys = other.keys;
+      var map = other.map;
 
       if (block === nil) {
         for (var i = 0, length = keys.length; i < length; i++) {
@@ -6715,15 +7353,18 @@
       }
 
       return result;
-    
     };
 
     def['$merge!'] = TMP_9 = function(other) {
-      var self = this, $iter = TMP_9._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
       TMP_9._p = null;
-      
-      var keys = self.keys, map = self.map,
-          keys2 = other.keys, map2 = other.map;
+
+      var keys = self.keys;
+      var map = self.map;
+      var keys2 = other.keys;
+      var map2 = other.map;
 
       if (block === nil) {
         for (var i = 0, length = keys2.length; i < length; i++) {
@@ -6751,16 +7392,17 @@
       }
 
       return self;
-    
     };
 
     def.$rassoc = function(object) {
       var self = this;
-      
-      var keys = self.keys, map = self.map;
+
+      var keys = self.keys;
+      var map = self.map;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         if ((obj)['$=='](object)) {
           return [key, obj];
@@ -6768,20 +7410,26 @@
       }
 
       return nil;
-    
     };
 
     def.$reject = TMP_10 = function() {
-      var $a, self = this, $iter = TMP_10._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_10._p;
+      var block = $iter || nil;
       TMP_10._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("reject")};
-      
-      var keys = self.keys, map = self.map,
-          result = $opal.hash(), map2 = result.map, keys2 = result.keys;
+        return self.$enum_for("reject")}
+      var keys = self.keys;
+      var map = self.map;
+      var result = $opal.hash();
+      var map2 = result.map;
+      var keys2 = result.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key], value;
+        var key = keys[i];
+        var obj = map[key];
+        var value;
 
         if ((value = block(key, obj)) === $breaker) {
           return $breaker.$v;
@@ -6794,13 +7442,13 @@
       }
 
       return result;
-    
     };
 
     def.$replace = function(other) {
       var self = this;
-      
-      var map = self.map = {}, keys = self.keys = [];
+
+      var map = self.map = {};
+      var keys = self.keys = [];
 
       for (var i = 0, length = other.keys.length; i < length; i++) {
         var key = other.keys[i];
@@ -6809,20 +7457,26 @@
       }
 
       return self;
-    
     };
 
     def.$select = TMP_11 = function() {
-      var $a, self = this, $iter = TMP_11._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_11._p;
+      var block = $iter || nil;
       TMP_11._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("select")};
-      
-      var keys = self.keys, map = self.map,
-          result = $opal.hash(), map2 = result.map, keys2 = result.keys;
+        return self.$enum_for("select")}
+      var keys = self.keys;
+      var map = self.map;
+      var result = $opal.hash();
+      var map2 = result.map;
+      var keys2 = result.keys;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key], value;
+        var key = keys[i];
+        var obj = map[key];
+        var value;
 
         if ((value = block(key, obj)) === $breaker) {
           return $breaker.$v;
@@ -6835,19 +7489,24 @@
       }
 
       return result;
-    
     };
 
     def['$select!'] = TMP_12 = function() {
-      var $a, self = this, $iter = TMP_12._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_12._p;
+      var block = $iter || nil;
       TMP_12._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("select!")};
-      
-      var map = self.map, keys = self.keys, value, result = nil;
+        return self.$enum_for("select!")}
+      var map = self.map;
+      var keys = self.keys;
+      var value;
+      var result = nil;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i], obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         if ((value = block(key, obj)) === $breaker) {
           return $breaker.$v;
@@ -6864,16 +7523,17 @@
       }
 
       return result;
-    
     };
 
     def.$shift = function() {
       var self = this;
-      
-      var keys = self.keys, map = self.map;
+
+      var keys = self.keys;
+      var map = self.map;
 
       if (keys.length) {
-        var key = keys[0], obj = map[key];
+        var key = keys[0];
+        var obj = map[key];
 
         delete map[key];
         keys.splice(0, 1);
@@ -6882,7 +7542,6 @@
       }
 
       return nil;
-    
     };
 
     $opal.defn(self, '$size', def.$length);
@@ -6891,8 +7550,10 @@
 
     def.$to_a = function() {
       var self = this;
-      
-      var keys = self.keys, map = self.map, result = [];
+
+      var keys = self.keys;
+      var map = self.map;
+      var result = [];
 
       for (var i = 0, length = keys.length; i < length; i++) {
         var key = keys[i];
@@ -6900,14 +7561,13 @@
       }
 
       return result;
-    
     };
 
     def.$to_h = function() {
       var self = this;
-      
-      var hash   = new Opal.Hash._alloc,
-          cloned = self.$clone();
+
+      var hash   = new Opal.Hash._alloc;
+      var cloned = self.$clone();
 
       hash.map  = cloned.map;
       hash.keys = cloned.keys;
@@ -6915,7 +7575,6 @@
       hash.proc = cloned.proc;
 
       return hash;
-    ;
     };
 
     def.$to_hash = function() {
@@ -6931,33 +7590,45 @@
 
     $opal.defn(self, '$values_at', def.$indexes);
 
-    return (def.$values = function() {
+    return def.$values = function() {
       var self = this;
-      
-      var map    = self.map,
-          result = [];
+
+      var map    = self.map;
+      var result = [];
 
       for (var key in map) {
         result.push(map[key]);
       }
 
       return result;
-    
-    }, nil);
-  })(self, null)
-})(Opal);
+    }, nil;
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/hash.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$include', '$to_str', '$===', '$format', '$coerce_to', '$to_s', '$respond_to?', '$<=>', '$raise', '$=~', '$empty?', '$ljust', '$ceil', '$/', '$+', '$rjust', '$floor', '$to_a', '$each_char', '$coerce_to!', '$enum_for', '$split', '$chomp', '$escape', '$class', '$to_i', '$name', '$each_line', '$match', '$to_proc', '$new', '$is_a?', '$[]', '$str', '$value', '$try_convert']);
-  (function($base, $super) {
-    function $String(){};
+  ((($base, $super) => {
+    function $String(){}
     var self = $String = $klass($base, $super, 'String', $String);
 
-    var def = $String._proto, $scope = $String._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5, TMP_6;
+    var def = $String._proto;
+    var $scope = $String._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
+    var TMP_6;
     def.length = nil;
     self.$include($scope.Comparable);
 
@@ -6982,23 +7653,24 @@
     });
 
     def['$%'] = function(data) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Array['$==='](data)) !== false && $a !== nil) {
         return ($a = self).$format.apply($a, [self].concat(data))
         } else {
         return self.$format(self, data)
-      };
+      }
     };
 
     def['$*'] = function(count) {
       var self = this;
-      
+
       if (count < 1) {
         return '';
       }
 
-      var result  = '',
-          pattern = self;
+      var result  = '';
+      var pattern = self;
 
       while (count > 0) {
         if (count & 1) {
@@ -7010,7 +7682,6 @@
       }
 
       return result;
-    
     };
 
     def['$+'] = function(other) {
@@ -7020,7 +7691,8 @@
     };
 
     def['$<=>'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = other['$respond_to?']("to_str")) !== false && $a !== nil) {
         other = other.$to_str().$to_s();
         return self > other ? 1 : (self < other ? -1 : 0);
@@ -7035,7 +7707,7 @@
           return cmp > 0 ? -1 : (cmp < 0 ? 1 : 0);
         }
       ;
-      };
+      }
     };
 
     def['$=='] = function(other) {
@@ -7062,9 +7734,9 @@
       var size = self.length;
 
       if (index._isRange) {
-        var exclude = index.exclude,
-            length  = index.end,
-            index   = index.begin;
+        var exclude = index.exclude;
+        var length  = index.end;
+        var index   = index.begin;
 
         if (index < 0) {
           index += size;
@@ -7123,22 +7795,21 @@
     };
 
     def.$center = function(width, padstr) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (padstr == null) {
         padstr = " "
       }
       width = $scope.Opal.$coerce_to(width, $scope.Integer, "to_int");
       padstr = $scope.Opal.$coerce_to(padstr, $scope.String, "to_str").$to_s();
       if (($a = padstr['$empty?']()) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "zero width padding")};
+        self.$raise($scope.ArgumentError, "zero width padding")}
       if (($a = width <= self.length) !== false && $a !== nil) {
-        return self};
-      
-      var ljustified = self.$ljust((width['$+'](self.length))['$/'](2).$ceil(), padstr),
-          rjustified = self.$rjust((width['$+'](self.length))['$/'](2).$floor(), padstr);
+        return self}
+      var ljustified = self.$ljust((width['$+'](self.length))['$/'](2).$ceil(), padstr);
+      var rjustified = self.$rjust((width['$+'](self.length))['$/'](2).$floor(), padstr);
 
       return rjustified + ljustified.slice(self.length);
-    ;
     };
 
     def.$chars = function() {
@@ -7147,14 +7818,15 @@
     };
 
     def.$chomp = function(separator) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (separator == null) {
         separator = $gvars["/"]
       }
       if (($a = separator === nil || self.length === 0) !== false && $a !== nil) {
-        return self};
+        return self}
       separator = $scope.Opal['$coerce_to!'](separator, $scope.String, "to_str").$to_s();
-      
+
       if (separator === "\n") {
         return self.replace(/\r?\n?$/, '');
       }
@@ -7168,7 +7840,7 @@
           return self.substr(0, self.length - separator.length);
         }
       }
-    
+
       return self;
     };
 
@@ -7213,30 +7885,35 @@
     };
 
     def.$each_char = TMP_1 = function() {
-      var $a, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
       if (block === nil) {
-        return self.$enum_for("each_char")};
-      
+        return self.$enum_for("each_char")}
+
       for (var i = 0, length = self.length; i < length; i++) {
         ((($a = $opal.$yield1(block, self.charAt(i))) === $breaker) ? $breaker.$v : $a);
       }
-    
+
       return self;
     };
 
     def.$each_line = TMP_2 = function(separator) {
-      var $a, self = this, $iter = TMP_2._p, $yield = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_2._p;
+      var $yield = $iter || nil;
       if (separator == null) {
         separator = $gvars["/"]
       }
       TMP_2._p = null;
       if ($yield === nil) {
-        return self.$split(separator)};
-      
-      var chomped  = self.$chomp(),
-          trailing = self.length != chomped.length,
-          splitted = chomped.split(separator);
+        return self.$split(separator)}
+      var chomped  = self.$chomp();
+      var trailing = self.length != chomped.length;
+      var splitted = chomped.split(separator);
 
       for (var i = 0, length = splitted.length; i < length; i++) {
         if (i < length - 1 || trailing) {
@@ -7246,7 +7923,6 @@
           ((($a = $opal.$yield1($yield, splitted[i])) === $breaker) ? $breaker.$v : $a);
         }
       }
-    ;
       return self;
     };
 
@@ -7275,20 +7951,22 @@
     $opal.defn(self, '$equal?', def['$===']);
 
     def.$gsub = TMP_3 = function(pattern, replace) {
-      var $a, $b, self = this, $iter = TMP_3._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       TMP_3._p = null;
       if (($a = ((($b = $scope.String['$==='](pattern)) !== false && $b !== nil) ? $b : pattern['$respond_to?']("to_str"))) !== false && $a !== nil) {
-        pattern = (new RegExp("" + $scope.Regexp.$escape(pattern.$to_str())))};
+        pattern = (new RegExp("" + $scope.Regexp.$escape(pattern.$to_str())))}
       if (($a = $scope.Regexp['$==='](pattern)) === false || $a === nil) {
-        self.$raise($scope.TypeError, "wrong argument type " + (pattern.$class()) + " (expected Regexp)")};
-      
-      var pattern = pattern.toString(),
-          options = pattern.substr(pattern.lastIndexOf('/') + 1) + 'g',
-          regexp  = pattern.substr(1, pattern.lastIndexOf('/') - 1);
+        self.$raise($scope.TypeError, "wrong argument type " + (pattern.$class()) + " (expected Regexp)")}
+      var pattern = pattern.toString();
+      var options = pattern.substr(pattern.lastIndexOf('/') + 1) + 'g';
+      var regexp  = pattern.substr(1, pattern.lastIndexOf('/') - 1);
 
       self.$sub._p = block;
       return self.$sub(new RegExp(regexp, options), replace);
-    
     };
 
     def.$hash = function() {
@@ -7302,19 +7980,23 @@
     };
 
     def['$include?'] = function(other) {
-      var $a, self = this;
-      
+      var $a;
+      var self = this;
+
       if (other._isString) {
         return self.indexOf(other) !== -1;
       }
-    
+
       if (($a = other['$respond_to?']("to_str")) === false || $a === nil) {
-        self.$raise($scope.TypeError, "no implicit conversion of " + (other.$class().$name()) + " into String")};
+        self.$raise($scope.TypeError, "no implicit conversion of " + (other.$class().$name()) + " into String")}
       return self.indexOf(other.$to_str()) !== -1;
     };
 
     def.$index = function(what, offset) {
-      var $a, $b, self = this, result = nil;
+      var $a;
+      var $b;
+      var self = this;
+      var result = nil;
       if (offset == null) {
         offset = nil
       }
@@ -7323,7 +8005,7 @@
       } else if (($a = what['$respond_to?']("to_str")) !== false && $a !== nil) {
         what = what.$to_str().$to_s()
       } else if (($a = ($b = $scope.Regexp['$==='](what), ($b === nil || $b === false))) !== false && $a !== nil) {
-        self.$raise($scope.TypeError, "type mismatch: " + (what.$class()) + " given")};
+        self.$raise($scope.TypeError, "type mismatch: " + (what.$class()) + " given")}
       result = -1;
       if (offset !== false && offset !== nil) {
         offset = $scope.Opal.$coerce_to(offset, $scope.Integer, "to_int");
@@ -7352,37 +8034,37 @@
         result = ((($a = (what['$=~'](self))) !== false && $a !== nil) ? $a : -1)
         } else {
         result = self.indexOf(what)
-      };
+      }
       if (($a = result === -1) !== false && $a !== nil) {
         return nil
         } else {
         return result
-      };
+      }
     };
 
     def.$inspect = function() {
       var self = this;
-      
-      var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-          meta      = {
-            '\b': '\\b',
-            '\t': '\\t',
-            '\n': '\\n',
-            '\f': '\\f',
-            '\r': '\\r',
-            '"' : '\\"',
-            '\\': '\\\\'
-          };
+
+      var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
+
+      var meta      = {
+        '\b': '\\b',
+        '\t': '\\t',
+        '\n': '\\n',
+        '\f': '\\f',
+        '\r': '\\r',
+        '"' : '\\"',
+        '\\': '\\\\'
+      };
 
       escapable.lastIndex = 0;
 
-      return escapable.test(self) ? '"' + self.replace(escapable, function(a) {
+      return escapable.test(self) ? '"' + self.replace(escapable, a => {
         var c = meta[a];
 
         return typeof c === 'string' ? c :
           '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
       }) + '"' : '"' + self + '"';
-    
     };
 
     def.$intern = function() {
@@ -7404,19 +8086,19 @@
     };
 
     def.$ljust = function(width, padstr) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (padstr == null) {
         padstr = " "
       }
       width = $scope.Opal.$coerce_to(width, $scope.Integer, "to_int");
       padstr = $scope.Opal.$coerce_to(padstr, $scope.String, "to_str").$to_s();
       if (($a = padstr['$empty?']()) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "zero width padding")};
+        self.$raise($scope.ArgumentError, "zero width padding")}
       if (($a = width <= self.length) !== false && $a !== nil) {
-        return self};
-      
-      var index  = -1,
-          result = "";
+        return self}
+      var index  = -1;
+      var result = "";
 
       width -= self.length;
 
@@ -7425,7 +8107,6 @@
       }
 
       return self + result.slice(0, width);
-    
     };
 
     def.$lstrip = function() {
@@ -7434,12 +8115,16 @@
     };
 
     def.$match = TMP_4 = function(pattern, pos) {
-      var $a, $b, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (($a = ((($b = $scope.String['$==='](pattern)) !== false && $b !== nil) ? $b : pattern['$respond_to?']("to_str"))) !== false && $a !== nil) {
-        pattern = (new RegExp("" + $scope.Regexp.$escape(pattern.$to_str())))};
+        pattern = (new RegExp("" + $scope.Regexp.$escape(pattern.$to_str())))}
       if (($a = $scope.Regexp['$==='](pattern)) === false || $a === nil) {
-        self.$raise($scope.TypeError, "wrong argument type " + (pattern.$class()) + " (expected Regexp)")};
+        self.$raise($scope.TypeError, "wrong argument type " + (pattern.$class()) + " (expected Regexp)")}
       return ($a = ($b = pattern).$match, $a._p = block.$to_proc(), $a).call($b, self, pos);
     };
 
@@ -7523,24 +8208,23 @@
     };
 
     def.$rjust = function(width, padstr) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (padstr == null) {
         padstr = " "
       }
       width = $scope.Opal.$coerce_to(width, $scope.Integer, "to_int");
       padstr = $scope.Opal.$coerce_to(padstr, $scope.String, "to_str").$to_s();
       if (($a = padstr['$empty?']()) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "zero width padding")};
+        self.$raise($scope.ArgumentError, "zero width padding")}
       if (($a = width <= self.length) !== false && $a !== nil) {
-        return self};
-      
-      var chars     = Math.floor(width - self.length),
-          patterns  = Math.floor(chars / padstr.length),
-          result    = Array(patterns + 1).join(padstr),
-          remaining = chars - result.length;
+        return self}
+      var chars     = Math.floor(width - self.length);
+      var patterns  = Math.floor(chars / padstr.length);
+      var result    = Array(patterns + 1).join(padstr);
+      var remaining = chars - result.length;
 
       return result + padstr.slice(0, remaining) + self;
-    
     };
 
     def.$rstrip = function() {
@@ -7549,9 +8233,11 @@
     };
 
     def.$scan = TMP_5 = function(pattern) {
-      var self = this, $iter = TMP_5._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
-      
+
       if (pattern.global) {
         // should we clear it afterwards too?
         pattern.lastIndex = 0;
@@ -7575,7 +8261,6 @@
       }
 
       return (block !== nil ? self : result);
-    ;
     };
 
     $opal.defn(self, '$size', def.$length);
@@ -7583,7 +8268,8 @@
     $opal.defn(self, '$slice', def['$[]']);
 
     def.$split = function(pattern, limit) {
-      var self = this, $a;
+      var self = this;
+      var $a;
       if (pattern == null) {
         pattern = ((($a = $gvars[";"]) !== false && $a !== nil) ? $a : " ")
       }
@@ -7612,20 +8298,22 @@
     };
 
     def.$sub = TMP_6 = function(pattern, replace) {
-      var self = this, $iter = TMP_6._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
-      
+
       if (typeof(replace) === 'string') {
         // convert Ruby back reference to JavaScript back reference
         replace = replace.replace(/\\([1-9])/g, '$$$1')
         return self.replace(pattern, replace);
       }
       if (block !== nil) {
-        return self.replace(pattern, function() {
+        return self.replace(pattern, function(...args) {
           // FIXME: this should be a formal MatchData object with all the goodies
           var match_data = []
-          for (var i = 0, len = arguments.length; i < len; i++) {
-            var arg = arguments[i];
+          for (var i = 0, len = args.length; i < len; i++) {
+            var arg = args[i];
             if (arg == undefined) {
               match_data.push(nil);
             }
@@ -7649,7 +8337,7 @@
       }
       else if (replace !== undefined) {
         if (replace['$is_a?']($scope.Hash)) {
-          return self.replace(pattern, function(str) {
+          return self.replace(pattern, str => {
             var value = replace['$[]'](self.$str());
 
             return (value == null) ? nil : self.$value().$to_s();
@@ -7670,7 +8358,6 @@
         replace = replace.toString().replace(/\\([1-9])/g, '$$$1')
         return self.replace(pattern, replace);
       }
-    ;
     };
 
     $opal.defn(self, '$succ', def.$next);
@@ -7694,9 +8381,7 @@
     def.$swapcase = function() {
       var self = this;
       
-      var str = self.replace(/([a-z]+)|([A-Z]+)/g, function($0,$1,$2) {
-        return $1 ? $0.toUpperCase() : $0.toLowerCase();
-      });
+      var str = self.replace(/([a-z]+)|([A-Z]+)/g, ($0, $1, $2) => $1 ? $0.toUpperCase() : $0.toLowerCase());
 
       if (self.constructor === String) {
         return str;
@@ -7747,7 +8432,7 @@
       
       var name = '$' + self;
 
-      return function(arg) {
+      return arg => {
         var meth = arg[name];
         return meth ? meth.call(arg) : arg.$method_missing(name);
       };
@@ -8067,26 +8752,37 @@
       var self = this;
       return true;
     }, nil);
-  })(self, null);
+  }))(self, null);
   return $opal.cdecl($scope, 'Symbol', $scope.String);
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/string.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$attr_reader', '$pre_match', '$post_match', '$[]', '$===', '$==', '$raise', '$inspect']);
-  return (function($base, $super) {
-    function $MatchData(){};
+  return ((($base, $super) => {
+    function $MatchData(){}
     var self = $MatchData = $klass($base, $super, 'MatchData', $MatchData);
 
-    var def = $MatchData._proto, $scope = $MatchData._scope, TMP_1;
+    var def = $MatchData._proto;
+    var $scope = $MatchData._scope;
+    var TMP_1;
     def.string = def.matches = def.begin = nil;
     self.$attr_reader("post_match", "pre_match", "regexp", "string");
 
     $opal.defs(self, '$new', TMP_1 = function(regexp, match_groups) {
-      var self = this, $iter = TMP_1._p, $yield = $iter || nil, data = nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var $yield = $iter || nil;
+      var data = nil;
       TMP_1._p = null;
       data = $opal.find_super_dispatcher(self, 'new', TMP_1, null, $MatchData).apply(self, [regexp, match_groups]);
       $gvars["`"] = data.$pre_match();
@@ -8118,22 +8814,30 @@
     };
 
     def['$[]'] = function(args) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       args = $slice.call(arguments, 0);
       return ($a = self.matches)['$[]'].apply($a, [].concat(args));
     };
 
     def['$=='] = function(other) {
-      var $a, $b, $c, $d, self = this;
+      var $a;
+      var $b;
+      var $c;
+      var $d;
+      var self = this;
       if (($a = $scope.MatchData['$==='](other)) === false || $a === nil) {
-        return false};
+        return false}
       return ($a = ($b = ($c = ($d = self.string == other.string, $d !== false && $d !== nil ?self.regexp == other.regexp : $d), $c !== false && $c !== nil ?self.pre_match == other.pre_match : $c), $b !== false && $b !== nil ?self.post_match == other.post_match : $b), $a !== false && $a !== nil ?self.begin == other.begin : $a);
     };
 
     def.$begin = function(pos) {
-      var $a, $b, $c, self = this;
+      var $a;
+      var $b;
+      var $c;
+      var self = this;
       if (($a = ($b = ($c = pos['$=='](0), ($c === nil || $c === false)), $b !== false && $b !== nil ?($c = pos['$=='](1), ($c === nil || $c === false)) : $b)) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "MatchData#begin only supports 0th element")};
+        self.$raise($scope.ArgumentError, "MatchData#begin only supports 0th element")}
       return self.begin;
     };
 
@@ -8172,12 +8876,12 @@
       return self.matches[0];
     };
 
-    return (def.$values_at = function(indexes) {
+    return def.$values_at = function(indexes) {
       var self = this;
       indexes = $slice.call(arguments, 0);
-      
-      var values       = [],
-          match_length = self.matches.length;
+
+      var values       = [];
+      var match_length = self.matches.length;
 
       for (var i = 0, length = indexes.length; i < length; i++) {
         var pos = indexes[i];
@@ -8198,25 +8902,47 @@
       }
 
       return values;
-    ;
-    }, nil);
-  })(self, null)
-})(Opal);
+    }, nil;
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/match_data.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var $a, $b, TMP_4, $c, TMP_6, $d, TMP_8, self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var $a;
+  var $b;
+  var TMP_4;
+  var $c;
+  var TMP_6;
+  var $d;
+  var TMP_8;
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$+', '$[]', '$new', '$to_proc', '$each', '$const_set', '$sub', '$===', '$const_get', '$==', '$name', '$include?', '$names', '$constants', '$raise', '$attr_accessor', '$attr_reader', '$register', '$length', '$bytes', '$to_a', '$each_byte', '$bytesize', '$enum_for', '$find', '$getbyte']);
-  (function($base, $super) {
-    function $Encoding(){};
+  ((($base, $super) => {
+    function $Encoding(){}
     var self = $Encoding = $klass($base, $super, 'Encoding', $Encoding);
 
-    var def = $Encoding._proto, $scope = $Encoding._scope, TMP_1;
+    var def = $Encoding._proto;
+    var $scope = $Encoding._scope;
+    var TMP_1;
     def.ascii = def.dummy = def.name = nil;
     $opal.defs(self, '$register', TMP_1 = function(name, options) {
-      var $a, $b, $c, TMP_2, self = this, $iter = TMP_1._p, block = $iter || nil, names = nil, encoding = nil;
+      var $a;
+      var $b;
+      var $c;
+      var TMP_2;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
+      var names = nil;
+      var encoding = nil;
       if (options == null) {
         options = $hash2([], {})
       }
@@ -8228,25 +8954,34 @@
     });
 
     $opal.defs(self, '$find', function(name) {try {
-
-      var $a, $b, TMP_3, self = this;
+      var $a;
+      var $b;
+      var TMP_3;
+      var self = this;
       if (($a = self['$==='](name)) !== false && $a !== nil) {
-        return name};
-      ($a = ($b = self.$constants()).$each, $a._p = (TMP_3 = function(const$){var self = TMP_3._s || this, $a, $b, encoding = nil;if (const$ == null) const$ = nil;
-      encoding = self.$const_get(const$);
+        return name}
+      ($a = ($b = self.$constants()).$each, $a._p = (TMP_3 = function(const$){
+        var self = TMP_3._s || this;
+        var $a;
+        var $b;
+        var encoding = nil;
+        if (const$ == null) const$ = nil;
+        encoding = self.$const_get(const$);
         if (($a = ((($b = encoding.$name()['$=='](name)) !== false && $b !== nil) ? $b : encoding.$names()['$include?'](name))) !== false && $a !== nil) {
           $opal.$return(encoding)
           } else {
           return nil
-        };}, TMP_3._s = self, TMP_3), $a).call($b);
+        }
+      }, TMP_3._s = self, TMP_3), $a).call($b);
       return self.$raise($scope.ArgumentError, "unknown encoding name - " + (name));
-      } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
+    } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
     });
 
-    (function(self) {
-      var $scope = self._scope, def = self._proto;
+    ((self => {
+      var $scope = self._scope;
+      var def = self._proto;
       return self.$attr_accessor("default_external")
-    })(self.$singleton_class());
+    }))(self.$singleton_class());
 
     self.$attr_reader("name", "names");
 
@@ -8274,12 +9009,13 @@
     };
 
     def.$inspect = function() {
-      var $a, self = this;
-      return "#<Encoding:" + (self.name) + ((function() {if (($a = self.dummy) !== false && $a !== nil) {
+      var $a;
+      var self = this;
+      return "#<Encoding:" + (self.name) + (((() => {if (($a = self.dummy) !== false && $a !== nil) {
         return " (dummy)"
         } else {
         return nil
-      }; return nil; })()) + ">";
+      }; return nil; }))()) + ">";
     };
 
     def.$each_byte = function() {
@@ -8296,12 +9032,17 @@
       var self = this;
       return self.$raise($scope.NotImplementedError);
     }, nil);
-  })(self, null);
-  ($a = ($b = $scope.Encoding).$register, $a._p = (TMP_4 = function(){var self = TMP_4._s || this, TMP_5;
-  $opal.defn(self, '$each_byte', TMP_5 = function(string) {
-      var $a, self = this, $iter = TMP_5._p, block = $iter || nil;
+  }))(self, null);
+  ($a = ($b = $scope.Encoding).$register, $a._p = (TMP_4 = function(){
+    var self = TMP_4._s || this;
+    var TMP_5;
+    $opal.defn(self, '$each_byte', TMP_5 = function(string) {
+      var $a;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
-      
+
       for (var i = 0, length = string.length; i < length; i++) {
         var code = string.charCodeAt(i);
 
@@ -8316,48 +9057,60 @@
           }
         }
       }
-    
     });
     return ($opal.defn(self, '$bytesize', function() {
       var self = this;
       return self.$bytes().$length();
-    }), nil);}, TMP_4._s = self, TMP_4), $a).call($b, "UTF-8", $hash2(["aliases", "ascii"], {"aliases": ["CP65001"], "ascii": true}));
-  ($a = ($c = $scope.Encoding).$register, $a._p = (TMP_6 = function(){var self = TMP_6._s || this, TMP_7;
-  $opal.defn(self, '$each_byte', TMP_7 = function(string) {
-      var $a, self = this, $iter = TMP_7._p, block = $iter || nil;
+    }), nil);
+  }, TMP_4._s = self, TMP_4), $a).call($b, "UTF-8", $hash2(["aliases", "ascii"], {"aliases": ["CP65001"], "ascii": true}));
+  ($a = ($c = $scope.Encoding).$register, $a._p = (TMP_6 = function(){
+    var self = TMP_6._s || this;
+    var TMP_7;
+    $opal.defn(self, '$each_byte', TMP_7 = function(string) {
+      var $a;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       TMP_7._p = null;
-      
+
       for (var i = 0, length = string.length; i < length; i++) {
         var code = string.charCodeAt(i);
 
         ((($a = $opal.$yield1(block, code & 0xff)) === $breaker) ? $breaker.$v : $a);
         ((($a = $opal.$yield1(block, code >> 8)) === $breaker) ? $breaker.$v : $a);
       }
-    
     });
     return ($opal.defn(self, '$bytesize', function() {
       var self = this;
       return self.$bytes().$length();
-    }), nil);}, TMP_6._s = self, TMP_6), $a).call($c, "UTF-16LE");
-  ($a = ($d = $scope.Encoding).$register, $a._p = (TMP_8 = function(){var self = TMP_8._s || this, TMP_9;
-  $opal.defn(self, '$each_byte', TMP_9 = function(string) {
-      var $a, self = this, $iter = TMP_9._p, block = $iter || nil;
+    }), nil);
+  }, TMP_6._s = self, TMP_6), $a).call($c, "UTF-16LE");
+  ($a = ($d = $scope.Encoding).$register, $a._p = (TMP_8 = function(){
+    var self = TMP_8._s || this;
+    var TMP_9;
+    $opal.defn(self, '$each_byte', TMP_9 = function(string) {
+      var $a;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
       TMP_9._p = null;
-      
+
       for (var i = 0, length = string.length; i < length; i++) {
         ((($a = $opal.$yield1(block, string.charCodeAt(i) & 0xff)) === $breaker) ? $breaker.$v : $a);
       }
-    
     });
     return ($opal.defn(self, '$bytesize', function() {
       var self = this;
       return self.$bytes().$length();
-    }), nil);}, TMP_8._s = self, TMP_8), $a).call($d, "ASCII-8BIT", $hash2(["aliases", "ascii"], {"aliases": ["BINARY"], "ascii": true}));
-  return (function($base, $super) {
-    function $String(){};
+    }), nil);
+  }, TMP_8._s = self, TMP_8), $a).call($d, "ASCII-8BIT", $hash2(["aliases", "ascii"], {"aliases": ["BINARY"], "ascii": true}));
+  return ((($base, $super) => {
+    function $String(){}
     var self = $String = $klass($base, $super, 'String', $String);
 
-    var def = $String._proto, $scope = $String._scope, TMP_10;
+    var def = $String._proto;
+    var $scope = $String._scope;
+    var TMP_10;
     def.encoding = nil;
     def.encoding = ($scope.Encoding)._scope.UTF_16LE;
 
@@ -8372,10 +9125,14 @@
     };
 
     def.$each_byte = TMP_10 = function() {
-      var $a, $b, self = this, $iter = TMP_10._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_10._p;
+      var block = $iter || nil;
       TMP_10._p = null;
       if (block === nil) {
-        return self.$enum_for("each_byte")};
+        return self.$enum_for("each_byte")}
       ($a = ($b = self.encoding).$each_byte, $a._p = block.$to_proc(), $a).call($b, self);
       return self;
     };
@@ -8402,31 +9159,44 @@
       var self = this;
       return self.encoding.$getbyte(self, idx);
     }, nil);
-  })(self, null);
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/encoding.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$include', '$undef_method', '$coerce', '$===', '$raise', '$class', '$__send__', '$send_coerced', '$to_int', '$respond_to?', '$==', '$enum_for', '$<', '$>', '$floor', '$/', '$%']);
-  (function($base, $super) {
-    function $Numeric(){};
+  ((($base, $super) => {
+    function $Numeric(){}
     var self = $Numeric = $klass($base, $super, 'Numeric', $Numeric);
 
-    var def = $Numeric._proto, $scope = $Numeric._scope, TMP_1, TMP_2, TMP_3, TMP_4, TMP_5;
+    var def = $Numeric._proto;
+    var $scope = $Numeric._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
+    var TMP_4;
+    var TMP_5;
     self.$include($scope.Comparable);
 
     def._isNumber = true;
 
-    (function(self) {
-      var $scope = self._scope, def = self._proto;
+    ((self => {
+      var $scope = self._scope;
+      var def = self._proto;
       return self.$undef_method("new")
-    })(self.$singleton_class());
+    }))(self.$singleton_class());
 
     def.$coerce = function(other, type) {
-      var self = this, $case = nil;
+      var self = this;
+      var $case = nil;
       if (type == null) {
         type = "operation"
       }
@@ -8440,14 +9210,19 @@
       }
     
       } catch ($err) {if (true) {
-        return (function() {$case = type;if ("operation"['$===']($case)) {return self.$raise($scope.TypeError, "" + (other.$class()) + " can't be coerce into Numeric")}else if ("comparison"['$===']($case)) {return self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}else { return nil }})()
+        return ((() => {$case = type;if ("operation"['$===']($case)) {return self.$raise($scope.TypeError, "" + (other.$class()) + " can't be coerce into Numeric")}else if ("comparison"['$===']($case)) {return self.$raise($scope.ArgumentError, "comparison of " + (self.$class()) + " with " + (other.$class()) + " failed")}else { return nil }}))();
         }else { throw $err; }
-      };
+      }
     };
 
     def.$send_coerced = function(method, other) {
-      var $a, self = this, type = nil, $case = nil, a = nil, b = nil;
-      type = (function() {$case = method;if ("+"['$===']($case) || "-"['$===']($case) || "*"['$===']($case) || "/"['$===']($case) || "%"['$===']($case) || "&"['$===']($case) || "|"['$===']($case) || "^"['$===']($case) || "**"['$===']($case)) {return "operation"}else if (">"['$===']($case) || ">="['$===']($case) || "<"['$===']($case) || "<="['$===']($case) || "<=>"['$===']($case)) {return "comparison"}else { return nil }})();
+      var $a;
+      var self = this;
+      var type = nil;
+      var $case = nil;
+      var a = nil;
+      var b = nil;
+      type = ((() => {$case = method;if ("+"['$===']($case) || "-"['$===']($case) || "*"['$===']($case) || "/"['$===']($case) || "%"['$===']($case) || "&"['$===']($case) || "|"['$===']($case) || "^"['$===']($case) || "**"['$===']($case)) {return "operation"}else if (">"['$===']($case) || ">="['$===']($case) || "<"['$===']($case) || "<="['$===']($case) || "<=>"['$===']($case)) {return "comparison"}else { return nil }}))();
       $a = $opal.to_ary(self.$coerce(other, type)), a = ($a[0] == null ? nil : $a[0]), b = ($a[1] == null ? nil : $a[1]);
       return a.$__send__(method, b);
     };
@@ -8647,7 +9422,7 @@
       var self = this;
       
       if (other._isNumber) {
-        return Math.pow(self, other);
+        return self ** other;
       }
       else {
         return self.$send_coerced("**", other);
@@ -8693,17 +9468,20 @@
     $opal.defn(self, '$conjugate', def.$conj);
 
     def.$downto = TMP_1 = function(finish) {
-      var $a, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("downto", finish)};
-      
+        return self.$enum_for("downto", finish)}
+
       for (var i = self; i >= finish; i--) {
         if (block(i) === $breaker) {
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
@@ -8731,13 +9509,18 @@
       return self % 1 === 0;
     };
 
-    def['$is_a?'] = TMP_2 = function(klass) {var $zuper = $slice.call(arguments, 0);
-      var $a, $b, self = this, $iter = TMP_2._p, $yield = $iter || nil;
+    def['$is_a?'] = TMP_2 = function(klass) {
+      var $zuper = $slice.call(arguments, 0);
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_2._p;
+      var $yield = $iter || nil;
       TMP_2._p = null;
       if (($a = (($b = klass['$==']($scope.Float)) ? $scope.Float['$==='](self) : $b)) !== false && $a !== nil) {
-        return true};
+        return true}
       if (($a = (($b = klass['$==']($scope.Integer)) ? $scope.Integer['$==='](self) : $b)) !== false && $a !== nil) {
-        return true};
+        return true}
       return $opal.find_super_dispatcher(self, 'is_a?', TMP_2, $iter).apply(self, $zuper);
     };
 
@@ -8771,16 +9554,19 @@
     };
 
     def.$step = TMP_3 = function(limit, step) {
-      var $a, self = this, $iter = TMP_3._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_3._p;
+      var block = $iter || nil;
       if (step == null) {
         step = 1
       }
       TMP_3._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("step", limit, step)};
+        return self.$enum_for("step", limit, step)}
       if (($a = step == 0) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "step cannot be 0")};
-      
+        self.$raise($scope.ArgumentError, "step cannot be 0")}
+
       var value = self;
 
       if (step > 0) {
@@ -8795,24 +9581,27 @@
           value += step;
         }
       }
-    
+
       return self;
     };
 
     $opal.defn(self, '$succ', def.$next);
 
     def.$times = TMP_4 = function() {
-      var $a, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("times")};
-      
+        return self.$enum_for("times")}
+
       for (var i = 0; i < self; i++) {
         if (block(i) === $breaker) {
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
@@ -8829,36 +9618,43 @@
     $opal.defn(self, '$to_int', def.$to_i);
 
     def.$to_s = function(base) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       if (base == null) {
         base = 10
       }
       if (($a = ((($b = base['$<'](2)) !== false && $b !== nil) ? $b : base['$>'](36))) !== false && $a !== nil) {
-        self.$raise($scope.ArgumentError, "base must be between 2 and 36")};
+        self.$raise($scope.ArgumentError, "base must be between 2 and 36")}
       return self.toString(base);
     };
 
     $opal.defn(self, '$inspect', def.$to_s);
 
     def.$divmod = function(rhs) {
-      var self = this, q = nil, r = nil;
+      var self = this;
+      var q = nil;
+      var r = nil;
       q = (self['$/'](rhs)).$floor();
       r = self['$%'](rhs);
       return [q, r];
     };
 
     def.$upto = TMP_5 = function(finish) {
-      var $a, self = this, $iter = TMP_5._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_5._p;
+      var block = $iter || nil;
       TMP_5._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("upto", finish)};
-      
+        return self.$enum_for("upto", finish)}
+
       for (var i = self; i <= finish; i++) {
         if (block(i) === $breaker) {
           return $breaker.$v;
         }
       }
-    
+
       return self;
     };
 
@@ -8882,33 +9678,36 @@
       return self == Infinity || self == -Infinity;
     };
 
-    return (def['$infinite?'] = function() {
-      var $a, self = this;
+    return def['$infinite?'] = function() {
+      var $a;
+      var self = this;
       if (($a = self == Infinity) !== false && $a !== nil) {
         return +1;
       } else if (($a = self == -Infinity) !== false && $a !== nil) {
         return -1;
         } else {
         return nil
-      };
-    }, nil);
-  })(self, null);
+      }
+    }, nil;
+  }))(self, null);
   $opal.cdecl($scope, 'Fixnum', $scope.Numeric);
-  (function($base, $super) {
-    function $Integer(){};
+  ((($base, $super) => {
+    function $Integer(){}
     var self = $Integer = $klass($base, $super, 'Integer', $Integer);
 
-    var def = $Integer._proto, $scope = $Integer._scope;
+    var def = $Integer._proto;
+    var $scope = $Integer._scope;
     return ($opal.defs(self, '$===', function(other) {
       var self = this;
       return !!(other._isNumber && (other % 1) == 0);
     }), nil)
-  })(self, $scope.Numeric);
-  return (function($base, $super) {
-    function $Float(){};
+  }))(self, $scope.Numeric);
+  return ((($base, $super) => {
+    function $Float(){}
     var self = $Float = $klass($base, $super, 'Float', $Float);
 
-    var def = $Float._proto, $scope = $Float._scope;
+    var def = $Float._proto;
+    var $scope = $Float._scope;
     $opal.defs(self, '$===', function(other) {
       var self = this;
       return !!(other._isNumber && (other % 1) != 0);
@@ -8917,37 +9716,50 @@
     $opal.cdecl($scope, 'INFINITY', Infinity);
 
     return $opal.cdecl($scope, 'NAN', NaN);
-  })(self, $scope.Numeric);
-})(Opal);
+  }))(self, $scope.Numeric);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/numeric.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$raise']);
-  return (function($base, $super) {
-    function $Proc(){};
+  return ((($base, $super) => {
+    function $Proc(){}
     var self = $Proc = $klass($base, $super, 'Proc', $Proc);
 
-    var def = $Proc._proto, $scope = $Proc._scope, TMP_1, TMP_2;
+    var def = $Proc._proto;
+    var $scope = $Proc._scope;
+    var TMP_1;
+    var TMP_2;
     def._isProc = true;
 
     def.is_lambda = false;
 
     $opal.defs(self, '$new', TMP_1 = function() {
-      var $a, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       TMP_1._p = null;
       if (($a = block) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "tried to create a Proc object without a block")};
+        self.$raise($scope.ArgumentError, "tried to create a Proc object without a block")}
       return block;
     });
 
     def.$call = TMP_2 = function(args) {
-      var self = this, $iter = TMP_2._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_2._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_2._p = null;
-      
+
       if (block !== nil) {
         self._p = block;
       }
@@ -8955,7 +9767,7 @@
       var result;
 
       if (self.is_lambda) {
-        result = self.apply(null, args);
+        result = self(...args);
       }
       else {
         result = Opal.$yieldX(self, args);
@@ -8966,7 +9778,6 @@
       }
 
       return result;
-    
     };
 
     $opal.defn(self, '$[]', def.$call);
@@ -8985,20 +9796,27 @@
       var self = this;
       return self.length;
     }, nil);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/proc.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$attr_reader', '$class', '$arity', '$new', '$name']);
-  (function($base, $super) {
-    function $Method(){};
+  ((($base, $super) => {
+    function $Method(){}
     var self = $Method = $klass($base, $super, 'Method', $Method);
 
-    var def = $Method._proto, $scope = $Method._scope, TMP_1;
+    var def = $Method._proto;
+    var $scope = $Method._scope;
+    var TMP_1;
     def.method = def.receiver = def.owner = def.name = def.obj = nil;
     self.$attr_reader("owner", "receiver", "name");
 
@@ -9016,14 +9834,15 @@
     };
 
     def.$call = TMP_1 = function(args) {
-      var self = this, $iter = TMP_1._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_1._p = null;
-      
+
       self.method._p = block;
 
       return self.method.apply(self.receiver, args);
-    ;
     };
 
     $opal.defn(self, '$[]', def.$call);
@@ -9042,12 +9861,13 @@
       var self = this;
       return "#<Method: " + (self.obj.$class().$name()) + "#" + (self.name) + "}>";
     }, nil);
-  })(self, null);
-  return (function($base, $super) {
-    function $UnboundMethod(){};
+  }))(self, null);
+  return ((($base, $super) => {
+    function $UnboundMethod(){}
     var self = $UnboundMethod = $klass($base, $super, 'UnboundMethod', $UnboundMethod);
 
-    var def = $UnboundMethod._proto, $scope = $UnboundMethod._scope;
+    var def = $UnboundMethod._proto;
+    var $scope = $UnboundMethod._scope;
     def.method = def.name = def.owner = nil;
     self.$attr_reader("owner", "name");
 
@@ -9072,20 +9892,29 @@
       var self = this;
       return "#<UnboundMethod: " + (self.owner.$name()) + "#" + (self.name) + ">";
     }, nil);
-  })(self, null);
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/method.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$include', '$attr_reader', '$include?', '$<=', '$<', '$enum_for', '$succ', '$==', '$===', '$exclude_end?', '$eql?', '$begin', '$end', '$cover?', '$raise', '$inspect']);
-  return (function($base, $super) {
-    function $Range(){};
+  return ((($base, $super) => {
+    function $Range(){}
     var self = $Range = $klass($base, $super, 'Range', $Range);
 
-    var def = $Range._proto, $scope = $Range._scope, TMP_1, TMP_2, TMP_3;
+    var def = $Range._proto;
+    var $scope = $Range._scope;
+    var TMP_1;
+    var TMP_2;
+    var TMP_3;
     def.begin = def.exclude = def.end = nil;
     self.$include($scope.Enumerable);
 
@@ -9122,35 +9951,46 @@
     };
 
     def['$cover?'] = function(value) {
-      var $a, $b, self = this;
-      return (($a = self.begin['$<='](value)) ? ((function() {if (($b = self.exclude) !== false && $b !== nil) {
+      var $a;
+      var $b;
+      var self = this;
+      return ($a = self.begin['$<='](value)) ? (((() => {if (($b = self.exclude) !== false && $b !== nil) {
         return value['$<'](self.end)
         } else {
         return value['$<='](self.end)
-      }; return nil; })()) : $a);
+      }; return nil; }))()) : $a;
     };
 
     $opal.defn(self, '$last', def.$end);
 
     def.$each = TMP_1 = function() {
-      var $a, $b, $c, self = this, $iter = TMP_1._p, block = $iter || nil, current = nil, last = nil;
+      var $a;
+      var $b;
+      var $c;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
+      var current = nil;
+      var last = nil;
       TMP_1._p = null;
       if (block === nil) {
-        return self.$enum_for("each")};
+        return self.$enum_for("each")}
       current = self.begin;
       last = self.end;
       while (current['$<'](last)) {
       if ($opal.$yield1(block, current) === $breaker) return $breaker.$v;
-      current = current.$succ();};
+      current = current.$succ();}
       if (($a = ($b = ($c = self.exclude, ($c === nil || $c === false)), $b !== false && $b !== nil ?current['$=='](last) : $b)) !== false && $a !== nil) {
-        if ($opal.$yield1(block, current) === $breaker) return $breaker.$v};
+        if ($opal.$yield1(block, current) === $breaker) return $breaker.$v}
       return self;
     };
 
     def['$eql?'] = function(other) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       if (($a = $scope.Range['$==='](other)) === false || $a === nil) {
-        return false};
+        return false}
       return ($a = ($b = self.exclude['$==='](other['$exclude_end?']()), $b !== false && $b !== nil ?self.begin['$eql?'](other.$begin()) : $b), $a !== false && $a !== nil ?self.end['$eql?'](other.$end()) : $a);
     };
 
@@ -9166,24 +10006,30 @@
       return self['$cover?'](obj);
     };
 
-    def.$max = TMP_2 = function() {var $zuper = $slice.call(arguments, 0);
-      var self = this, $iter = TMP_2._p, $yield = $iter || nil;
+    def.$max = TMP_2 = function(...args) {
+      var $zuper = $slice.call(args, 0);
+      var self = this;
+      var $iter = TMP_2._p;
+      var $yield = $iter || nil;
       TMP_2._p = null;
       if (($yield !== nil)) {
         return $opal.find_super_dispatcher(self, 'max', TMP_2, $iter).apply(self, $zuper)
         } else {
         return self.exclude ? self.end - 1 : self.end;
-      };
+      }
     };
 
-    def.$min = TMP_3 = function() {var $zuper = $slice.call(arguments, 0);
-      var self = this, $iter = TMP_3._p, $yield = $iter || nil;
+    def.$min = TMP_3 = function(...args) {
+      var $zuper = $slice.call(args, 0);
+      var self = this;
+      var $iter = TMP_3._p;
+      var $yield = $iter || nil;
       TMP_3._p = null;
       if (($yield !== nil)) {
         return $opal.find_super_dispatcher(self, 'min', TMP_3, $iter).apply(self, $zuper)
         } else {
         return self.begin
-      };
+      }
     };
 
     $opal.defn(self, '$member?', def['$include?']);
@@ -9202,28 +10048,33 @@
     };
 
     return $opal.defn(self, '$inspect', def.$to_s);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/range.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$include', '$raise', '$kind_of?', '$to_i', '$coerce_to', '$between?', '$new', '$compact', '$nil?', '$===', '$<=>', '$to_f', '$is_a?', '$zero?', '$warn', '$yday', '$rjust', '$ljust', '$zone', '$strftime', '$sec', '$min', '$hour', '$day', '$month', '$year', '$wday', '$isdst']);
-  (function($base, $super) {
-    function $Time(){};
+  ((($base, $super) => {
+    function $Time(){}
     var self = $Time = $klass($base, $super, 'Time', $Time);
 
-    var def = $Time._proto, $scope = $Time._scope;
+    var def = $Time._proto;
+    var $scope = $Time._scope;
     self.$include($scope.Comparable);
 
-    
-    var days_of_week = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        short_days   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        short_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-        long_months  = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  ;
+
+    var days_of_week = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    var short_days   = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var short_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var long_months  = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     $opal.defs(self, '$at', function(seconds, frac) {
       var self = this;
@@ -9265,7 +10116,8 @@
     });
 
     $opal.defs(self, '$local', function(year, month, day, hour, minute, second, millisecond) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (month == null) {
         month = nil
       }
@@ -9294,55 +10146,56 @@
         day    = args[6];
         month  = args[5];
         year   = args[4];
-      };
-      year = (function() {if (($a = year['$kind_of?']($scope.String)) !== false && $a !== nil) {
+      }
+      year = ((() => {if (($a = year['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return year.$to_i()
         } else {
         return $scope.Opal.$coerce_to(year, $scope.Integer, "to_int")
-      }; return nil; })();
-      month = (function() {if (($a = month['$kind_of?']($scope.String)) !== false && $a !== nil) {
+      }; return nil; }))();
+      month = ((() => {if (($a = month['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return month.$to_i()
         } else {
         return $scope.Opal.$coerce_to(((($a = month) !== false && $a !== nil) ? $a : 1), $scope.Integer, "to_int")
-      }; return nil; })();
+      }; return nil; }))();
       if (($a = month['$between?'](1, 12)) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "month out of range: " + (month))};
-      day = (function() {if (($a = day['$kind_of?']($scope.String)) !== false && $a !== nil) {
+        self.$raise($scope.ArgumentError, "month out of range: " + (month))}
+      day = ((() => {if (($a = day['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return day.$to_i()
         } else {
         return $scope.Opal.$coerce_to(((($a = day) !== false && $a !== nil) ? $a : 1), $scope.Integer, "to_int")
-      }; return nil; })();
+      }; return nil; }))();
       if (($a = day['$between?'](1, 31)) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "day out of range: " + (day))};
-      hour = (function() {if (($a = hour['$kind_of?']($scope.String)) !== false && $a !== nil) {
+        self.$raise($scope.ArgumentError, "day out of range: " + (day))}
+      hour = ((() => {if (($a = hour['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return hour.$to_i()
         } else {
         return $scope.Opal.$coerce_to(((($a = hour) !== false && $a !== nil) ? $a : 0), $scope.Integer, "to_int")
-      }; return nil; })();
+      }; return nil; }))();
       if (($a = hour['$between?'](0, 24)) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "hour out of range: " + (hour))};
-      minute = (function() {if (($a = minute['$kind_of?']($scope.String)) !== false && $a !== nil) {
+        self.$raise($scope.ArgumentError, "hour out of range: " + (hour))}
+      minute = ((() => {if (($a = minute['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return minute.$to_i()
         } else {
         return $scope.Opal.$coerce_to(((($a = minute) !== false && $a !== nil) ? $a : 0), $scope.Integer, "to_int")
-      }; return nil; })();
+      }; return nil; }))();
       if (($a = minute['$between?'](0, 59)) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "minute out of range: " + (minute))};
-      second = (function() {if (($a = second['$kind_of?']($scope.String)) !== false && $a !== nil) {
+        self.$raise($scope.ArgumentError, "minute out of range: " + (minute))}
+      second = ((() => {if (($a = second['$kind_of?']($scope.String)) !== false && $a !== nil) {
         return second.$to_i()
         } else {
         return $scope.Opal.$coerce_to(((($a = second) !== false && $a !== nil) ? $a : 0), $scope.Integer, "to_int")
-      }; return nil; })();
+      }; return nil; }))();
       if (($a = second['$between?'](0, 59)) === false || $a === nil) {
-        self.$raise($scope.ArgumentError, "second out of range: " + (second))};
+        self.$raise($scope.ArgumentError, "second out of range: " + (second))}
       return ($a = self).$new.apply($a, [].concat([year, month, day, hour, minute, second].$compact()));
     });
 
     $opal.defs(self, '$gm', function(year, month, day, hour, minute, second, utc_offset) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = year['$nil?']()) !== false && $a !== nil) {
-        self.$raise($scope.TypeError, "missing year (got nil)")};
-      
+        self.$raise($scope.TypeError, "missing year (got nil)")}
+
       switch (arguments.length) {
         case 1:
           return new Date(Date.UTC(year, 0));
@@ -9365,14 +10218,14 @@
         case 7:
           self.$raise($scope.NotImplementedError);
       }
-    
     });
 
-    (function(self) {
-      var $scope = self._scope, def = self._proto;
+    ((self => {
+      var $scope = self._scope;
+      var def = self._proto;
       self._proto.$mktime = self._proto.$local;
       return self._proto.$utc = self._proto.$gm;
-    })(self.$singleton_class());
+    }))(self.$singleton_class());
 
     $opal.defs(self, '$now', function() {
       var self = this;
@@ -9380,21 +10233,23 @@
     });
 
     def['$+'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Time['$==='](other)) !== false && $a !== nil) {
-        self.$raise($scope.TypeError, "time + time?")};
+        self.$raise($scope.TypeError, "time + time?")}
       other = $scope.Opal.$coerce_to(other, $scope.Integer, "to_int");
       return new Date(self.getTime() + (other * 1000));
     };
 
     def['$-'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Time['$==='](other)) !== false && $a !== nil) {
         return (self.getTime() - other.getTime()) / 1000;
         } else {
         other = $scope.Opal.$coerce_to(other, $scope.Integer, "to_int");
         return new Date(self.getTime() - (other * 1000));
-      };
+      }
     };
 
     def['$<=>'] = function(other) {
@@ -9427,7 +10282,8 @@
     };
 
     def['$eql?'] = function(other) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       return ($a = other['$is_a?']($scope.Time), $a !== false && $a !== nil ?(self['$<=>'](other))['$zero?']() : $a);
     };
 
@@ -9483,9 +10339,9 @@
 
     def.$zone = function() {
       var self = this;
-      
-      var string = self.toString(),
-          result;
+
+      var string = self.toString();
+      var result;
 
       if (string.indexOf('(') == -1) {
         result = string.match(/[A-Z]{3,4}/)[0];
@@ -9500,7 +10356,6 @@
       else {
         return result;
       }
-    
     };
 
     def.$gmt_offset = function() {
@@ -9511,15 +10366,15 @@
     def.$strftime = function(format) {
       var self = this;
       
-      return format.replace(/%([\-_#^0]*:{0,2})(\d+)?([EO]*)(.)/g, function(full, flags, width, _, conv) {
-        var result = "",
-            width  = parseInt(width),
-            zero   = flags.indexOf('0') !== -1,
-            pad    = flags.indexOf('-') === -1,
-            blank  = flags.indexOf('_') !== -1,
-            upcase = flags.indexOf('^') !== -1,
-            invert = flags.indexOf('#') !== -1,
-            colons = (flags.match(':') || []).length;
+      return format.replace(/%([\-_#^0]*:{0,2})(\d+)?([EO]*)(.)/g, (full, flags, width, _, conv) => {
+        var result = "";
+        var width  = parseInt(width);
+        var zero   = flags.indexOf('0') !== -1;
+        var pad    = flags.indexOf('-') === -1;
+        var blank  = flags.indexOf('_') !== -1;
+        var upcase = flags.indexOf('^') !== -1;
+        var invert = flags.indexOf('#') !== -1;
+        var colons = (flags.match(':') || []).length;
 
         if (zero && blank) {
           if (flags.indexOf('0') < flags.indexOf('_')) {
@@ -9625,9 +10480,9 @@
             break;
 
           case 'z':
-            var offset  = self.getTimezoneOffset(),
-                hours   = Math.floor(Math.abs(offset) / 60),
-                minutes = Math.abs(offset) % 60;
+            var offset  = self.getTimezoneOffset();
+            var hours   = Math.floor(Math.abs(offset) / 60);
+            var minutes = Math.abs(offset) % 60;
 
             result += offset < 0 ? "+" : "-";
             result += hours < 10 ? "0" : "";
@@ -9724,8 +10579,8 @@
         }
 
         if (invert) {
-          result = result.replace(/[A-Z]/, function(c) { c.toLowerCase() }).
-                          replace(/[a-z]/, function(c) { c.toUpperCase() });
+          result = result.replace(/[A-Z]/, c => { c.toLowerCase() }).
+                          replace(/[a-z]/, c => { c.toUpperCase() });
         }
 
         if (pad && (zero || blank)) {
@@ -9783,12 +10638,13 @@
       var self = this;
       return self.getFullYear();
     }, nil);
-  })(self, null);
-  return (function($base, $super) {
-    function $Time(){};
+  }))(self, null);
+  return ((($base, $super) => {
+    function $Time(){}
     var self = $Time = $klass($base, $super, 'Time', $Time);
 
-    var def = $Time._proto, $scope = $Time._scope;
+    var def = $Time._proto;
+    var $scope = $Time._scope;
     $opal.defs(self, '$parse', function(str) {
       var self = this;
       return new Date(Date.parse(str));
@@ -9798,45 +10654,72 @@
       var self = this;
       return self.$strftime("%FT%T%z");
     }, nil);
-  })(self, null);
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/time.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$==', '$[]', '$upcase', '$const_set', '$new', '$unshift', '$each', '$define_struct_attribute', '$instance_eval', '$to_proc', '$raise', '$<<', '$members', '$define_method', '$instance_variable_get', '$instance_variable_set', '$include', '$each_with_index', '$class', '$===', '$>=', '$size', '$include?', '$to_sym', '$enum_for', '$hash', '$all?', '$length', '$map', '$+', '$name', '$join', '$inspect', '$each_pair']);
-  return (function($base, $super) {
-    function $Struct(){};
+  return ((($base, $super) => {
+    function $Struct(){}
     var self = $Struct = $klass($base, $super, 'Struct', $Struct);
 
-    var def = $Struct._proto, $scope = $Struct._scope, TMP_1, TMP_8, TMP_10;
-    $opal.defs(self, '$new', TMP_1 = function(name, args) {var $zuper = $slice.call(arguments, 0);
-      var $a, $b, $c, TMP_2, self = this, $iter = TMP_1._p, block = $iter || nil;
+    var def = $Struct._proto;
+    var $scope = $Struct._scope;
+    var TMP_1;
+    var TMP_8;
+    var TMP_10;
+    $opal.defs(self, '$new', TMP_1 = function(name, args) {
+      var $zuper = $slice.call(arguments, 0);
+      var $a;
+      var $b;
+      var $c;
+      var TMP_2;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_1._p = null;
       if (($a = self['$==']($scope.Struct)) === false || $a === nil) {
-        return $opal.find_super_dispatcher(self, 'new', TMP_1, $iter, $Struct).apply(self, $zuper)};
+        return $opal.find_super_dispatcher(self, 'new', TMP_1, $iter, $Struct).apply(self, $zuper)}
       if (name['$[]'](0)['$=='](name['$[]'](0).$upcase())) {
         return $scope.Struct.$const_set(name, ($a = self).$new.apply($a, [].concat(args)))
         } else {
         args.$unshift(name);
-        return ($b = ($c = $scope.Class).$new, $b._p = (TMP_2 = function(){var self = TMP_2._s || this, $a, $b, TMP_3, $c;
-        ($a = ($b = args).$each, $a._p = (TMP_3 = function(arg){var self = TMP_3._s || this;if (arg == null) arg = nil;
-          return self.$define_struct_attribute(arg)}, TMP_3._s = self, TMP_3), $a).call($b);
+        return ($b = ($c = $scope.Class).$new, $b._p = (TMP_2 = function(){
+          var self = TMP_2._s || this;
+          var $a;
+          var $b;
+          var TMP_3;
+          var $c;
+          ($a = ($b = args).$each, $a._p = (TMP_3 = function(arg){var self = TMP_3._s || this;if (arg == null) arg = nil;
+            return self.$define_struct_attribute(arg)}, TMP_3._s = self, TMP_3), $a).call($b);
           if (block !== false && block !== nil) {
             return ($a = ($c = self).$instance_eval, $a._p = block.$to_proc(), $a).call($c)
             } else {
             return nil
-          };}, TMP_2._s = self, TMP_2), $b).call($c, self);
-      };
+          }
+        }, TMP_2._s = self, TMP_2), $b).call($c, self);
+      }
     });
 
     $opal.defs(self, '$define_struct_attribute', function(name) {
-      var $a, $b, TMP_4, $c, TMP_5, self = this;
+      var $a;
+      var $b;
+      var TMP_4;
+      var $c;
+      var TMP_5;
+      var self = this;
       if (self['$==']($scope.Struct)) {
-        self.$raise($scope.ArgumentError, "you cannot define attributes to the Struct class")};
+        self.$raise($scope.ArgumentError, "you cannot define attributes to the Struct class")}
       self.$members()['$<<'](name);
       ($a = ($b = self).$define_method, $a._p = (TMP_4 = function(){var self = TMP_4._s || this;
       return self.$instance_variable_get("@" + (name))}, TMP_4._s = self, TMP_4), $a).call($b, name);
@@ -9845,20 +10728,25 @@
     });
 
     $opal.defs(self, '$members', function() {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (self.members == null) self.members = nil;
 
       if (self['$==']($scope.Struct)) {
-        self.$raise($scope.ArgumentError, "the Struct class has no members")};
+        self.$raise($scope.ArgumentError, "the Struct class has no members")}
       return ((($a = self.members) !== false && $a !== nil) ? $a : self.members = []);
     });
 
     $opal.defs(self, '$inherited', function(klass) {
-      var $a, $b, TMP_6, self = this, members = nil;
+      var $a;
+      var $b;
+      var TMP_6;
+      var self = this;
+      var members = nil;
       if (self.members == null) self.members = nil;
 
       if (self['$==']($scope.Struct)) {
-        return nil};
+        return nil}
       members = self.members;
       return ($a = ($b = klass).$instance_eval, $a._p = (TMP_6 = function(){var self = TMP_6._s || this;
       return self.members = members}, TMP_6._s = self, TMP_6), $a).call($b);
@@ -9867,7 +10755,10 @@
     self.$include($scope.Enumerable);
 
     def.$initialize = function(args) {
-      var $a, $b, TMP_7, self = this;
+      var $a;
+      var $b;
+      var TMP_7;
+      var self = this;
       args = $slice.call(arguments, 0);
       return ($a = ($b = self.$members()).$each_with_index, $a._p = (TMP_7 = function(name, index){var self = TMP_7._s || this;if (name == null) name = nil;if (index == null) index = nil;
       return self.$instance_variable_set("@" + (name), args['$[]'](index))}, TMP_7._s = self, TMP_7), $a).call($b);
@@ -9879,47 +10770,71 @@
     };
 
     def['$[]'] = function(name) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Integer['$==='](name)) !== false && $a !== nil) {
         if (name['$>='](self.$members().$size())) {
           self.$raise($scope.IndexError, "offset " + (name) + " too large for struct(size:" + (self.$members().$size()) + ")")};
         name = self.$members()['$[]'](name);
       } else if (($a = self.$members()['$include?'](name.$to_sym())) === false || $a === nil) {
-        self.$raise($scope.NameError, "no member '" + (name) + "' in struct")};
+        self.$raise($scope.NameError, "no member '" + (name) + "' in struct")}
       return self.$instance_variable_get("@" + (name));
     };
 
     def['$[]='] = function(name, value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Integer['$==='](name)) !== false && $a !== nil) {
         if (name['$>='](self.$members().$size())) {
           self.$raise($scope.IndexError, "offset " + (name) + " too large for struct(size:" + (self.$members().$size()) + ")")};
         name = self.$members()['$[]'](name);
       } else if (($a = self.$members()['$include?'](name.$to_sym())) === false || $a === nil) {
-        self.$raise($scope.NameError, "no member '" + (name) + "' in struct")};
+        self.$raise($scope.NameError, "no member '" + (name) + "' in struct")}
       return self.$instance_variable_set("@" + (name), value);
     };
 
     def.$each = TMP_8 = function() {
-      var $a, $b, TMP_9, self = this, $iter = TMP_8._p, $yield = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_9;
+      var self = this;
+      var $iter = TMP_8._p;
+      var $yield = $iter || nil;
       TMP_8._p = null;
       if ($yield === nil) {
-        return self.$enum_for("each")};
-      return ($a = ($b = self.$members()).$each, $a._p = (TMP_9 = function(name){var self = TMP_9._s || this, $a;if (name == null) name = nil;
-      return $a = $opal.$yield1($yield, self['$[]'](name)), $a === $breaker ? $a : $a}, TMP_9._s = self, TMP_9), $a).call($b);
+        return self.$enum_for("each")}
+      return ($a = ($b = self.$members()).$each, $a._p = (TMP_9 = function(name){
+        var self = TMP_9._s || this;
+        var $a;
+        if (name == null) name = nil;
+        return $a = $opal.$yield1($yield, self['$[]'](name)), $a === $breaker ? $a : $a
+      }, TMP_9._s = self, TMP_9), $a).call($b);
     };
 
     def.$each_pair = TMP_10 = function() {
-      var $a, $b, TMP_11, self = this, $iter = TMP_10._p, $yield = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_11;
+      var self = this;
+      var $iter = TMP_10._p;
+      var $yield = $iter || nil;
       TMP_10._p = null;
       if ($yield === nil) {
-        return self.$enum_for("each_pair")};
-      return ($a = ($b = self.$members()).$each, $a._p = (TMP_11 = function(name){var self = TMP_11._s || this, $a;if (name == null) name = nil;
-      return $a = $opal.$yieldX($yield, [name, self['$[]'](name)]), $a === $breaker ? $a : $a}, TMP_11._s = self, TMP_11), $a).call($b);
+        return self.$enum_for("each_pair")}
+      return ($a = ($b = self.$members()).$each, $a._p = (TMP_11 = function(name){
+        var self = TMP_11._s || this;
+        var $a;
+        if (name == null) name = nil;
+        return $a = $opal.$yieldX($yield, [name, self['$[]'](name)]), $a === $breaker ? $a : $a
+      }, TMP_11._s = self, TMP_11), $a).call($b);
     };
 
     def['$eql?'] = function(other) {
-      var $a, $b, $c, TMP_12, self = this;
+      var $a;
+      var $b;
+      var $c;
+      var TMP_12;
+      var self = this;
       return ((($a = self.$hash()['$=='](other.$hash())) !== false && $a !== nil) ? $a : ($b = ($c = other.$each_with_index())['$all?'], $b._p = (TMP_12 = function(object, index){var self = TMP_12._s || this;if (object == null) object = nil;if (index == null) index = nil;
       return self['$[]'](self.$members()['$[]'](index))['$=='](object)}, TMP_12._s = self, TMP_12), $b).call($c));
     };
@@ -9932,47 +10847,63 @@
     $opal.defn(self, '$size', def.$length);
 
     def.$to_a = function() {
-      var $a, $b, TMP_13, self = this;
+      var $a;
+      var $b;
+      var TMP_13;
+      var self = this;
       return ($a = ($b = self.$members()).$map, $a._p = (TMP_13 = function(name){var self = TMP_13._s || this;if (name == null) name = nil;
       return self['$[]'](name)}, TMP_13._s = self, TMP_13), $a).call($b);
     };
 
     $opal.defn(self, '$values', def.$to_a);
 
-    return (def.$inspect = function() {
-      var $a, $b, TMP_14, self = this, result = nil;
+    return def.$inspect = function() {
+      var $a;
+      var $b;
+      var TMP_14;
+      var self = this;
+      var result = nil;
       result = "#<struct ";
       if (self.$class()['$==']($scope.Struct)) {
-        result = result['$+']("" + (self.$class().$name()) + " ")};
+        result = result['$+']("" + (self.$class().$name()) + " ")}
       result = result['$+'](($a = ($b = self.$each_pair()).$map, $a._p = (TMP_14 = function(name, value){var self = TMP_14._s || this;if (name == null) name = nil;if (value == null) value = nil;
       return "" + (name) + "=" + (value.$inspect())}, TMP_14._s = self, TMP_14), $a).call($b).$join(", "));
       result = result['$+'](">");
       return result;
-    }, nil);
-  })(self, null)
-})(Opal);
+    }, nil;
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/struct.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $module = $opal.module, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $module = $opal.module;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$write', '$join', '$map', '$String', '$getbyte', '$getc', '$raise', '$new', '$puts', '$to_s']);
-  (function($base, $super) {
-    function $IO(){};
+  ((($base, $super) => {
+    function $IO(){}
     var self = $IO = $klass($base, $super, 'IO', $IO);
 
-    var def = $IO._proto, $scope = $IO._scope;
+    var def = $IO._proto;
+    var $scope = $IO._scope;
     $opal.cdecl($scope, 'SEEK_SET', 0);
 
     $opal.cdecl($scope, 'SEEK_CUR', 1);
 
     $opal.cdecl($scope, 'SEEK_END', 2);
 
-    (function($base) {
+    (($base => {
       var self = $module($base, 'Writable');
 
-      var def = self._proto, $scope = self._scope;
+      var def = self._proto;
+      var $scope = self._scope;
       def['$<<'] = function(string) {
         var self = this;
         self.$write(string);
@@ -9980,25 +10911,32 @@
       };
 
       def.$print = function(args) {
-        var $a, $b, TMP_1, self = this;
+        var $a;
+        var $b;
+        var TMP_1;
+        var self = this;
         args = $slice.call(arguments, 0);
         return self.$write(($a = ($b = args).$map, $a._p = (TMP_1 = function(arg){var self = TMP_1._s || this;if (arg == null) arg = nil;
         return self.$String(arg)}, TMP_1._s = self, TMP_1), $a).call($b).$join($gvars[","]));
       };
 
       def.$puts = function(args) {
-        var $a, $b, TMP_2, self = this;
+        var $a;
+        var $b;
+        var TMP_2;
+        var self = this;
         args = $slice.call(arguments, 0);
         return self.$write(($a = ($b = args).$map, $a._p = (TMP_2 = function(arg){var self = TMP_2._s || this;if (arg == null) arg = nil;
         return self.$String(arg)}, TMP_2._s = self, TMP_2), $a).call($b).$join($gvars["/"]));
       };
-            ;$opal.donate(self, ["$<<", "$print", "$puts"]);
-    })(self);
+      $opal.donate(self, ["$<<", "$print", "$puts"]);
+    }))(self);
 
-    return (function($base) {
+    return (($base => {
       var self = $module($base, 'Readable');
 
-      var def = self._proto, $scope = self._scope;
+      var def = self._proto;
+      var $scope = self._scope;
       def.$readbyte = function() {
         var self = this;
         return self.$getbyte();
@@ -10024,16 +10962,17 @@
         }
         return self.$raise($scope.NotImplementedError);
       };
-            ;$opal.donate(self, ["$readbyte", "$readchar", "$readline", "$readpartial"]);
-    })(self);
-  })(self, null);
+      $opal.donate(self, ["$readbyte", "$readchar", "$readline", "$readpartial"]);
+    }))(self);
+  }))(self, null);
   $opal.cdecl($scope, 'STDERR', $gvars["stderr"] = $scope.IO.$new());
   $opal.cdecl($scope, 'STDIN', $gvars["stdin"] = $scope.IO.$new());
   $opal.cdecl($scope, 'STDOUT', $gvars["stdout"] = $scope.IO.$new());
   $opal.defs($gvars["stdout"], '$puts', function(strs) {
-    var $a, self = this;
+    var $a;
+    var self = this;
     strs = $slice.call(arguments, 0);
-    
+
     for (var i = 0; i < strs.length; i++) {
       if (strs[i] instanceof Array) {
         ($a = self).$puts.apply($a, [].concat((strs[i])));
@@ -10042,13 +10981,14 @@
         console.log((strs[i]).$to_s());
       }
     }
-  
+
     return nil;
   });
-  return ($opal.defs($gvars["stderr"], '$puts', function(strs) {
-    var $a, self = this;
+  return $opal.defs($gvars["stderr"], '$puts', function(strs) {
+    var $a;
+    var self = this;
     strs = $slice.call(arguments, 0);
-    
+
     for (var i = 0; i < strs.length; i++) {
       if (strs[i] instanceof Array) {
         ($a = self).$puts.apply($a, [].concat((strs[i])));
@@ -10057,16 +10997,20 @@
         console.warn((strs[i]).$to_s());
       }
     }
-  
+
     return nil;
-  }), nil);
-})(Opal);
+  }), nil;
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/io.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
   $opal.add_stubs(['$include']);
   $opal.defs(self, '$to_s', function() {
     var self = this;
@@ -10076,18 +11020,29 @@
     var self = this;
     return $scope.Object.$include(mod);
   }), nil);
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/corelib/main.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $range = $opal.range, $hash2 = $opal.hash2, $klass = $opal.klass, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $range = $opal.range;
+  var $hash2 = $opal.hash2;
+  var $klass = $opal.klass;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$try_convert', '$native?', '$respond_to?', '$to_n', '$raise', '$map', '$===', '$Native', '$end_with?', '$define_method', '$[]', '$convert', '$call', '$to_proc', '$new', '$extend', '$to_a', '$to_ary', '$include', '$method_missing', '$[]=', '$slice', '$-', '$length', '$==', '$enum_for', '$>=', '$<<', '$inspect', '$each', '$instance_variable_set', '$members', '$each_with_index', '$each_pair', '$name']);
-  (function($base) {
+  (($base => {
     var self = $module($base, 'Native');
 
-    var def = self._proto, $scope = self._scope, TMP_1;
+    var def = self._proto;
+    var $scope = self._scope;
+    var TMP_1;
     $opal.defs(self, '$is_a?', function(object, klass) {
       var self = this;
       
@@ -10131,10 +11086,15 @@
     });
 
     $opal.defs(self, '$call', TMP_1 = function(obj, key, args) {
-      var $a, $b, TMP_2, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_2;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 2);
       TMP_1._p = null;
-      
+
       var prop = obj[key];
 
       if (prop == null) {
@@ -10145,13 +11105,18 @@
           args.push(block);
         }
 
-        args = ($a = ($b = args).$map, $a._p = (TMP_2 = function(value){var self = TMP_2._s || this, $a, native$ = nil;if (value == null) value = nil;
-      native$ = self.$try_convert(value);
-        if (($a = nil['$==='](native$)) !== false && $a !== nil) {
-          return value
-          } else {
-          return native$
-        };}, TMP_2._s = self, TMP_2), $a).call($b);
+        args = ($a = ($b = args).$map, $a._p = (TMP_2 = function(value){
+          var self = TMP_2._s || this;
+          var $a;
+          var native$ = nil;
+          if (value == null) value = nil;
+          native$ = self.$try_convert(value);
+          if (($a = nil['$==='](native$)) !== false && $a !== nil) {
+            return value
+            } else {
+            return native$
+          }
+        }, TMP_2._s = self, TMP_2), $a).call($b);
 
         return self.$Native(prop.apply(obj, args));
       }
@@ -10161,15 +11126,23 @@
       else {
         return prop;
       }
-    ;
     });
 
-    (function($base) {
+    (($base => {
       var self = $module($base, 'Helpers');
 
-      var def = self._proto, $scope = self._scope;
+      var def = self._proto;
+      var $scope = self._scope;
       def.$alias_native = function(new$, old, options) {
-        var $a, $b, TMP_3, $c, TMP_4, $d, TMP_5, self = this, as = nil;
+        var $a;
+        var $b;
+        var TMP_3;
+        var $c;
+        var TMP_4;
+        var $d;
+        var TMP_5;
+        var self = this;
+        var as = nil;
         if (old == null) {
           old = new$
         }
@@ -10183,25 +11156,36 @@ if (value == null) value = nil;
           self['native'][old['$[]']($range(0, -2, false))] = $scope.Native.$convert(value);
             return value;}, TMP_3._s = self, TMP_3), $a).call($b, new$)
         } else if (($a = as = options['$[]']("as")) !== false && $a !== nil) {
-          return ($a = ($c = self).$define_method, $a._p = (TMP_4 = function(args){var self = TMP_4._s || this, block, $a, $b, $c;
+          return ($a = ($c = self).$define_method, $a._p = (TMP_4 = function(args){
+            var self = TMP_4._s || this;
+            var block;
+            var $a;
+            var $b;
+            var $c;
             if (self['native'] == null) self['native'] = nil;
-args = $slice.call(arguments, 0);
+            args = $slice.call(arguments, 0);
             block = TMP_4._p || nil, TMP_4._p = null;
-          if (($a = value = ($b = ($c = $scope.Native).$call, $b._p = block.$to_proc(), $b).apply($c, [self['native'], old].concat(args))) !== false && $a !== nil) {
-              return as.$new(value.$to_n())
-              } else {
-              return nil
-            }}, TMP_4._s = self, TMP_4), $a).call($c, new$)
+            if (($a = value = ($b = ($c = $scope.Native).$call, $b._p = block.$to_proc(), $b).apply($c, [self['native'], old].concat(args))) !== false && $a !== nil) {
+                return as.$new(value.$to_n())
+                } else {
+                return nil
+              }
+          }, TMP_4._s = self, TMP_4), $a).call($c, new$);
           } else {
-          return ($a = ($d = self).$define_method, $a._p = (TMP_5 = function(args){var self = TMP_5._s || this, block, $a, $b;
+          return ($a = ($d = self).$define_method, $a._p = (TMP_5 = function(args){
+            var self = TMP_5._s || this;
+            var block;
+            var $a;
+            var $b;
             if (self['native'] == null) self['native'] = nil;
-args = $slice.call(arguments, 0);
+            args = $slice.call(arguments, 0);
             block = TMP_5._p || nil, TMP_5._p = null;
-          return ($a = ($b = $scope.Native).$call, $a._p = block.$to_proc(), $a).apply($b, [self['native'], old].concat(args))}, TMP_5._s = self, TMP_5), $a).call($d, new$)
-        };
+            return ($a = ($b = $scope.Native).$call, $a._p = block.$to_proc(), $a).apply($b, [self['native'], old].concat(args))
+          }, TMP_5._s = self, TMP_5), $a).call($d, new$);
+        }
       }
             ;$opal.donate(self, ["$alias_native"]);
-    })(self);
+    }))(self);
 
     $opal.defs(self, '$included', function(klass) {
       var self = this;
@@ -10209,9 +11193,10 @@ args = $slice.call(arguments, 0);
     });
 
     def.$initialize = function(native$) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = $scope.Kernel['$native?'](native$)) === false || $a === nil) {
-        $scope.Kernel.$raise($scope.ArgumentError, "the passed value isn't native")};
+        $scope.Kernel.$raise($scope.ArgumentError, "the passed value isn't native")}
       return self['native'] = native$;
     };
 
@@ -10221,33 +11206,40 @@ args = $slice.call(arguments, 0);
 
       return self['native'];
     };
-        ;$opal.donate(self, ["$initialize", "$to_n"]);
-  })(self);
-  (function($base) {
+    $opal.donate(self, ["$initialize", "$to_n"]);
+  }))(self);
+  (($base => {
     var self = $module($base, 'Kernel');
 
-    var def = self._proto, $scope = self._scope, TMP_6;
+    var def = self._proto;
+    var $scope = self._scope;
+    var TMP_6;
     def['$native?'] = function(value) {
       var self = this;
       return value == null || !value._klass;
     };
 
     def.$Native = function(obj) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = obj == null) !== false && $a !== nil) {
         return nil
       } else if (($a = self['$native?'](obj)) !== false && $a !== nil) {
         return ($scope.Native)._scope.Object.$new(obj)
         } else {
         return obj
-      };
+      }
     };
 
     def.$Array = TMP_6 = function(object, args) {
-      var $a, $b, self = this, $iter = TMP_6._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_6._p = null;
-      
+
       if (object == null || object === nil) {
         return [];
       }
@@ -10263,15 +11255,19 @@ args = $slice.call(arguments, 0);
       else {
         return [object];
       }
-    ;
     };
-        ;$opal.donate(self, ["$native?", "$Native", "$Array"]);
-  })(self);
-  (function($base, $super) {
-    function $Object(){};
+    $opal.donate(self, ["$native?", "$Native", "$Array"]);
+  }))(self);
+  ((($base, $super) => {
+    function $Object(){}
     var self = $Object = $klass($base, $super, 'Object', $Object);
 
-    var def = $Object._proto, $scope = $Object._scope, TMP_7, TMP_8, TMP_9, TMP_10;
+    var def = $Object._proto;
+    var $scope = $Object._scope;
+    var TMP_7;
+    var TMP_8;
+    var TMP_9;
+    var TMP_10;
     def['native'] = nil;
     self.$include($scope.Native);
 
@@ -10292,7 +11288,10 @@ args = $slice.call(arguments, 0);
     $opal.defn(self, '$member?', def['$has_key?']);
 
     $opal.defn(self, '$each', TMP_7 = function(args) {
-      var $a, self = this, $iter = TMP_7._p, $yield = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_7._p;
+      var $yield = $iter || nil;
       args = $slice.call(arguments, 0);
       TMP_7._p = null;
       if (($yield !== nil)) {
@@ -10304,12 +11303,13 @@ args = $slice.call(arguments, 0);
         return self;
         } else {
         return ($a = self).$method_missing.apply($a, ["each"].concat(args))
-      };
+      }
     });
 
     $opal.defn(self, '$[]', function(key) {
-      var $a, self = this;
-      
+      var $a;
+      var self = this;
+
       var prop = self['native'][key];
 
       if (prop instanceof Function) {
@@ -10318,31 +11318,36 @@ args = $slice.call(arguments, 0);
       else {
         return (($a = $opal.Object._scope.Native) == null ? $opal.cm('Native') : $a).$call(self['native'], key)
       }
-    ;
     });
 
     $opal.defn(self, '$[]=', function(key, value) {
-      var $a, self = this, native$ = nil;
+      var $a;
+      var self = this;
+      var native$ = nil;
       native$ = $scope.Native.$try_convert(value);
       if (($a = native$ === nil) !== false && $a !== nil) {
         return self['native'][key] = value;
         } else {
         return self['native'][key] = native$;
-      };
+      }
     });
 
     $opal.defn(self, '$method_missing', TMP_8 = function(mid, args) {
-      var $a, $b, $c, self = this, $iter = TMP_8._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var $c;
+      var self = this;
+      var $iter = TMP_8._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       TMP_8._p = null;
-      
+
       if (mid.charAt(mid.length - 1) === '=') {
         return self['$[]='](mid.$slice(0, mid.$length()['$-'](1)), args['$[]'](0));
       }
       else {
         return ($a = ($b = (($c = $opal.Object._scope.Native) == null ? $opal.cm('Native') : $c)).$call, $a._p = block.$to_proc(), $a).apply($b, [self['native'], mid].concat(args));
       }
-    ;
     });
 
     $opal.defn(self, '$nil?', function() {
@@ -10368,7 +11373,11 @@ args = $slice.call(arguments, 0);
     });
 
     $opal.defn(self, '$to_a', TMP_9 = function(options) {
-      var $a, $b, self = this, $iter = TMP_9._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_9._p;
+      var block = $iter || nil;
       if (options == null) {
         options = $hash2([], {})
       }
@@ -10377,7 +11386,11 @@ args = $slice.call(arguments, 0);
     });
 
     $opal.defn(self, '$to_ary', TMP_10 = function(options) {
-      var $a, $b, self = this, $iter = TMP_10._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_10._p;
+      var block = $iter || nil;
       if (options == null) {
         options = $hash2([], {})
       }
@@ -10389,19 +11402,25 @@ args = $slice.call(arguments, 0);
       var self = this;
       return "#<Native:" + (String(self['native'])) + ">";
     }), nil);
-  })($scope.Native, $scope.BasicObject);
-  (function($base, $super) {
-    function $Array(){};
+  }))($scope.Native, $scope.BasicObject);
+  ((($base, $super) => {
+    function $Array(){}
     var self = $Array = $klass($base, $super, 'Array', $Array);
 
-    var def = $Array._proto, $scope = $Array._scope, TMP_11, TMP_12;
+    var def = $Array._proto;
+    var $scope = $Array._scope;
+    var TMP_11;
+    var TMP_12;
     def.named = def['native'] = def.get = def.block = def.set = def.length = nil;
     self.$include($scope.Native);
 
     self.$include($scope.Enumerable);
 
     def.$initialize = TMP_11 = function(native$, options) {
-      var $a, self = this, $iter = TMP_11._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_11._p;
+      var block = $iter || nil;
       if (options == null) {
         options = $hash2([], {})
       }
@@ -10416,15 +11435,18 @@ args = $slice.call(arguments, 0);
         return self.$raise($scope.ArgumentError, "no length found on the array-like object")
         } else {
         return nil
-      };
+      }
     };
 
     def.$each = TMP_12 = function() {
-      var $a, self = this, $iter = TMP_12._p, block = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_12._p;
+      var block = $iter || nil;
       TMP_12._p = null;
       if (($a = block) === false || $a === nil) {
-        return self.$enum_for("each")};
-      
+        return self.$enum_for("each")}
+
       for (var i = 0, length = self.$length(); i < length; i++) {
         var value = $opal.$yield1(block, self['$[]'](i));
 
@@ -10432,13 +11454,15 @@ args = $slice.call(arguments, 0);
           return $breaker.$v;
         }
       }
-    ;
       return self;
     };
 
     def['$[]'] = function(index) {
-      var $a, self = this, result = nil, $case = nil;
-      result = (function() {$case = index;if ($scope.String['$===']($case) || $scope.Symbol['$===']($case)) {if (($a = self.named) !== false && $a !== nil) {
+      var $a;
+      var self = this;
+      var result = nil;
+      var $case = nil;
+      result = ((() => {$case = index;if ($scope.String['$===']($case) || $scope.Symbol['$===']($case)) {if (($a = self.named) !== false && $a !== nil) {
         return self['native'][self.named](index);
         } else {
         return self['native'][index];
@@ -10446,7 +11470,7 @@ args = $slice.call(arguments, 0);
         return self['native'][self.get](index);
         } else {
         return self['native'][index];
-      }}else { return nil }})();
+      }}else { return nil }}))();
       if (result !== false && result !== nil) {
         if (($a = self.block) !== false && $a !== nil) {
           return self.block.$call(result)
@@ -10455,20 +11479,24 @@ args = $slice.call(arguments, 0);
         }
         } else {
         return nil
-      };
+      }
     };
 
     def['$[]='] = function(index, value) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = self.set) !== false && $a !== nil) {
         return self['native'][self.set](index, $scope.Native.$convert(value));
         } else {
         return self['native'][index] = $scope.Native.$convert(value);
-      };
+      }
     };
 
     def.$last = function(count) {
-      var $a, self = this, index = nil, result = nil;
+      var $a;
+      var self = this;
+      var index = nil;
+      var result = nil;
       if (count == null) {
         count = nil
       }
@@ -10481,7 +11509,7 @@ args = $slice.call(arguments, 0);
         return result;
         } else {
         return self['$[]'](self.$length()['$-'](1))
-      };
+      }
     };
 
     def.$length = function() {
@@ -10498,65 +11526,77 @@ args = $slice.call(arguments, 0);
       var self = this;
       return self.$to_a().$inspect();
     }, nil);
-  })($scope.Native, null);
-  (function($base, $super) {
-    function $Numeric(){};
+  }))($scope.Native, null);
+  ((($base, $super) => {
+    function $Numeric(){}
     var self = $Numeric = $klass($base, $super, 'Numeric', $Numeric);
 
-    var def = $Numeric._proto, $scope = $Numeric._scope;
+    var def = $Numeric._proto;
+    var $scope = $Numeric._scope;
     return (def.$to_n = function() {
       var self = this;
       return self.valueOf();
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Proc(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Proc(){}
     var self = $Proc = $klass($base, $super, 'Proc', $Proc);
 
-    var def = $Proc._proto, $scope = $Proc._scope;
+    var def = $Proc._proto;
+    var $scope = $Proc._scope;
     return (def.$to_n = function() {
       var self = this;
       return self;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $String(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $String(){}
     var self = $String = $klass($base, $super, 'String', $String);
 
-    var def = $String._proto, $scope = $String._scope;
+    var def = $String._proto;
+    var $scope = $String._scope;
     return (def.$to_n = function() {
       var self = this;
       return self.valueOf();
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Regexp(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Regexp(){}
     var self = $Regexp = $klass($base, $super, 'Regexp', $Regexp);
 
-    var def = $Regexp._proto, $scope = $Regexp._scope;
+    var def = $Regexp._proto;
+    var $scope = $Regexp._scope;
     return (def.$to_n = function() {
       var self = this;
       return self.valueOf();
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $MatchData(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $MatchData(){}
     var self = $MatchData = $klass($base, $super, 'MatchData', $MatchData);
 
-    var def = $MatchData._proto, $scope = $MatchData._scope;
+    var def = $MatchData._proto;
+    var $scope = $MatchData._scope;
     def.matches = nil;
     return (def.$to_n = function() {
       var self = this;
       return self.matches;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Struct(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Struct(){}
     var self = $Struct = $klass($base, $super, 'Struct', $Struct);
 
-    var def = $Struct._proto, $scope = $Struct._scope;
+    var def = $Struct._proto;
+    var $scope = $Struct._scope;
     def.$initialize = function(args) {
-      var $a, $b, TMP_13, $c, TMP_14, self = this, object = nil;
+      var $a;
+      var $b;
+      var TMP_13;
+      var $c;
+      var TMP_14;
+      var self = this;
+      var object = nil;
       args = $slice.call(arguments, 0);
       if (($a = (($b = args.$length()['$=='](1)) ? self['$native?'](args['$[]'](0)) : $b)) !== false && $a !== nil) {
         object = args['$[]'](0);
@@ -10565,22 +11605,27 @@ args = $slice.call(arguments, 0);
         } else {
         return ($a = ($c = self.$members()).$each_with_index, $a._p = (TMP_14 = function(name, index){var self = TMP_14._s || this;if (name == null) name = nil;if (index == null) index = nil;
         return self.$instance_variable_set("@" + (name), args['$[]'](index))}, TMP_14._s = self, TMP_14), $a).call($c)
-      };
+      }
     };
 
-    return (def.$to_n = function() {
-      var $a, $b, TMP_15, self = this, result = nil;
+    return def.$to_n = function() {
+      var $a;
+      var $b;
+      var TMP_15;
+      var self = this;
+      var result = nil;
       result = {};
       ($a = ($b = self).$each_pair, $a._p = (TMP_15 = function(name, value){var self = TMP_15._s || this;if (name == null) name = nil;if (value == null) value = nil;
       return result[name] = value.$to_n();}, TMP_15._s = self, TMP_15), $a).call($b);
       return result;
-    }, nil);
-  })(self, null);
-  (function($base, $super) {
-    function $Array(){};
+    }, nil;
+  }))(self, null);
+  ((($base, $super) => {
+    function $Array(){}
     var self = $Array = $klass($base, $super, 'Array', $Array);
 
-    var def = $Array._proto, $scope = $Array._scope;
+    var def = $Array._proto;
+    var $scope = $Array._scope;
     return (def.$to_n = function() {
       var self = this;
       
@@ -10600,50 +11645,57 @@ args = $slice.call(arguments, 0);
       return result;
     ;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Boolean(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Boolean(){}
     var self = $Boolean = $klass($base, $super, 'Boolean', $Boolean);
 
-    var def = $Boolean._proto, $scope = $Boolean._scope;
+    var def = $Boolean._proto;
+    var $scope = $Boolean._scope;
     return (def.$to_n = function() {
       var self = this;
       return self.valueOf();
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Time(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Time(){}
     var self = $Time = $klass($base, $super, 'Time', $Time);
 
-    var def = $Time._proto, $scope = $Time._scope;
+    var def = $Time._proto;
+    var $scope = $Time._scope;
     return (def.$to_n = function() {
       var self = this;
       return self;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $NilClass(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $NilClass(){}
     var self = $NilClass = $klass($base, $super, 'NilClass', $NilClass);
 
-    var def = $NilClass._proto, $scope = $NilClass._scope;
+    var def = $NilClass._proto;
+    var $scope = $NilClass._scope;
     return (def.$to_n = function() {
       var self = this;
       return null;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Hash(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Hash(){}
     var self = $Hash = $klass($base, $super, 'Hash', $Hash);
 
-    var def = $Hash._proto, $scope = $Hash._scope, TMP_16;
+    var def = $Hash._proto;
+    var $scope = $Hash._scope;
+    var TMP_16;
     def.$initialize = TMP_16 = function(defaults) {
-      var self = this, $iter = TMP_16._p, block = $iter || nil;
+      var self = this;
+      var $iter = TMP_16._p;
+      var block = $iter || nil;
       TMP_16._p = null;
-      
+
       if (defaults != null) {
         if (defaults.constructor === Object) {
-          var map  = self.map,
-              keys = self.keys;
+          var map  = self.map;
+          var keys = self.keys;
 
           for (var key in defaults) {
             var value = defaults[key];
@@ -10667,21 +11719,20 @@ args = $slice.call(arguments, 0);
       }
 
       return self;
-    
     };
 
-    return (def.$to_n = function() {
+    return def.$to_n = function() {
       var self = this;
-      
-      var result = {},
-          keys   = self.keys,
-          map    = self.map,
-          bucket,
-          value;
+
+      var result = {};
+      var keys   = self.keys;
+      var map    = self.map;
+      var bucket;
+      var value;
 
       for (var i = 0, length = keys.length; i < length; i++) {
-        var key = keys[i],
-            obj = map[key];
+        var key = keys[i];
+        var obj = map[key];
 
         if ((obj)['$respond_to?']("to_n")) {
           result[key] = (obj).$to_n();
@@ -10692,67 +11743,47 @@ args = $slice.call(arguments, 0);
       }
 
       return result;
-    ;
-    }, nil);
-  })(self, null);
-  (function($base, $super) {
-    function $Module(){};
+    }, nil;
+  }))(self, null);
+  ((($base, $super) => {
+    function $Module(){}
     var self = $Module = $klass($base, $super, 'Module', $Module);
 
-    var def = $Module._proto, $scope = $Module._scope;
+    var def = $Module._proto;
+    var $scope = $Module._scope;
     return (def.$native_module = function() {
       var self = this;
       return Opal.global[self.$name()] = self;
     }, nil)
-  })(self, null);
-  (function($base, $super) {
-    function $Class(){};
+  }))(self, null);
+  ((($base, $super) => {
+    function $Class(){}
     var self = $Class = $klass($base, $super, 'Class', $Class);
 
-    var def = $Class._proto, $scope = $Class._scope;
+    var def = $Class._proto;
+    var $scope = $Class._scope;
     def.$native_alias = function(jsid, mid) {
       var self = this;
       return self._proto[jsid] = self._proto['$' + mid];
     };
 
     return $opal.defn(self, '$native_class', def.$native_module);
-  })(self, null);
+  }))(self, null);
   return $gvars["$"] = $gvars["global"] = self.$Native(Opal.global);
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/native.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $gvars = $opal.gvars, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $gvars = $opal.gvars;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$new']);
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
   $gvars["&"] = $gvars["~"] = $gvars["`"] = $gvars["'"] = nil;
   $gvars[":"] = [];
   $gvars["\""] = [];
@@ -10769,21 +11800,31 @@ args = $slice.call(arguments, 0);
   $opal.cdecl($scope, 'RUBY_VERSION', "1.9.3");
   $opal.cdecl($scope, 'RUBY_ENGINE_VERSION', "0.5.5");
   return $opal.cdecl($scope, 'RUBY_RELEASE_DATE', "2013-11-25");
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal.js.map
 ;
 
 // *** Opal-Parser ***
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $module = $opal.module;
   $opal.add_stubs(['$include', '$new', '$nil?', '$do_with_enum', '$add', '$[]', '$merge', '$equal?', '$instance_of?', '$class', '$==', '$instance_variable_get', '$is_a?', '$size', '$all?', '$include?', '$[]=', '$enum_for', '$each_key', '$to_proc', '$empty?', '$clear', '$each', '$keys']);
-  (function($base, $super) {
-    function $Set(){};
+  ((($base, $super) => {
+    function $Set(){}
     var self = $Set = $klass($base, $super, 'Set', $Set);
 
-    var def = $Set._proto, $scope = $Set._scope, TMP_1, TMP_4, TMP_6;
+    var def = $Set._proto;
+    var $scope = $Set._scope;
+    var TMP_1;
+    var TMP_4;
+    var TMP_6;
     def.hash = nil;
     self.$include($scope.Enumerable);
 
@@ -10794,24 +11835,32 @@ args = $slice.call(arguments, 0);
     });
 
     def.$initialize = TMP_1 = function(enum$) {
-      var $a, $b, TMP_2, self = this, $iter = TMP_1._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var TMP_2;
+      var self = this;
+      var $iter = TMP_1._p;
+      var block = $iter || nil;
       if (enum$ == null) {
         enum$ = nil
       }
       TMP_1._p = null;
       self.hash = $scope.Hash.$new();
       if (($a = enum$['$nil?']()) !== false && $a !== nil) {
-        return nil};
+        return nil}
       if (block !== false && block !== nil) {
         return ($a = ($b = self).$do_with_enum, $a._p = (TMP_2 = function(o){var self = TMP_2._s || this;if (o == null) o = nil;
         return self.$add(block['$[]'](o))}, TMP_2._s = self, TMP_2), $a).call($b, enum$)
         } else {
         return self.$merge(enum$)
-      };
+      }
     };
 
     def['$=='] = function(other) {
-      var $a, $b, TMP_3, self = this;
+      var $a;
+      var $b;
+      var TMP_3;
+      var self = this;
       if (($a = self['$equal?'](other)) !== false && $a !== nil) {
         return true
       } else if (($a = other['$instance_of?'](self.$class())) !== false && $a !== nil) {
@@ -10823,7 +11872,7 @@ if (o == null) o = nil;
         return self.hash['$include?'](o)}, TMP_3._s = self, TMP_3), $a).call($b)
         } else {
         return false
-      };
+      }
     };
 
     def.$add = function(o) {
@@ -10835,19 +11884,24 @@ if (o == null) o = nil;
     $opal.defn(self, '$<<', def.$add);
 
     def['$add?'] = function(o) {
-      var $a, self = this;
+      var $a;
+      var self = this;
       if (($a = self['$include?'](o)) !== false && $a !== nil) {
         return nil
         } else {
         return self.$add(o)
-      };
+      }
     };
 
     def.$each = TMP_4 = function() {
-      var $a, $b, self = this, $iter = TMP_4._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_4._p;
+      var block = $iter || nil;
       TMP_4._p = null;
       if (block === nil) {
-        return self.$enum_for("each")};
+        return self.$enum_for("each")}
       ($a = ($b = self.hash).$each_key, $a._p = block.$to_proc(), $a).call($b);
       return self;
     };
@@ -10871,14 +11925,21 @@ if (o == null) o = nil;
     $opal.defn(self, '$member?', def['$include?']);
 
     def.$merge = function(enum$) {
-      var $a, $b, TMP_5, self = this;
+      var $a;
+      var $b;
+      var TMP_5;
+      var self = this;
       ($a = ($b = self).$do_with_enum, $a._p = (TMP_5 = function(o){var self = TMP_5._s || this;if (o == null) o = nil;
       return self.$add(o)}, TMP_5._s = self, TMP_5), $a).call($b, enum$);
       return self;
     };
 
     def.$do_with_enum = TMP_6 = function(enum$) {
-      var $a, $b, self = this, $iter = TMP_6._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_6._p;
+      var block = $iter || nil;
       TMP_6._p = null;
       return ($a = ($b = enum$).$each, $a._p = block.$to_proc(), $a).call($b);
     };
@@ -10894,13 +11955,19 @@ if (o == null) o = nil;
       var self = this;
       return self.hash.$keys();
     }, nil);
-  })(self, null);
-  return (function($base) {
+  }))(self, null);
+  return (($base => {
     var self = $module($base, 'Enumerable');
 
-    var def = self._proto, $scope = self._scope, TMP_7;
+    var def = self._proto;
+    var $scope = self._scope;
+    var TMP_7;
     def.$to_set = TMP_7 = function(klass, args) {
-      var $a, $b, self = this, $iter = TMP_7._p, block = $iter || nil;
+      var $a;
+      var $b;
+      var self = this;
+      var $iter = TMP_7._p;
+      var block = $iter || nil;
       args = $slice.call(arguments, 1);
       if (klass == null) {
         klass = $scope.Set
@@ -10909,24 +11976,34 @@ if (o == null) o = nil;
       return ($a = ($b = klass).$new, $a._p = block.$to_proc(), $a).apply($b, [self].concat(args));
     }
         ;$opal.donate(self, ["$to_set"]);
-  })(self);
-})(Opal);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/set.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$attr_accessor', '$attr_reader', '$[]', '$[]=', '$send', '$to_proc', '$<<', '$push', '$new', '$dup', '$is_a?', '$==', '$array', '$join', '$map', '$inspect']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Sexp(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Sexp(){}
       var self = $Sexp = $klass($base, $super, 'Sexp', $Sexp);
 
-      var def = $Sexp._proto, $scope = $Sexp._scope, TMP_1;
+      var def = $Sexp._proto;
+      var $scope = $Sexp._scope;
+      var TMP_1;
       def.array = nil;
       self.$attr_accessor("line");
 
@@ -10955,7 +12032,11 @@ if (o == null) o = nil;
       };
 
       def.$method_missing = TMP_1 = function(sym, args) {
-        var $a, $b, self = this, $iter = TMP_1._p, block = $iter || nil;
+        var $a;
+        var $b;
+        var self = this;
+        var $iter = TMP_1._p;
+        var block = $iter || nil;
         args = $slice.call(arguments, 1);
         TMP_1._p = null;
         return ($a = ($b = self.array).$send, $a._p = block.$to_proc(), $a).apply($b, [sym].concat(args));
@@ -10968,7 +12049,8 @@ if (o == null) o = nil;
       };
 
       def.$push = function(parts) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         parts = $slice.call(arguments, 0);
         ($a = self.array).$push.apply($a, [].concat(parts));
         return self;
@@ -10985,39 +12067,48 @@ if (o == null) o = nil;
       };
 
       def['$=='] = function(other) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         if (($a = other['$is_a?']($scope.Sexp)) !== false && $a !== nil) {
           return self.array['$=='](other.$array())
           } else {
           return self.array['$=='](other)
-        };
+        }
       };
 
       $opal.defn(self, '$eql?', def['$==']);
 
       def.$inspect = function() {
-        var $a, $b, TMP_2, self = this;
+        var $a;
+        var $b;
+        var TMP_2;
+        var self = this;
         return "(" + (($a = ($b = self.array).$map, $a._p = (TMP_2 = function(e){var self = TMP_2._s || this;if (e == null) e = nil;
         return e.$inspect()}, TMP_2._s = self, TMP_2), $a).call($b).$join(" ")) + ")";
       };
 
       return $opal.defn(self, '$to_s', def.$inspect);
-    })(self, null)
-    
-  })(self)
-})(Opal);
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser/sexp.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$attr_reader', '$length', '$pos=']);
-  return (function($base, $super) {
-    function $StringScanner(){};
+  return ((($base, $super) => {
+    function $StringScanner(){}
     var self = $StringScanner = $klass($base, $super, 'StringScanner', $StringScanner);
 
-    var def = $StringScanner._proto, $scope = $StringScanner._scope;
+    var def = $StringScanner._proto;
+    var $scope = $StringScanner._scope;
     def.pos = def.string = def.working = def.prev_pos = def.matched = def.match = nil;
     self.$attr_reader("pos");
 
@@ -11039,9 +12130,9 @@ if (o == null) o = nil;
 
     def.$scan = function(regex) {
       var self = this;
-      
-      var regex  = new RegExp('^' + regex.toString().substring(1, regex.toString().length - 1)),
-          result = regex.exec(self.working);
+
+      var regex  = new RegExp('^' + regex.toString().substring(1, regex.toString().length - 1));
+      var result = regex.exec(self.working);
 
       if (result == null) {
         return self.matched = nil;
@@ -11064,7 +12155,6 @@ if (o == null) o = nil;
       else {
         return nil;
       }
-    ;
     };
 
     def['$[]'] = function(idx) {
@@ -11086,16 +12176,15 @@ if (o == null) o = nil;
 
     def.$check = function(regex) {
       var self = this;
-      
-      var regexp = new RegExp('^' + regex.toString().substring(1, regex.toString().length - 1)),
-          result = regexp.exec(self.working);
+
+      var regexp = new RegExp('^' + regex.toString().substring(1, regex.toString().length - 1));
+      var result = regexp.exec(self.working);
 
       if (result == null) {
         return self.matched = nil;
       }
 
       return self.matched = result[0];
-    ;
     };
 
     def.$peek = function(length) {
@@ -11178,28 +12267,41 @@ if (o == null) o = nil;
       self.match = nil;
       return self;
     }, nil);
-  })(self, null)
-})(Opal);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/strscan.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$attr_accessor', '$map', '$new', '$each', '$[]=', '$name', '$[]']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Keywords');
 
-      var def = self._proto, $scope = self._scope, $a, $b, TMP_1;
-      (function($base, $super) {
-        function $KeywordTable(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      var $a;
+      var $b;
+      var TMP_1;
+      ((($base, $super) => {
+        function $KeywordTable(){}
         var self = $KeywordTable = $klass($base, $super, 'KeywordTable', $KeywordTable);
 
-        var def = $KeywordTable._proto, $scope = $KeywordTable._scope;
+        var def = $KeywordTable._proto;
+        var $scope = $KeywordTable._scope;
         self.$attr_accessor("name", "id", "state");
 
         return (def.$initialize = function(name, id, state) {
@@ -11208,13 +12310,20 @@ if (o == null) o = nil;
           self.id = id;
           return self.state = state;
         }, nil);
-      })(self, null);
+      }))(self, null);
 
-      $opal.cdecl($scope, 'KEYWORDS', ($a = ($b = [["__LINE__", ["k__LINE__", "k__LINE__"], "expr_end"], ["__FILE__", ["k__FILE__", "k__FILE__"], "expr_end"], ["alias", ["kALIAS", "kALIAS"], "expr_fname"], ["and", ["kAND", "kAND"], "expr_beg"], ["begin", ["kBEGIN", "kBEGIN"], "expr_beg"], ["break", ["kBREAK", "kBREAK"], "expr_mid"], ["case", ["kCASE", "kCASE"], "expr_beg"], ["class", ["kCLASS", "kCLASS"], "expr_class"], ["def", ["kDEF", "kDEF"], "expr_fname"], ["defined?", ["kDEFINED", "kDEFINED"], "expr_arg"], ["do", ["kDO", "kDO"], "expr_beg"], ["else", ["kELSE", "kELSE"], "expr_beg"], ["elsif", ["kELSIF", "kELSIF"], "expr_beg"], ["end", ["kEND", "kEND"], "expr_end"], ["ensure", ["kENSURE", "kENSURE"], "expr_beg"], ["false", ["kFALSE", "kFALSE"], "expr_end"], ["if", ["kIF", "kIF_MOD"], "expr_beg"], ["module", ["kMODULE", "kMODULE"], "expr_beg"], ["nil", ["kNIL", "kNIL"], "expr_end"], ["next", ["kNEXT", "kNEXT"], "expr_mid"], ["not", ["kNOT", "kNOT"], "expr_beg"], ["or", ["kOR", "kOR"], "expr_beg"], ["redo", ["kREDO", "kREDO"], "expr_end"], ["rescue", ["kRESCUE", "kRESCUE_MOD"], "expr_mid"], ["return", ["kRETURN", "kRETURN"], "expr_mid"], ["self", ["kSELF", "kSELF"], "expr_end"], ["super", ["kSUPER", "kSUPER"], "expr_arg"], ["then", ["kTHEN", "kTHEN"], "expr_beg"], ["true", ["kTRUE", "kTRUE"], "expr_end"], ["undef", ["kUNDEF", "kUNDEF"], "expr_fname"], ["unless", ["kUNLESS", "kUNLESS_MOD"], "expr_beg"], ["until", ["kUNTIL", "kUNTIL_MOD"], "expr_beg"], ["when", ["kWHEN", "kWHEN"], "expr_beg"], ["while", ["kWHILE", "kWHILE_MOD"], "expr_beg"], ["yield", ["kYIELD", "kYIELD"], "expr_arg"]]).$map, $a._p = (TMP_1 = function(decl){var self = TMP_1._s || this, $a;if (decl == null) decl = nil;
-      return ($a = $scope.KeywordTable).$new.apply($a, [].concat(decl))}, TMP_1._s = self, TMP_1), $a).call($b));
+      $opal.cdecl($scope, 'KEYWORDS', ($a = ($b = [["__LINE__", ["k__LINE__", "k__LINE__"], "expr_end"], ["__FILE__", ["k__FILE__", "k__FILE__"], "expr_end"], ["alias", ["kALIAS", "kALIAS"], "expr_fname"], ["and", ["kAND", "kAND"], "expr_beg"], ["begin", ["kBEGIN", "kBEGIN"], "expr_beg"], ["break", ["kBREAK", "kBREAK"], "expr_mid"], ["case", ["kCASE", "kCASE"], "expr_beg"], ["class", ["kCLASS", "kCLASS"], "expr_class"], ["def", ["kDEF", "kDEF"], "expr_fname"], ["defined?", ["kDEFINED", "kDEFINED"], "expr_arg"], ["do", ["kDO", "kDO"], "expr_beg"], ["else", ["kELSE", "kELSE"], "expr_beg"], ["elsif", ["kELSIF", "kELSIF"], "expr_beg"], ["end", ["kEND", "kEND"], "expr_end"], ["ensure", ["kENSURE", "kENSURE"], "expr_beg"], ["false", ["kFALSE", "kFALSE"], "expr_end"], ["if", ["kIF", "kIF_MOD"], "expr_beg"], ["module", ["kMODULE", "kMODULE"], "expr_beg"], ["nil", ["kNIL", "kNIL"], "expr_end"], ["next", ["kNEXT", "kNEXT"], "expr_mid"], ["not", ["kNOT", "kNOT"], "expr_beg"], ["or", ["kOR", "kOR"], "expr_beg"], ["redo", ["kREDO", "kREDO"], "expr_end"], ["rescue", ["kRESCUE", "kRESCUE_MOD"], "expr_mid"], ["return", ["kRETURN", "kRETURN"], "expr_mid"], ["self", ["kSELF", "kSELF"], "expr_end"], ["super", ["kSUPER", "kSUPER"], "expr_arg"], ["then", ["kTHEN", "kTHEN"], "expr_beg"], ["true", ["kTRUE", "kTRUE"], "expr_end"], ["undef", ["kUNDEF", "kUNDEF"], "expr_fname"], ["unless", ["kUNLESS", "kUNLESS_MOD"], "expr_beg"], ["until", ["kUNTIL", "kUNTIL_MOD"], "expr_beg"], ["when", ["kWHEN", "kWHEN"], "expr_beg"], ["while", ["kWHILE", "kWHILE_MOD"], "expr_beg"], ["yield", ["kYIELD", "kYIELD"], "expr_arg"]]).$map, $a._p = (TMP_1 = function(decl){
+        var self = TMP_1._s || this;
+        var $a;
+        if (decl == null) decl = nil;
+        return ($a = $scope.KeywordTable).$new.apply($a, [].concat(decl))
+      }, TMP_1._s = self, TMP_1), $a).call($b));
 
       $opal.defs(self, '$map', function() {
-        var $a, $b, TMP_2, self = this;
+        var $a;
+        var $b;
+        var TMP_2;
+        var self = this;
         if (self.map == null) self.map = nil;
 
         if (($a = self.map) === false || $a === nil) {
@@ -11222,7 +12331,7 @@ if (o == null) o = nil;
           ($a = ($b = $scope.KEYWORDS).$each, $a._p = (TMP_2 = function(k){var self = TMP_2._s || this;
             if (self.map == null) self.map = nil;
 if (k == null) k = nil;
-          return self.map['$[]='](k.$name(), k)}, TMP_2._s = self, TMP_2), $a).call($b);};
+          return self.map['$[]='](k.$name(), k)}, TMP_2._s = self, TMP_2), $a).call($b);}
         return self.map;
       });
 
@@ -11230,29 +12339,34 @@ if (k == null) k = nil;
         var self = this;
         return self.$map()['$[]'](kw);
       });
-      
-    })(self)
-    
-  })(self)
-})(Opal);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser/keywords.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$attr_reader', '$attr_accessor', '$new', '$|', '$<<', '$&', '$>>', '$==', '$include?', '$arg?', '$space?', '$check', '$scan', '$matched', '$yylex', '$[]', '$new_strterm', '$merge', '$to_i', '$to_f', '$gsub', '$raise', '$peek', '$strterm', '$strterm_expand?', '$escape', '$strterm=', '$[]=', '$pos=', '$-', '$pos', '$+', '$add_heredoc_content', '$add_string_content', '$join', '$count', '$eos?', '$bol?', '$after_operator?', '$end_with?', '$=~', '$keyword', '$state', '$id', '$name', '$cond?', '$cmdarg?', '$next_string_token', '$scanner', '$length', '$empty?', '$next_token', '$spcarg?', '$beg?', '$===', '$new_strterm2', '$cond_push', '$cmdarg_push', '$cond_lexpop', '$cmdarg_lexpop', '$end?', '$heredoc_identifier', '$sub', '$inspect', '$process_numeric', '$process_identifier', '$size', '$pop', '$last']);
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Lexer(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Lexer(){}
       var self = $Lexer = $klass($base, $super, 'Lexer', $Lexer);
 
-      var def = $Lexer._proto, $scope = $Lexer._scope;
+      var def = $Lexer._proto;
+      var $scope = $Lexer._scope;
       def.scanner = def.cond = def.cmdarg = def.lex_state = def.space_seen = def.scanner_stack = def.line = def.start_of_lambda = def.file = nil;
       self.$attr_reader("line", "scope_line", "scope");
 
@@ -11285,7 +12399,8 @@ if (k == null) k = nil;
       };
 
       def['$cond?'] = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ($a = (self.cond['$&'](1))['$=='](0), ($a === nil || $a === false));
       };
 
@@ -11305,7 +12420,8 @@ if (k == null) k = nil;
       };
 
       def['$cmdarg?'] = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ($a = (self.cmdarg['$&'](1))['$=='](0), ($a === nil || $a === false));
       };
 
@@ -11330,7 +12446,9 @@ if (k == null) k = nil;
       };
 
       def['$spcarg?'] = function() {
-        var $a, $b, self = this;
+        var $a;
+        var $b;
+        var self = this;
         return ($a = ($b = self['$arg?'](), $b !== false && $b !== nil ?self.space_seen : $b), $a !== false && $a !== nil ?($b = self['$space?'](), ($b === nil || $b === false)) : $a);
       };
 
@@ -11360,7 +12478,8 @@ if (k == null) k = nil;
       };
 
       def['$strterm_expand?'] = function(strterm) {
-        var self = this, type = nil;
+        var self = this;
+        var type = nil;
         type = strterm['$[]']("type");
         return ["dquote", "dsym", "dword", "heredoc", "xquote", "regexp"]['$include?'](type);
       };
@@ -11371,13 +12490,16 @@ if (k == null) k = nil;
       };
 
       def.$new_strterm2 = function(type, start, finish) {
-        var self = this, term = nil;
+        var self = this;
+        var term = nil;
         term = self.$new_strterm(type, start, finish);
         return term.$merge($hash2(["balance", "nesting"], {"balance": true, "nesting": 0}));
       };
 
       def.$process_numeric = function() {
-        var $a, self = this, scanner = nil;
+        var $a;
+        var self = this;
+        var scanner = nil;
         self.lex_state = "expr_end";
         scanner = self.scanner;
         if (($a = self.$scan(/0b?(0|1|_)+/)) !== false && $a !== nil) {
@@ -11392,18 +12514,30 @@ if (k == null) k = nil;
           return ["tINTEGER", scanner.$matched().$to_i(16)]
           } else {
           return self.$raise("Lexing error on numeric type: `" + (scanner.$peek(5)) + "`")
-        };
+        }
       };
 
       def.$next_string_token = function() {
-        var $a, $b, $c, self = this, str_parse = nil, scanner = nil, space = nil, expand = nil, words = nil, str_buffer = nil, eos_regx = nil, result = nil, complete_str = nil;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
+        var str_parse = nil;
+        var scanner = nil;
+        var space = nil;
+        var expand = nil;
+        var words = nil;
+        var str_buffer = nil;
+        var eos_regx = nil;
+        var result = nil;
+        var complete_str = nil;
         str_parse = self.$strterm();
         scanner = self.scanner;
         space = false;
         expand = self['$strterm_expand?'](str_parse);
         words = ["w", "W"]['$include?'](str_parse['$[]']("beg"));
         if (($a = ($b = ["w", "W"]['$include?'](str_parse['$[]']("beg")), $b !== false && $b !== nil ?self.$scan(/\s+/) : $b)) !== false && $a !== nil) {
-          space = true};
+          space = true}
         str_buffer = [];
         if (str_parse['$[]']("type")['$==']("heredoc")) {
           eos_regx = (new RegExp("[ \\t]*" + $scope.Regexp.$escape(str_parse['$[]']("end")) + "(\\r*\\n|$)"));
@@ -11414,7 +12548,7 @@ if (k == null) k = nil;
               self.scanner_stack['$<<'](str_parse['$[]']("scanner"));
               self.scanner = str_parse['$[]']("scanner");};
             self.lex_state = "expr_end";
-            return ["tSTRING_END", scanner.$matched()];};};
+            return ["tSTRING_END", scanner.$matched()];};}
         if (($a = self.$scan($scope.Regexp.$new($scope.Regexp.$escape(str_parse['$[]']("end"))))) !== false && $a !== nil) {
           if (($a = (($b = words !== false && words !== nil) ? ($c = str_parse['$[]']("done_last_space"), ($c === nil || $c === false)) : $b)) !== false && $a !== nil) {
             str_parse['$[]=']("done_last_space", true);
@@ -11449,9 +12583,9 @@ if (k == null) k = nil;
               self.scanner = str_parse['$[]']("scanner");};
             self.lex_state = "expr_end";
             return ["tSTRING_END", scanner.$matched()];
-          };};
+          };}
         if (space !== false && space !== nil) {
-          return ["tSPACE", " "]};
+          return ["tSPACE", " "]}
         if (($a = ($b = str_parse['$[]']("balance"), $b !== false && $b !== nil ?self.$scan($scope.Regexp.$new($scope.Regexp.$escape(str_parse['$[]']("beg")))) : $b)) !== false && $a !== nil) {
           str_buffer['$<<'](scanner.$matched());
           ($a = "nesting", $b = str_parse, $b['$[]=']($a, $b['$[]']($a)['$+'](1)));
@@ -11469,19 +12603,28 @@ if (k == null) k = nil;
             str_buffer['$<<'](scanner.$matched())
           }
         } else if (($a = self.$scan(/\#/)) !== false && $a !== nil) {
-          str_buffer['$<<']("#")};
+          str_buffer['$<<']("#")}
         if (str_parse['$[]']("type")['$==']("heredoc")) {
           self.$add_heredoc_content(str_buffer, str_parse)
           } else {
           self.$add_string_content(str_buffer, str_parse)
-        };
+        }
         complete_str = str_buffer.$join("");
         self.line = self.line['$+'](complete_str.$count("\n"));
         return ["tSTRING_CONTENT", complete_str];
       };
 
       def.$add_heredoc_content = function(str_buffer, str_parse) {
-        var $a, $b, $c, self = this, scanner = nil, eos_regx = nil, expand = nil, c = nil, handled = nil, reg = nil;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
+        var scanner = nil;
+        var eos_regx = nil;
+        var expand = nil;
+        var c = nil;
+        var handled = nil;
+        var reg = nil;
         scanner = self.scanner;
         eos_regx = (new RegExp("[ \\t]*" + $scope.Regexp.$escape(str_parse['$[]']("end")) + "(\\r*\\n|$)"));
         expand = true;
@@ -11499,7 +12642,7 @@ if (k == null) k = nil;
             if (($b = self.$scan(/(.)/)) !== false && $b !== nil) {
               c = "\\"['$+'](scanner.$matched())}
             } else {
-            c = (function() {if (($b = self.$scan(/n/)) !== false && $b !== nil) {
+            c = ((() => {if (($b = self.$scan(/n/)) !== false && $b !== nil) {
               return "\n"
             } else if (($b = self.$scan(/r/)) !== false && $b !== nil) {
               return "\r"
@@ -11510,7 +12653,7 @@ if (k == null) k = nil;
               } else {
               self.$scan(/./);
               return scanner.$matched();
-            }; return nil; })()
+            }; return nil; }))()
           }
           } else {
           handled = false
@@ -11520,16 +12663,27 @@ if (k == null) k = nil;
           self.$scan(reg);
           c = scanner.$matched();};
         ((($b = c) !== false && $b !== nil) ? $b : c = scanner.$matched());
-        str_buffer['$<<'](c);};
+        str_buffer['$<<'](c);}
         if (($a = scanner['$eos?']()) !== false && $a !== nil) {
           return self.$raise("reached EOF while in string")
           } else {
           return nil
-        };
+        }
       };
 
       def.$add_string_content = function(str_buffer, str_parse) {
-        var $a, $b, $c, $d, self = this, scanner = nil, end_str_re = nil, expand = nil, words = nil, c = nil, handled = nil, reg = nil;
+        var $a;
+        var $b;
+        var $c;
+        var $d;
+        var self = this;
+        var scanner = nil;
+        var end_str_re = nil;
+        var expand = nil;
+        var words = nil;
+        var c = nil;
+        var handled = nil;
+        var reg = nil;
         scanner = self.scanner;
         end_str_re = $scope.Regexp.$new($scope.Regexp.$escape(str_parse['$[]']("end")));
         expand = self['$strterm_expand?'](str_parse);
@@ -11558,7 +12712,7 @@ if (k == null) k = nil;
             if (($b = self.$scan(/(.)/)) !== false && $b !== nil) {
               c = "\\"['$+'](scanner.$matched())}
             } else {
-            c = (function() {if (($b = self.$scan(/n/)) !== false && $b !== nil) {
+            c = ((() => {if (($b = self.$scan(/n/)) !== false && $b !== nil) {
               return "\n"
             } else if (($b = self.$scan(/r/)) !== false && $b !== nil) {
               return "\r"
@@ -11569,32 +12723,36 @@ if (k == null) k = nil;
               } else {
               self.$scan(/./);
               return scanner.$matched();
-            }; return nil; })()
+            }; return nil; }))()
           }
           } else {
           handled = false
         };
         if (($b = handled) === false || $b === nil) {
-          reg = (function() {if (words !== false && words !== nil) {
+          reg = ((() => {if (words !== false && words !== nil) {
             return $scope.Regexp.$new("[^" + ($scope.Regexp.$escape(str_parse['$[]']("end"))) + "#0\n \\\\]+|.")
           } else if (($b = str_parse['$[]']("balance")) !== false && $b !== nil) {
             return $scope.Regexp.$new("[^" + ($scope.Regexp.$escape(str_parse['$[]']("end"))) + ($scope.Regexp.$escape(str_parse['$[]']("beg"))) + "#0\\\\]+|.")
             } else {
             return $scope.Regexp.$new("[^" + ($scope.Regexp.$escape(str_parse['$[]']("end"))) + "#0\\\\]+|.")
-          }; return nil; })();
+          }; return nil; }))();
           self.$scan(reg);
           c = scanner.$matched();};
         ((($b = c) !== false && $b !== nil) ? $b : c = scanner.$matched());
-        str_buffer['$<<'](c);};
+        str_buffer['$<<'](c);}
         if (($a = scanner['$eos?']()) !== false && $a !== nil) {
           return self.$raise("reached EOF while in string")
           } else {
           return nil
-        };
+        }
       };
 
       def.$heredoc_identifier = function() {
-        var $a, $b, self = this, heredoc = nil, end_of_line = nil;
+        var $a;
+        var $b;
+        var self = this;
+        var heredoc = nil;
+        var end_of_line = nil;
         if (($a = self.scanner.$scan(/(-?)['"]?(\w+)['"]?/)) !== false && $a !== nil) {
           heredoc = self.scanner['$[]'](2);
           self['$strterm='](self.$new_strterm("heredoc", heredoc, heredoc));
@@ -11604,22 +12762,29 @@ if (k == null) k = nil;
           return ["tSTRING_BEG", heredoc];
           } else {
           return nil
-        };
+        }
       };
 
       def.$process_identifier = function(matched, cmd_start) {
-        var $a, $b, $c, self = this, scanner = nil, result = nil, kw = nil, old_state = nil;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
+        var scanner = nil;
+        var result = nil;
+        var kw = nil;
+        var old_state = nil;
         scanner = self.scanner;
         matched = scanner.$matched();
         if (($a = ($b = ($c = scanner.$peek(2)['$==']("::"), ($c === nil || $c === false)), $b !== false && $b !== nil ?self.$scan(/:/) : $b)) !== false && $a !== nil) {
           self.lex_state = "expr_beg";
-          return ["tLABEL", "" + (matched)];};
+          return ["tLABEL", "" + (matched)];}
         if (matched['$==']("defined?")) {
           if (($a = self['$after_operator?']()) !== false && $a !== nil) {
             self.lex_state = "expr_end";
             return ["tIDENTIFIER", matched];};
           self.lex_state = "expr_arg";
-          return ["kDEFINED", "defined?"];};
+          return ["kDEFINED", "defined?"];}
         if (($a = matched['$end_with?']("?", "!")) !== false && $a !== nil) {
           result = "tIDENTIFIER"
         } else if (self.lex_state['$==']("expr_fname")) {
@@ -11630,7 +12795,7 @@ if (k == null) k = nil;
           result = "tCONSTANT"
           } else {
           result = "tIDENTIFIER"
-        };
+        }
         if (($a = ($b = ($c = self.lex_state['$==']("expr_dot"), ($c === nil || $c === false)), $b !== false && $b !== nil ?kw = $scope.Keywords.$keyword(matched) : $b)) !== false && $a !== nil) {
           old_state = self.lex_state;
           self.lex_state = kw.$state();
@@ -11664,30 +12829,49 @@ if (k == null) k = nil;
             if (($a = ($b = kw.$id()['$[]'](0)['$=='](kw.$id()['$[]'](1)), ($b === nil || $b === false))) !== false && $a !== nil) {
               self.lex_state = "expr_beg"};
             return [kw.$id()['$[]'](1), matched];
-          };};
+          };}
         if (($a = ["expr_beg", "expr_dot", "expr_mid", "expr_arg", "expr_cmdarg"]['$include?'](self.lex_state)) !== false && $a !== nil) {
-          self.lex_state = (function() {if (cmd_start !== false && cmd_start !== nil) {
+          self.lex_state = ((() => {if (cmd_start !== false && cmd_start !== nil) {
             return "expr_cmdarg"
             } else {
             return "expr_arg"
-          }; return nil; })()
+          }; return nil; }))()
           } else {
           self.lex_state = "expr_end"
-        };
-        return [(function() {if (($a = matched['$=~'](/^[A-Z]/)) !== false && $a !== nil) {
+        }
+        return [((() => {if (($a = matched['$=~'](/^[A-Z]/)) !== false && $a !== nil) {
           return "tCONSTANT"
           } else {
           return "tIDENTIFIER"
-        }; return nil; })(), matched];
+        }; return nil; }))(), matched];
       };
 
-      return (def.$yylex = function() {
-        var $a, $b, $c, $d, $e, self = this, cmd_start = nil, c = nil, result = nil, line_count = nil, str_type = nil, paren = nil, term = nil, $case = nil, start_word = nil, end_word = nil, token = nil, matched = nil, sign = nil, utype = nil;
+      return def.$yylex = function() {
+        var $a;
+        var $b;
+        var $c;
+        var $d;
+        var $e;
+        var self = this;
+        var cmd_start = nil;
+        var c = nil;
+        var result = nil;
+        var line_count = nil;
+        var str_type = nil;
+        var paren = nil;
+        var term = nil;
+        var $case = nil;
+        var start_word = nil;
+        var end_word = nil;
+        var token = nil;
+        var matched = nil;
+        var sign = nil;
+        var utype = nil;
         self.space_seen = false;
         cmd_start = false;
         c = "";
         if (($a = self.$strterm()) !== false && $a !== nil) {
-          return self.$next_string_token()};
+          return self.$next_string_token()}
         while (($b = true) !== false && $b !== nil) {
         if (($b = self.$scan(/\ |\t|\r/)) !== false && $b !== nil) {
           self.space_seen = true;
@@ -11789,11 +12973,11 @@ if (k == null) k = nil;
                 line_count = line_count['$+'](1);
                 continue;;};
               self.$scan(/(.*)/);};}};
-          self.lex_state = (function() {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
+          self.lex_state = ((() => {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
             return "expr_arg"
             } else {
             return "expr_beg"
-          }; return nil; })();
+          }; return nil; }))();
           if (($b = self.$scan(/\=/)) !== false && $b !== nil) {
             if (($b = self.$scan(/\=/)) !== false && $b !== nil) {
               return ["tEQQ", "==="]};
@@ -11828,11 +13012,11 @@ if (k == null) k = nil;
             } else {
             result = "tAMPER2"
           };
-          self.lex_state = (function() {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
+          self.lex_state = ((() => {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
             return "expr_arg"
             } else {
             return "expr_beg"
-          }; return nil; })();
+          }; return nil; }))();
           return [result, "&"];
         } else if (($b = self.$scan(/\|/)) !== false && $b !== nil) {
           if (($b = self.$scan(/\|/)) !== false && $b !== nil) {
@@ -11842,16 +13026,16 @@ if (k == null) k = nil;
             return ["tOROP", "||"];
           } else if (($b = self.$scan(/\=/)) !== false && $b !== nil) {
             return ["tOP_ASGN", "|"]};
-          self.lex_state = (function() {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
+          self.lex_state = ((() => {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
             return "expr_arg"
             } else {
             return "expr_beg"
-          }; return nil; })();
+          }; return nil; }))();
           return ["tPIPE", "|"];
         } else if (($b = self.$scan(/\%[QqWwixr]/)) !== false && $b !== nil) {
           str_type = self.$scanner().$matched()['$[]'](1, 1);
           paren = self.$scan(/./);
-          term = (function() {$case = paren;if ("("['$===']($case)) {return ")"}else if ("["['$===']($case)) {return "]"}else if ("{"['$===']($case)) {return "}"}else {return paren}})();
+          term = ((() => {$case = paren;if ("("['$===']($case)) {return ")"}else if ("["['$===']($case)) {return "]"}else if ("{"['$===']($case)) {return "}"}else {return paren}}))();
           $case = str_type;if ("Q"['$===']($case)) {self['$strterm='](self.$new_strterm2("dquote", paren, term));
           return ["tSTRING_BEG", self.$scanner().$matched()];}else if ("q"['$===']($case)) {self['$strterm='](self.$new_strterm2("squote", paren, term));
           return ["tSTRING_BEG", self.$scanner().$matched()];}else if ("W"['$===']($case)) {self['$strterm='](self.$new_strterm("dword", "W", term));
@@ -11888,11 +13072,11 @@ if (k == null) k = nil;
               end_word = ((($b = $hash2(["(", "[", "{"], {"(": ")", "[": "]", "{": "}"})['$[]'](start_word)) !== false && $b !== nil) ? $b : start_word);
               self['$strterm='](self.$new_strterm2("dquote", start_word, end_word));
               return ["tSTRING_BEG", self.$scanner().$matched()];}};
-          self.lex_state = (function() {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
+          self.lex_state = ((() => {if (($b = self['$after_operator?']()) !== false && $b !== nil) {
             return "expr_arg"
             } else {
             return "expr_beg"
-          }; return nil; })();
+          }; return nil; }))();
           return ["tPERCENT", "%"];
         } else if (($b = self.$scan(/\\/)) !== false && $b !== nil) {
           if (($b = self.$scan(/\r?\n/)) !== false && $b !== nil) {
@@ -12058,11 +13242,11 @@ if (k == null) k = nil;
           return ["tLAMBDA", self.$scanner().$matched()];
         } else if (($b = self.$scan(/[+-]/)) !== false && $b !== nil) {
           matched = self.$scanner().$matched();
-          $b = $opal.to_ary((function() {if (matched['$==']("+")) {
+          $b = $opal.to_ary(((() => {if (matched['$==']("+")) {
             return ["tPLUS", "tUPLUS"]
             } else {
             return ["tMINUS", "tUMINUS"]
-          }; return nil; })()), sign = ($b[0] == null ? nil : $b[0]), utype = ($b[1] == null ? nil : $b[1]);
+          }; return nil; }))()), sign = ($b[0] == null ? nil : $b[0]), utype = ($b[1] == null ? nil : $b[1]);
           if (($b = self['$beg?']()) !== false && $b !== nil) {
             self.lex_state = "expr_mid";
             return [utype, matched];
@@ -12151,28 +13335,35 @@ if (k == null) k = nil;
             self.scanner = self.scanner_stack.$last();
             return self.$next_token();
           }};
-        self.$raise("Unexpected content in parsing stream `" + (self.$scanner().$peek(5)) + "` :" + (self.file) + ":" + (self.line));};
-      }, nil);
-    })(self, null)
-    
-  })(self);
-})(Opal);
+        self.$raise("Unexpected content in parsing stream `" + (self.$scanner().$peek(5)) + "` :" + (self.file) + ":" + (self.line));}
+      }, nil;
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser/lexer.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$class', '$_racc_do_parse_rb', '$_racc_setup', '$[]', '$==', '$next_token', '$racc_read_token', '$+', '$<', '$nil?', '$puts', '$>', '$-', '$push', '$<<', '$racc_shift', '$-@', '$*', '$last', '$pop', '$__send__', '$raise', '$racc_reduce', '$>=', '$inspect', '$racc_next_state', '$racc_token2str', '$racc_print_stacks', '$empty?', '$map', '$racc_print_states', '$each_index', '$each']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Racc');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Parser(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Parser(){}
       var self = $Parser = $klass($base, $super, 'Parser', $Parser);
 
-      var def = $Parser._proto, $scope = $Parser._scope;
+      var def = $Parser._proto;
+      var $scope = $Parser._scope;
       def.yydebug = nil;
       def.$_racc_setup = function() {
         var self = this;
@@ -12185,7 +13376,49 @@ if (k == null) k = nil;
       };
 
       def.$_racc_do_parse_rb = function(arg, in_debug) {
-        var $a, $b, $c, $d, $e, self = this, action_table = nil, action_check = nil, action_default = nil, action_pointer = nil, goto_table = nil, goto_check = nil, goto_default = nil, goto_pointer = nil, nt_base = nil, reduce_table = nil, token_table = nil, shift_n = nil, reduce_n = nil, use_result = nil, racc_state = nil, racc_tstack = nil, racc_vstack = nil, racc_t = nil, racc_tok = nil, racc_val = nil, racc_read_next = nil, racc_user_yyerror = nil, racc_error_status = nil, token = nil, act = nil, i = nil, nerr = nil, custate = nil, curstate = nil, reduce_i = nil, reduce_len = nil, reduce_to = nil, method_id = nil, tmp_t = nil, tmp_v = nil, reduce_call_result = nil, k1 = nil;
+        var $a;
+        var $b;
+        var $c;
+        var $d;
+        var $e;
+        var self = this;
+        var action_table = nil;
+        var action_check = nil;
+        var action_default = nil;
+        var action_pointer = nil;
+        var goto_table = nil;
+        var goto_check = nil;
+        var goto_default = nil;
+        var goto_pointer = nil;
+        var nt_base = nil;
+        var reduce_table = nil;
+        var token_table = nil;
+        var shift_n = nil;
+        var reduce_n = nil;
+        var use_result = nil;
+        var racc_state = nil;
+        var racc_tstack = nil;
+        var racc_vstack = nil;
+        var racc_t = nil;
+        var racc_tok = nil;
+        var racc_val = nil;
+        var racc_read_next = nil;
+        var racc_user_yyerror = nil;
+        var racc_error_status = nil;
+        var token = nil;
+        var act = nil;
+        var i = nil;
+        var nerr = nil;
+        var custate = nil;
+        var curstate = nil;
+        var reduce_i = nil;
+        var reduce_len = nil;
+        var reduce_to = nil;
+        var method_id = nil;
+        var tmp_t = nil;
+        var tmp_v = nil;
+        var reduce_call_result = nil;
+        var k1 = nil;
         action_table = arg['$[]'](0);
         action_check = arg['$[]'](1);
         action_default = arg['$[]'](2);
@@ -12289,7 +13522,7 @@ if (k == null) k = nil;
           self.$raise("Rac: unknown action: " + (act))
         };
         if (($b = self.yydebug) !== false && $b !== nil) {
-          self.$racc_next_state(racc_state['$[]'](-1), racc_state)};};
+          self.$racc_next_state(racc_state['$[]'](-1), racc_state)};}
       };
 
       def.$racc_read_token = function(t, tok, val) {
@@ -12306,13 +13539,16 @@ if (k == null) k = nil;
       };
 
       def.$racc_reduce = function(toks, sim, tstack, vstack) {
-        var $a, $b, TMP_1, self = this;
-        self.$puts("reduce " + ((function() {if (($a = toks['$empty?']()) !== false && $a !== nil) {
+        var $a;
+        var $b;
+        var TMP_1;
+        var self = this;
+        self.$puts("reduce " + (((() => {if (($a = toks['$empty?']()) !== false && $a !== nil) {
           return "<none>"
           } else {
           return ($a = ($b = toks).$map, $a._p = (TMP_1 = function(t){var self = TMP_1._s || this;if (t == null) t = nil;
           return self.$racc_token2str(t)}, TMP_1._s = self, TMP_1), $a).call($b)
-        }; return nil; })()));
+        }; return nil; }))()));
         self.$puts("  --> " + (self.$racc_token2str(sim)));
         return self.$racc_print_stacks(tstack, vstack);
       };
@@ -12330,52 +13566,101 @@ if (k == null) k = nil;
       };
 
       def.$racc_print_stacks = function(t, v) {
-        var $a, $b, TMP_2, self = this;
+        var $a;
+        var $b;
+        var TMP_2;
+        var self = this;
         self.$puts("  [");
         ($a = ($b = t).$each_index, $a._p = (TMP_2 = function(i){var self = TMP_2._s || this;if (i == null) i = nil;
         return self.$puts("    (" + (self.$racc_token2str(t['$[]'](i))) + " " + (v['$[]'](i).$inspect()) + ")")}, TMP_2._s = self, TMP_2), $a).call($b);
         return self.$puts("  ]");
       };
 
-      return (def.$racc_print_states = function(s) {
-        var $a, $b, TMP_3, self = this;
+      return def.$racc_print_states = function(s) {
+        var $a;
+        var $b;
+        var TMP_3;
+        var self = this;
         self.$puts("  [");
         ($a = ($b = s).$each, $a._p = (TMP_3 = function(st){var self = TMP_3._s || this;if (st == null) st = nil;
         return self.$puts("   " + (st))}, TMP_3._s = self, TMP_3), $a).call($b);
         return self.$puts("  ]");
-      }, nil);
-    })(self, null)
-    
-  })(self)
-})(Opal);
+      }, nil;
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/racc/parser.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash = $opal.hash;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash = $opal.hash;
   $opal.add_stubs(['$new', '$each', '$empty?', '$[]=', '$to_i', '$+', '$split', '$[]', '$new_compstmt', '$==', '$type', '$size', '$line=', '$line', '$new_block', '$<<', '$new_body', '$lex_state=', '$lexer', '$s', '$intern', '$new_if', '$new_assign', '$new_op_asgn', '$new_call', '$new_super', '$new_yield', '$new_assignable', '$type=', '$include?', '$-@', '$to_f', '$add_block_pass', '$cmdarg_push', '$cmdarg_pop', '$cond_push', '$cond_pop', '$new_class', '$end_line=', '$new_sclass', '$new_module', '$scope_line', '$push_scope', '$new_def', '$pop_scope', '$new_iter', '$new_block_args', '$push', '$first', '$nil?', '$new_str', '$new_xstr', '$new_regexp', '$concat', '$str_append', '$strterm', '$strterm=', '$cond_lexpop', '$cmdarg_lexpop', '$new_dsym', '$file', '$new_var_ref', '$new_args', '$add_local', '$scope', '$raise']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Parser(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Parser(){}
       var self = $Parser = $klass($base, $super, 'Parser', $Parser);
 
-      var def = $Parser._proto, $scope = $Parser._scope, $a, $b, TMP_1, $c, TMP_3, $d, TMP_5, $e, TMP_7, clist = nil, racc_action_table = nil, arr = nil, idx = nil, racc_action_check = nil, racc_action_pointer = nil, racc_action_default = nil, racc_goto_table = nil, racc_goto_check = nil, racc_goto_pointer = nil, racc_goto_default = nil, racc_reduce_table = nil, racc_reduce_n = nil, racc_shift_n = nil, racc_token_table = nil, racc_nt_base = nil, racc_use_result_var = nil;
+      var def = $Parser._proto;
+      var $scope = $Parser._scope;
+      var $a;
+      var $b;
+      var TMP_1;
+      var $c;
+      var TMP_3;
+      var $d;
+      var TMP_5;
+      var $e;
+      var TMP_7;
+      var clist = nil;
+      var racc_action_table = nil;
+      var arr = nil;
+      var idx = nil;
+      var racc_action_check = nil;
+      var racc_action_pointer = nil;
+      var racc_action_default = nil;
+      var racc_goto_table = nil;
+      var racc_goto_check = nil;
+      var racc_goto_pointer = nil;
+      var racc_goto_default = nil;
+      var racc_reduce_table = nil;
+      var racc_reduce_n = nil;
+      var racc_shift_n = nil;
+      var racc_token_table = nil;
+      var racc_nt_base = nil;
+      var racc_use_result_var = nil;
       clist = ["63,64,65,8,51,552,529,689,57,58,269,-64,552,61,269,59,60,62,23,24,66", "67,763,-503,559,576,295,22,28,27,89,88,90,91,820,618,17,202,203,202", "203,588,7,41,6,9,93,92,-75,83,50,85,84,86,508,87,94,95,618,81,82,395", "38,39,657,618,397,396,617,202,203,202,203,689,704,264,-437,689,521,297", "298,523,-89,-437,36,578,577,30,-503,-92,52,617,736,-91,720,32,268,-90", "617,40,268,552,-94,587,758,552,100,18,688,-503,528,99,79,73,75,76,77", "78,100,552,551,74,80,99,760,100,304,551,100,56,99,-437,53,99,-82,37", "54,63,64,65,-90,51,100,432,269,57,58,99,521,618,61,523,59,60,62,255", "256,66,67,-84,304,502,202,203,254,287,291,89,88,90,91,-505,100,216,688", "-83,100,99,688,703,41,99,617,93,92,476,83,50,85,84,86,-95,87,94,95,576", "81,82,100,38,39,-82,-92,99,-92,73,-91,-92,-91,264,-90,-91,-90,74,100", "-90,551,614,100,99,551,207,-276,99,211,521,-84,52,520,-276,268,264,100", "428,551,843,40,99,-82,-444,429,-505,-83,476,215,-82,-444,509,-446,79", "73,75,76,77,78,578,577,589,74,80,737,-275,100,-84,700,264,56,99,-275", "53,-84,772,37,54,-507,-507,-507,-276,-507,-83,100,521,-507,-507,523", "99,-83,-507,430,-507,-507,-507,-507,-507,-507,-507,-88,558,510,559,-255", "-507,-507,-507,-507,-507,-507,-507,-92,100,-507,199,782,763,99,594,-275", "-507,200,699,-507,-507,224,-507,-507,-507,-507,-507,-507,-507,-507,-507", "576,-507,-507,224,-507,-507,722,224,228,233,234,235,230,232,240,241", "236,237,763,217,218,469,100,238,239,576,-507,99,581,-507,-507,100,-507", "-63,198,769,99,-507,221,-507,227,-507,223,222,219,220,231,229,225,-507", "226,340,339,770,-507,-507,-507,-507,-507,-507,578,577,579,-507,-507", "-434,242,535,-227,-445,538,-507,-434,726,-507,224,-445,-507,-507,-508", "-508,-508,224,-508,-443,578,577,-508,-508,340,339,-443,-508,773,-508", "-508,-508,-508,-508,-508,-508,102,103,104,105,106,-508,-508,-508,-508", "-508,-508,-508,221,-81,-508,889,223,222,774,594,-89,-508,890,-445,-508", "-508,538,-508,-508,-508,-508,-508,-508,-508,-508,-508,576,-508,-508", "777,-508,-508,304,224,228,233,234,235,230,232,240,241,236,237,511,217", "218,-276,493,238,239,512,-508,763,-276,-508,-508,786,-508,787,888,782", "763,-508,221,-508,227,-508,223,222,219,220,231,229,225,-508,226,202", "203,467,-508,-508,-508,-508,-508,-508,578,577,574,-508,-508,700,242", "465,-268,754,857,-508,698,430,-508,-268,-276,-508,-508,63,64,65,8,51", "576,753,-442,57,58,504,505,696,61,-442,59,60,62,23,24,66,67,102,103", "104,105,106,22,28,27,89,88,90,91,202,203,17,337,336,340,339,699,7,41", "-268,9,93,92,524,83,50,85,84,86,-445,87,94,95,212,81,82,-445,38,39,-274", "578,577,583,-275,525,-275,-274,-268,-274,-440,-275,-506,-275,434,-268", "-274,-440,433,508,36,-506,692,30,559,-274,52,261,201,-322,264,32,-274", "802,262,40,-322,-506,804,-441,500,807,808,18,431,-445,-441,501,79,73", "75,76,77,78,810,-274,469,74,80,-275,-86,-275,684,-268,-274,56,671,-94", "53,-87,532,37,54,63,64,65,-95,51,-437,-256,-274,57,58,681,-322,-437", "61,679,59,60,62,255,256,66,67,499,494,535,669,536,254,28,27,89,88,90", "91,538,598,216,571,599,337,336,340,339,41,572,671,93,92,398,83,50,85", "84,86,258,87,94,95,547,81,82,665,38,39,664,224,228,233,234,235,230,232", "240,241,236,237,-82,217,218,-84,821,238,239,-90,207,822,-92,211,823", "264,52,337,336,340,339,253,221,264,227,40,223,222,219,220,231,229,225", "215,226,663,243,-439,79,73,75,76,77,78,-439,385,826,74,80,827,242,657", "-227,548,857,56,-446,829,53,376,-254,37,54,63,64,65,833,51,304,273,634", "57,58,657,838,840,61,635,59,60,62,255,256,66,67,102,103,104,105,106", "254,287,291,89,88,90,91,-80,373,216,337,336,340,339,-88,514,41,352,387", "93,92,649,83,50,85,84,86,304,87,94,95,224,81,82,-505,38,39,846,224,228", "233,234,235,230,232,240,241,236,237,634,217,218,560,647,238,239,635", "207,850,851,211,304,221,52,-75,646,223,222,748,221,304,227,40,223,222", "219,220,231,229,225,215,226,861,-257,644,79,73,75,76,77,78,747,862,864", "74,80,304,242,615,296,243,476,56,-506,538,53,636,874,37,54,63,64,65", "224,51,875,812,813,57,58,814,94,95,61,243,59,60,62,255,256,66,67,304", "879,495,881,882,254,28,27,89,88,90,91,221,807,216,807,223,222,219,220", "808,41,631,224,93,92,224,83,50,85,84,86,258,87,94,95,224,81,82,224,38", "39,891,224,228,233,234,235,230,232,240,241,236,237,582,217,218,197,739", "238,239,196,207,897,264,211,195,663,52,194,586,597,-254,253,221,107", "227,40,223,222,219,220,231,229,225,215,226,907,807,909,79,73,75,76,77", "78,910,469,596,74,80,96,242,590,467,593,,56,,,53,,,37,54,63,64,65,8", "51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,540", "17,332,330,329,,331,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,", "38,39,,224,228,233,234,235,230,232,240,241,236,237,,217,218,,,238,239", ",36,,,30,,,52,,,,,32,221,,227,40,223,222,219,220,231,229,225,18,226", ",,,79,73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,8,51", ",,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,540", "17,332,330,329,,331,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,", "38,39,,224,228,233,234,235,230,232,240,241,236,237,,217,218,,,238,239", ",36,,,30,,,52,,,,,32,221,,227,40,223,222,219,220,231,229,225,18,226", ",,,79,73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,224", "51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,221", ",17,,223,222,219,220,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38", "39,,224,228,233,234,235,230,232,240,241,236,237,,217,218,,,238,239,", "207,,,211,,,52,,,,,,221,,227,40,223,222,219,220,231,229,225,18,226,", ",,79,73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,8,51", ",,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17", ",,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,228", "233,234,235,230,232,240,241,236,237,,217,218,,,238,239,,36,,,30,,,52", ",,,,32,221,,227,40,223,222,219,220,231,229,225,18,226,,,,79,73,75,76", "77,78,,,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234,235", "230,232,240,241,236,237,,217,218,,,238,239,,207,,,211,,,52,,,,,623,221", "251,227,40,223,222,219,220,231,229,225,215,226,,,,79,73,75,76,77,78", ",,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60", "62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83", "50,85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234,235,230,232,240", "241,236,237,,217,218,,,238,239,,36,,,30,,,52,,,,,32,221,,227,40,223", "222,219,220,231,229,225,18,226,,,,79,73,75,76,77,78,,,,74,80,,242,,", ",,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67", ",,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,224,228,233,234,235,230,232,240,241,236,237,,217", "218,,,238,239,,207,,,211,212,,52,,,,,,221,,227,40,223,222,219,220,231", "229,225,18,226,,,,79,73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",224,228,233,234,235,230,232,240,241,236,237,,217,218,,,238,239,,207", ",,211,,,52,,,,,,221,,227,40,223,222,219,220,231,229,225,215,226,,,,79", "73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57", "58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7", "41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234", "235,230,232,240,241,236,237,,217,218,,,238,239,,36,,,30,,,52,,,,,32", "221,,227,40,223,222,219,220,231,229,225,18,226,,,,79,73,75,76,77,78", ",,,74,80,,242,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234,235,230,232", "240,241,236,237,,217,218,,,238,239,,207,,,211,,,52,,,,,623,221,,227", "40,223,222,219,220,231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80", ",242,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84", "86,258,87,94,95,,81,82,,38,39,,224,228,233,234,235,230,232,240,241,236", "237,,217,218,,,238,239,,207,,,211,,,52,,,,,253,221,251,227,40,223,222", "219,220,231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80,,242,,,,,56", ",,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,", ",,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,258,87", "94,95,,81,82,,38,39,,224,228,233,234,235,230,232,240,241,236,237,,217", "218,,,238,239,,207,,,211,,,52,,,,,253,221,251,227,40,223,222,219,220", "231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80,,242,,,,,56,,,53,", ",37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254", "28,27,89,88,90,91,,540,216,332,330,329,,331,,41,,,93,92,,83,50,85,84", "86,258,87,94,95,,81,82,,38,39,540,,332,330,329,,331,,,543,,,,,,,,779", ",,207,,,211,224,,52,,,,,253,,251,,40,,,543,,238,239,,215,,,546,,79,73", "75,76,77,78,,221,,74,80,223,222,219,220,,,56,,,53,,,37,54,63,64,65,", "51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,540", "17,332,330,329,,331,,41,,,93,92,,83,50,85,84,86,,87,94,95,224,81,82", ",38,39,,,,,,,,,,543,238,239,,,,,,546,,,207,,,211,,221,52,227,,223,222", "219,220,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53", ",,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254", "287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95", ",81,82,,38,39,,224,,,,,,,,,,,,,,,,238,239,,207,,,211,,,52,,,,,,221,", "227,40,223,222,219,220,,,225,215,226,,,,79,73,75,76,77,78,,,,74,80,", ",,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66", "67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84", "86,,87,94,95,,81,82,,38,39,,224,,,,,,,,,,,,,,,,238,239,,207,,,211,,", "52,,,,,,221,,227,40,223,222,219,220,,,225,215,226,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,258,87,94,95,,81,82,,38,39,,224,-526,-526,-526,-526", "230,232,,,-526,-526,,,,,,238,239,,207,,,211,,,52,,,,,623,221,251,227", "40,223,222,219,220,231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66", "67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,224,-526,-526,-526,-526,230,232,,,-526,-526", ",,,,,238,239,,36,,,277,,,52,,,,,32,221,,227,40,223,222,219,220,231,229", "225,18,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,323,", "332,330,329,,331,,,,,,,,,,,,,,,,,285,,,282,,,52,,,,,281,,,,334,,,,,", ",,337,336,340,339,,79,73,75,76,77,78,741,,,74,80,,,,,,,56,,,53,,,292", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287", "291,89,88,90,91,,,216,,,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,224", "81,82,323,,332,330,329,,331,,,,,,,238,239,,,,,,,,,285,,,211,,221,52", "227,,223,222,219,220,,,334,,,,,,,,337,336,340,339,,79,73,75,76,77,78", ",,,74,80,,,,294,,,56,,,53,,,292,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,288,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,323,,332,330,329,,331,,,,,,,,,,,,,", ",,,869,,,211,,,52,,,,,,,,,334,,531,,,,,,337,336,340,339,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65,,51,,,,57,58,,,,61,,59", "60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93", "92,,83,50,85,84,86,258,87,94,95,,81,82,,38,39,,224,228,233,234,235,230", "232,,,236,237,,,,,,238,239,,207,,,211,,,52,,,,,,221,251,227,40,223,222", "219,220,231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,", ",53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,", "22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,224,-526,-526,-526,-526,230,232,,,-526,-526,,,,,,238", "239,,36,,,30,,,52,,,,,32,221,,227,40,223,222,219,220,231,229,225,18", "226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51", ",,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91", ",,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224", "228,233,234,235,230,232,240,,236,237,,,,,,238,239,,207,,,211,,,52,,", ",,,221,,227,40,223,222,219,220,231,229,225,215,226,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,-526,-526,-526,-526,230", "232,,,-526,-526,,,,,,238,239,,207,,,211,,,52,,,,,,221,,227,40,223,222", "219,220,231,229,225,215,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,", ",53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,", ",254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,224,-526,-526,-526,-526,230,232,,,-526,-526,,,", ",,238,239,,207,,,211,,,52,,,,,,221,,227,40,223,222,219,220,231,229,225", "215,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", ",51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224", ",,,,,,,,,,,,,,,238,239,,207,,,211,,,52,,,,,,221,,227,40,223,222,219", "220,,,225,215,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291", "89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,224,-526,-526,-526,-526,230,232,,,-526,-526,,,,,,238,239,,207", ",,211,,,52,,,,,,221,,227,40,223,222,219,220,231,229,225,215,226,,,,79", "73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58", ",,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41", ",9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234,235", "230,232,240,241,236,237,,-526,-526,,,238,239,,36,,,30,,,52,,,,,32,221", ",227,40,223,222,219,220,231,229,225,18,226,,,,79,73,75,76,77,78,,,,74", "80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,224,,,,,,,,,,,,,,,,238,239,,207,,,211", ",,52,,,,,,221,,227,40,223,222,219,220,,,225,215,226,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50", "85,84,86,,87,94,95,,81,82,,38,39,,224,228,233,234,235,230,232,240,241", "236,237,,-526,-526,,,238,239,,207,,,211,,,52,,,,,,221,,227,40,223,222", "219,220,231,229,225,18,226,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,", "53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,", "254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,258,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,253,,,,40", ",,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38", "39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73", "75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,", "61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,", ",211,,640,52,,,,,,,251,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66", "67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40", ",,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,387,56,,,53,,,37,54,63", "64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90", "91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,", ",,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59", "60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83", "50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,", "52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53", ",,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28", "27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79", "73,75,76,77,78,,,,74,80,100,,,,,99,56,,,53,,,37,54,63,64,65,,51,,,,57", "58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,714,,332,330,329", ",331,,,,,,,,,,,,,,,,,285,,,30,,,52,,,,,32,,,,334,,,,,,,,337,336,340", "339,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65,,51", ",,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91", ",,216,,,,,,,288,,,93,92,,83,50,85,84,561,,87,94,95,,81,82,714,,332,330", "329,,331,,,,,,,,,,,,,,,,,562,,,211,,,52,,,,,,,,,334,,,,,,,,337,336,340", "339,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65,,51", ",,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91", ",,216,,,,,,,288,,,93,92,,83,50,85,84,561,,87,94,95,,81,82,714,,332,330", "329,,331,,,,,,,,,,,,,,,,,562,,,211,,,52,,,,,,,,,334,708,,,,,,,337,336", "340,339,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65", "8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91", ",,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,", ",,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59", "60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30", ",,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56", ",,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,", ",22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,", ",,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,", "51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,323,,332", "330,329,,331,,,,,,,,,,,,,,,,,285,,,282,,,52,,,,,,,,,334,318,,,,,,,337", "336,340,339,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,292,54,-502", "-502,-502,,-502,,,,-502,-502,,,,-502,,-502,-502,-502,-502,-502,-502", "-502,,-502,,,,-502,-502,-502,-502,-502,-502,-502,,,-502,,,,,,,-502,", ",-502,-502,,-502,-502,-502,-502,-502,-502,-502,-502,-502,,-502,-502", ",-502,-502,,,,,,,,,,,,,,,,,,,,,-502,,,-502,-502,,-502,,,,,-502,,-502", ",-502,,,,,,,,-502,,-502,,,-502,-502,-502,-502,-502,-502,,,,-502,-502", ",,,,,,-502,,,-502,,,-502,-502,-503,-503,-503,,-503,,,,-503,-503,,,,-503", ",-503,-503,-503,-503,-503,-503,-503,,-503,,,,-503,-503,-503,-503,-503", "-503,-503,,,-503,,,,,,,-503,,,-503,-503,,-503,-503,-503,-503,-503,-503", "-503,-503,-503,,-503,-503,,-503,-503,,,,,,,,,,,,,,,,,,,,,-503,,,-503", "-503,,-503,,,,,-503,,-503,,-503,,,,,,,,-503,,-503,,,-503,-503,-503,-503", "-503,-503,,,,-503,-503,,,,,,,-503,,,-503,,,-503,-503,63,64,65,,51,,", ",57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,", "216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,", ",,,,,,,,,,,,,207,,,211,,,52,,,,,253,,,,40,,,,,,,,215,,,,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59", "60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,6,9,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30", ",,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,387", "56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,", ",,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,", ",,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,", "51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,", "17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,", ",,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62", "23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89", "88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38", "39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79,73", "75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,", ",61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,", "9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,", ",,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66", "67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,6,9,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40", ",,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,", "93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,", ",207,,,211,,,52,,,,,253,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74", "80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27", "89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79", "73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58", ",,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "207,,,211,,,52,,,,,404,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74", "80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24", "66,67,,,,,,22,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84", "86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,404", ",,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,", "93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,", ",207,,,211,,,52,,,,,253,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74", "80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89", "88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38", "39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73", "75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,", "61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,216,,,,,,,41,,", "93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207", ",,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,", ",,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67", ",,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,", ",,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", ",51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,", ",17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,", ",,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211", ",,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,", ",53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,", "22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,", ",,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,", "51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,", ",,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61", ",59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,", "30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,", "56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,", ",,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,", ",,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", ",51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,", ",,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61", ",59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,", "30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,", "56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,", ",,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,436,52,,,,,,,,,40,,", ",,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", ",51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,", ",,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211", ",,52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,", "53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,", "254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,", ",,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", ",51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,", ",,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287", "291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81", "82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,", ",,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,", "57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,", ",,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62", "255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83", "50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,", "52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53", ",,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254", "287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95", ",81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215", ",,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,", ",57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,", "216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,", ",,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211", ",,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,", ",53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,", ",254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,", ",,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287", "291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81", "82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,", ",,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,", "57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,", ",,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62", "255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83", "50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,", "52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53", ",,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254", "287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95", ",81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215", ",,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,", ",57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,", "216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,", ",,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211", ",,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,", ",53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,", ",254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,", ",,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,", ",,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37", "54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287", "291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81", "82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,", ",,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,", "57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,", ",,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62", "255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83", "50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211", ",,52,,,,,253,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56", ",,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,", "22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95", ",81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18", ",,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,", ",57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,", "216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,", ",,,,,,,,,,,,,207,,,211,,,52,,,,,253,,,,40,,,,,,,,215,,,,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59", "60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,", ",211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,", ",56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67", ",,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,404,", ",,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291", "89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,", "79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57", "58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,", ",,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62", "255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,288,,,93,92,", "83,50,85,84,86,,87,94,95,,81,82,714,,332,330,329,,331,,,,,,,,,,,,,,", ",,285,,,282,,,52,,,,,,,,,334,708,,,,,,,337,336,340,339,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65,,51,,,,57,58,,,,61,,59", "60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83", "50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,", "52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53", ",,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28", "27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79", "73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58", ",,,61,,59,60,62,255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,", ",41,,,93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,", ",,,,,,,207,,,211,,,52,,,,,253,,251,,40,,,,,,,,215,,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60", "62,255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,", "83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,", "211,,,485,,,,,253,,251,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84", "86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,489,52", ",,,,253,,251,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56", ",,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,", ",,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,", ",,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,,,,", ",,,,,,,,,,,,,,,,,,285,,,282,,,52,,,,,,,,,,,,,,,,,,,,,,79,73,75,76,77", "78,,,,74,80,,,,,,,56,,,53,,,292,54,63,64,65,8,51,,,,57,58,,,,61,,59", "60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92", ",83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30", ",,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56", ",,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,", ",22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94", "95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,277,,,52,,,,,32,,,,40,,,,", ",,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65", "8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91", ",,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,", ",,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76", "77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59", "60,62,255,256,66,67,,,,,,254,28,27,89,88,90,91,,,216,,,,,,,41,,,93,92", ",83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,", ",211,,,52,,,,,623,,251,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66", "67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40", ",,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,,,,", ",,,,,,,,,,,,,,,,,,285,,,211,,,52,,,,,,,,,,,,,,,,,,,,,,79,73,75,76,77", "78,,,,74,80,,,,497,,,56,,,53,,,292,54,63,64,65,8,51,,,,57,58,,,,61,", "59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,", "277,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,", ",56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67", ",,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40", ",,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90", "91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,", ",,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41", ",,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,", "207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66", "67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,", "87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40", ",,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64", "65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88", "90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38", "39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,623,,,,40,,,,,,,,215,,,,,79", "73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58", ",,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,", ",,,41,,,93,92,,83,50,85,84,86,258,87,94,95,,81,82,,38,39,,,,,,,,,,,", ",,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78", ",,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62", "23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50", "85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,", ",,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,", "37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287", "291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81", "82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,", ",,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,", "57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,216,,", ",,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,", ",,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,", ",74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255", "256,66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,288,,,93,92,,83,50", "85,84,86,,87,94,95,,81,82,,,,,,,,,,,,,,,,,,,,,,,,285,,,282,,,52,,,,", ",,,,,,,,,,,,,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,292,54,63", "64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90", "91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,", ",,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61", ",59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,216,,,,,,,41,,,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,", ",211,,,52,,,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,", ",56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67", ",,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86", ",87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,725,", ",,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291", "89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82", ",38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,215,,,,", "79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57", "58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7", "41,,9,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,", ",,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74", "80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57,58,,,,61,,59,60,62,255,256", "66,67,,,,,,254,287,291,89,88,90,91,,,216,,,,,,,41,,,93,92,,83,50,85", "84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,207,,,211,514,,52", ",,,,,,,,40,,,,,,,,215,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,", ",37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28", "27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87,94,95,,81", "82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,,,,,,,18,,", ",,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,,51,,,,57", "58,,,,61,,59,60,62,255,256,66,67,,,,,,254,287,291,89,88,90,91,,,216", ",,,,,,288,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,,,,,,,,,,,,,,,,", ",,,,,,675,,,211,,,52,,,,,,,,,,,,,,,,,,,,,,79,73,75,76,77,78,,,,74,80", ",,,,,,56,,,53,,,292,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24", "66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84", "86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,", ",,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54", "63,64,65,,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,,,,,,22,28,27,89,88", "90,91,,,17,,,,,,,41,,,93,92,,83,50,85,84,86,,87,94,95,,81,82,,38,39", ",,,,,,,,,,,,,,,,,,,,207,,,211,,,52,,,,,,,,,40,,,,,,,,18,,,,,79,73,75", "76,77,78,,,,74,80,,,,,,,56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61", ",59,60,62,23,24,66,67,,,,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93", "92,,83,50,85,84,86,,87,94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,", "30,,,52,,,,,32,,,,40,,,,,,,,18,,,,,79,73,75,76,77,78,,,,74,80,,,,,,", "56,,,53,,,37,54,63,64,65,8,51,,,,57,58,,,,61,,59,60,62,23,24,66,67,", ",,,,22,28,27,89,88,90,91,,,17,,,,,,7,41,,9,93,92,,83,50,85,84,86,,87", "94,95,,81,82,,38,39,,,,,,,,,,,,,,,,,,,,,36,,,30,,,52,,,,,32,,,,40,,", ",,,,,18,,,,-274,79,73,75,76,77,78,-274,-274,-274,74,80,-274,-274,-274", ",-274,,56,,,53,,,37,54,-274,-274,,,,,,,,,-274,-274,,-274,-274,-274,-274", "-274,,,,,,,,,,,,,,,,,,,,,,,,-274,-274,-274,-274,-274,-274,-274,-274", "-274,-274,-274,-274,-274,-274,,,-274,-274,-274,,607,-274,,,-274,,,-274", ",-274,,-274,,-274,,-274,-274,-274,-274,-274,-274,-274,,-274,,-274,,", ",,,,,,,,,,-274,-274,-274,-274,-509,-274,,,-274,,-93,-509,-509,-509,", ",-509,-509,-509,,-509,,,,,,,,,-509,-509,-509,,,,,,,,,-509,-509,,-509", "-509,-509,-509,-509,,,,,,,,,,,,,,,,,,,,,,,,-509,-509,-509,-509,-509", "-509,-509,-509,-509,-509,-509,-509,-509,-509,,,-509,-509,-509,,738,-509", ",,-509,,,-509,,-509,,-509,,-509,,-509,-509,-509,-509,-509,-509,-509", ",-509,-509,-509,,,,,,,,,,,,,-509,-509,-509,-509,-509,-509,,,-509,,-91", "-509,-509,-509,,,,-509,-509,,-509,,,,,,,,,-509,,,,,,,,,,,-509,-509,", "-509,-509,-509,-509,-509,,,,,,,,,,,,,,,,,,,,,,,,-509,-509,-509,-509", "-509,-509,-509,-509,-509,-509,-509,-509,-509,-509,-274,,-509,-509,-509", ",604,-274,-274,-274,-509,,,-274,-274,,-274,-509,,-509,,-509,-509,-509", "-509,-509,-509,-509,,-509,-509,-509,,,,,-274,-274,,-274,-274,-274,-274", "-274,-509,-509,,-83,,-509,,,-509,,-91,,,,,,,,,,,,,-274,-274,-274,-274", "-274,-274,-274,-274,-274,-274,-274,-274,-274,-274,,,-274,-274,-274,", "607,,,,-274,,,,,,,-274,,-274,,-274,-274,-274,-274,-274,-274,-274,,-274", ",-274,,,,,,,,,,,,,-274,-274,,-85,-269,-274,,,-274,,-93,-269,-269,-269", ",,-269,-269,-269,,-269,,,,,,,,,,-269,-269,-269,,,,,,,,-269,-269,,-269", "-269,-269,-269,-269,,,,,,,,,,,,,,,,,,,,,,,,-269,-269,-269,-269,-269", "-269,-269,-269,-269,-269,-269,-269,-269,-269,,,-269,-269,-269,,,-269", ",,-269,,,-269,,-269,,-269,,-269,,-269,-269,-269,-269,-269,-269,-269", ",-269,,-269,,,,,,,,,,,,,-269,-269,-269,-269,-525,-269,,-269,-269,,,-525", "-525,-525,,,-525,-525,-525,,-525,,,,,,,,,-525,-525,-525,,,,,,,,,-525", "-525,,-525,-525,-525,-525,-525,,,,,,,,,,,,,,,,,,,,,,,,-525,-525,-525", "-525,-525,-525,-525,-525,-525,-525,-525,-525,-525,-525,,,-525,-525,-525", ",,-525,,264,-525,,,-525,,-525,,-525,,-525,,-525,-525,-525,-525,-525", "-525,-525,,-525,-525,-525,,,,,,,,,,,,,-525,-525,-525,-525,-282,-525", ",,-525,,,-282,-282,-282,,,-282,-282,-282,,-282,,,,,,,,,,-282,-282,,", ",,,,,,-282,-282,,-282,-282,-282,-282,-282,,,,,,,,,,,,,,,,,,,,,,,,-282", "-282,-282,-282,-282,-282,-282,-282,-282,-282,-282,-282,-282,-282,,,-282", "-282,-282,,,-282,,273,-282,,,-282,,-282,,-282,,-282,,-282,-282,-282", "-282,-282,-282,-282,,-282,,-282,,,,,,,,,,,,,-282,-282,-282,-282,-372", "-282,,,-282,,,-372,-372,-372,,,-372,-372,-372,,-372,,,,,,,,,-372,-372", "-372,,,,,,,,,-372,-372,,-372,-372,-372,-372,-372,,,,,,,,,,,,,,,,,,,", ",,,,-372,-372,-372,-372,-372,-372,-372,-372,-372,-372,-372,-372,-372", "-372,,,-372,-372,-372,,,-372,,264,-372,,,-372,,-372,,-372,,-372,,-372", "-372,-372,-372,-372,-372,-372,,-372,-372,-372,,,,,,,,,,,,,-372,-372", "-372,-372,-525,-372,,,-372,,,-525,-525,-525,,,-525,-525,-525,,-525,", ",,,,,,,,-525,,,,,,,,,,-525,-525,,-525,-525,-525,-525,-525,,,,,,,,,,", ",,-525,,,,,,,-525,-525,-525,,,-525,-525,-525,,-525,,,,,,-525,,,,-525", ",,-525,,,,,264,-525,-525,-525,,-525,-525,-525,-525,-525,,,,,,,,,,,,", "-525,,,,,,,,,,,,,-525,,-525,,,-525,,,,-525,,,,,,,-525,,,,,264,-525,", ",,,,,,,,,,,,,,,,,,,-525,,,,,,,,,,,,,-525,,-525,,,-525,155,166,156,179", "152,172,162,161,187,190,177,160,159,154,180,188,189,164,153,167,171", "173,165,158,,,,174,181,176,175,168,178,163,151,170,169,182,183,184,185", "186,150,157,148,149,146,147,,110,112,,,111,,,,,,,,,141,142,,138,120", "121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134", ",119,140,137,136,132,133,127,125,117,139,118,,,145,191,,,,,,,,,,80,155", "166,156,179,152,172,162,161,187,190,177,160,159,154,180,188,189,164", "153,167,171,173,165,158,,,,174,181,176,175,168,178,163,151,170,169,182", "183,184,185,186,150,157,148,149,146,147,,110,112,109,,111,,,,,,,,,141", "142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,", ",,,,,,135,134,,119,140,137,136,132,133,127,125,117,139,118,,,145,191", ",,,,,,,,,80,155,166,156,179,152,172,162,161,187,190,177,160,159,154", "180,188,189,164,153,167,171,173,165,158,,,,174,181,176,175,168,178,163", "151,170,169,182,183,184,185,186,150,157,148,149,146,147,,110,112,,,111", ",,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130", "131,,,,,,,,,,,,,135,134,,119,140,137,136,132,133,127,125,117,139,118", ",,145,191,,,,,,,,,,80,155,166,156,179,152,172,162,161,187,190,177,160", "159,154,180,188,189,164,153,167,171,173,165,158,,,,174,181,176,175,168", "178,163,151,170,169,182,183,184,185,186,150,157,148,149,146,147,,110", "112,,,111,,,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124,,,", "143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137,136,132,133,127,125", "117,139,118,,,145,191,,,,,,,,,,80,155,166,156,179,152,172,162,161,187", "190,177,160,159,154,180,188,189,164,153,167,171,173,165,158,,,,174,181", "176,175,168,178,163,151,170,169,182,183,184,185,186,150,157,148,149", "146,147,,110,112,383,382,111,,384,,,,,,,141,142,,138,120,121,122,129", "126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137", "136,132,133,127,125,117,139,118,,,145,155,166,156,179,152,172,162,161", "187,190,177,160,159,154,180,188,189,164,153,167,171,173,165,158,,,,174", "181,176,175,168,178,163,151,170,169,182,183,184,185,186,150,157,148", "149,146,147,,110,112,383,382,111,,384,,,,,,,141,142,,138,120,121,122", "129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140", "137,136,132,133,127,125,117,139,118,,,145,155,166,156,179,152,172,162", "161,187,190,177,160,159,154,180,188,189,164,153,167,171,173,165,158", ",,,174,181,176,175,168,178,163,151,170,169,182,183,184,185,186,150,157", "148,149,146,147,,110,112,,,111,,,,,,,,,141,142,,138,120,121,122,129", "126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137", "136,132,133,127,125,117,139,118,,,145,155,166,156,179,152,172,162,161", "187,190,177,160,159,154,180,188,189,164,153,167,171,173,165,158,,,,174", "181,176,360,359,361,358,151,170,169,182,183,184,185,186,150,157,148", "149,356,357,,354,112,85,84,355,,87,,,,,,,141,142,,138,120,121,122,129", "126,128,,,123,124,,,,143,144,130,131,,,,,,366,,,,,,,135,134,,119,140", "137,136,132,133,127,125,117,139,118,473,416,145,,474,,,,,,,,,141,142", ",138,120,121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,", ",,135,134,,119,140,137,136,132,133,127,125,117,139,118,473,416,145,", "474,,,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144", "130,131,,,,,,264,,,,,,,135,134,,119,140,137,136,132,133,127,125,117", "139,118,651,416,145,,652,,,,,,,,,141,142,,138,120,121,122,129,126,128", ",,123,124,,,,143,144,130,131,,,,,,264,,,,,,,135,134,,119,140,137,136", "132,133,127,125,117,139,118,654,422,145,,655,,,,,,,,,141,142,,138,120", "121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134", ",119,140,137,136,132,133,127,125,117,139,118,792,422,145,,790,,,,,,", ",,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130,131", ",,,,,,,,,,,,135,134,,119,140,137,136,132,133,127,125,117,139,118,904", "422,145,,905,,,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124", ",,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137,136,132,133,127", "125,117,139,118,792,422,145,,835,,,,,,,,,141,142,,138,120,121,122,129", "126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137", "136,132,133,127,125,117,139,118,473,416,145,,474,,,,,,,,,141,142,,138", "120,121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135", "134,,119,140,137,136,132,133,127,125,117,139,118,902,416,145,,903,,", ",,,,,,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130", "131,,,,,,264,,,,,,,135,134,,119,140,137,136,132,133,127,125,117,139", "118,473,416,145,,474,,,,,,,,,141,142,,138,120,121,122,129,126,128,,", "123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137,136,132", "133,127,125,117,139,118,473,416,145,,474,,,,,,,,,141,142,,138,120,121", "122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119", "140,137,136,132,133,127,125,117,139,118,608,416,145,,609,,,,,,,,,141", "142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,264", ",,,,,,135,134,,119,140,137,136,132,133,127,125,117,139,118,412,416,145", ",413,,,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144", "130,131,,,,,,264,,,,,,,135,134,,119,140,137,136,132,133,127,125,117", "139,118,610,422,145,,611,,,,,,,,,141,142,,138,120,121,122,129,126,128", ",,123,124,,,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137,136,132", "133,127,125,117,139,118,608,416,145,,609,,,,,,,,,141,142,,138,120,121", "122,129,126,128,,,123,124,,,,143,144,130,131,,,,,,264,,,,,,,135,134", ",119,140,137,136,132,133,127,125,117,139,118,610,422,145,,611,,,,,,", ",,141,142,,138,120,121,122,129,126,128,,,123,124,,,,143,144,130,131", ",,,,,,,,,,,,135,134,,119,140,137,136,132,133,127,125,117,139,118,418", "422,145,,420,,,,,,,,,141,142,,138,120,121,122,129,126,128,,,123,124", ",,,143,144,130,131,,,,,,,,,,,,,135,134,,119,140,137,136,132,133,127", "125,117,139,118,,,145"];
 
       racc_action_table = arr = (($a = $opal.Object._scope.Array) == null ? $opal.cm('Array') : $a).$new(24477, nil);
 
       idx = 0;
 
-      ($a = ($b = clist).$each, $a._p = (TMP_1 = function(str){var self = TMP_1._s || this, $a, $b, TMP_2;if (str == null) str = nil;
-      return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_2 = function(i){var self = TMP_2._s || this, $a;if (i == null) i = nil;
-        if (($a = i['$empty?']()) === false || $a === nil) {
-            arr['$[]='](idx, i.$to_i())};
-          return idx = idx['$+'](1);}, TMP_2._s = self, TMP_2), $a).call($b)}, TMP_1._s = self, TMP_1), $a).call($b);
+      ($a = ($b = clist).$each, $a._p = (TMP_1 = function(str){
+        var self = TMP_1._s || this;
+        var $a;
+        var $b;
+        var TMP_2;
+        if (str == null) str = nil;
+        return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_2 = function(i){
+          var self = TMP_2._s || this;
+          var $a;
+          if (i == null) i = nil;
+          if (($a = i['$empty?']()) === false || $a === nil) {
+              arr['$[]='](idx, i.$to_i())}
+          return idx = idx['$+'](1);
+        }, TMP_2._s = self, TMP_2), $a).call($b);
+      }, TMP_1._s = self, TMP_1), $a).call($b);
 
       clist = ["0,0,0,0,0,344,317,789,0,0,289,646,832,0,55,0,0,0,0,0,0,0,877,561,877", "584,34,0,0,0,0,0,0,0,739,486,0,573,573,705,705,377,0,0,0,0,0,0,646,0", "0,0,0,0,431,0,0,0,487,0,0,109,0,0,648,463,109,109,486,661,661,306,306", "555,566,289,561,554,313,37,37,313,739,561,0,584,584,0,561,903,0,487", "608,904,584,0,289,902,463,0,55,873,431,377,650,343,789,0,789,561,317", "789,0,0,0,0,0,0,344,788,344,0,0,344,661,832,573,832,705,0,832,561,0", "705,651,0,0,404,404,404,608,404,795,208,26,404,404,795,666,476,404,666", "404,404,404,404,404,404,404,652,306,285,435,435,404,404,404,404,404", "404,404,904,555,404,555,654,554,555,554,566,404,554,476,404,404,263", "404,404,404,404,404,208,404,404,404,379,404,404,566,404,404,651,903", "566,903,71,904,903,904,26,902,904,902,71,873,902,873,435,343,873,343", "404,910,343,404,309,652,404,309,910,26,653,788,205,788,788,404,788,651", "356,205,654,654,600,404,651,356,297,206,404,404,404,404,404,404,379", "379,379,404,404,609,696,274,652,674,656,404,274,696,404,652,674,404", "404,422,422,422,910,422,654,709,310,422,422,310,709,654,422,205,422", "422,422,422,422,422,422,206,348,298,348,595,422,422,422,422,422,422", "422,609,3,422,13,906,906,3,402,696,422,13,674,422,422,659,422,422,422", "422,422,422,422,422,422,370,422,422,660,422,422,588,402,402,402,402", "402,402,402,402,402,402,402,662,402,402,252,347,402,402,372,422,347", "372,422,422,704,422,276,13,667,704,422,402,422,402,422,402,402,402,402", "402,402,402,422,402,807,807,668,422,422,422,422,422,422,370,370,370", "422,422,354,402,671,402,867,673,422,354,597,422,301,867,422,422,423", "423,423,440,423,357,372,372,423,423,538,538,357,423,675,423,423,423", "423,423,423,423,645,645,645,645,645,423,423,423,423,423,423,423,440", "597,423,868,440,440,676,613,597,423,868,867,423,423,677,423,423,423", "423,423,423,423,423,423,368,423,423,680,423,423,308,613,613,613,613", "613,613,613,613,613,613,613,299,613,613,758,278,613,613,299,423,685", "758,423,423,691,423,693,868,683,683,423,613,423,613,423,613,613,613", "613,613,613,613,423,613,15,15,249,423,423,423,423,423,423,368,368,368", "423,423,564,613,248,870,641,882,423,564,299,423,870,758,423,423,892", "892,892,892,892,374,638,358,892,892,292,292,562,892,358,892,892,892", "892,892,892,892,5,5,5,5,5,892,892,892,892,892,892,892,342,342,892,882", "882,882,882,564,892,892,870,892,892,892,311,892,892,892,892,892,283", "892,892,892,216,892,892,283,892,892,655,374,374,374,502,312,891,655", "286,790,360,502,655,891,210,286,790,360,209,296,892,790,557,892,556", "905,892,25,14,42,291,892,905,710,25,892,42,905,711,361,284,712,714,892", "207,283,361,284,892,892,892,892,892,892,717,655,314,892,892,502,296", "891,550,286,790,892,532,296,892,14,322,892,892,430,430,430,14,430,355", "724,905,430,430,545,42,355,430,541,430,430,430,430,430,430,430,284,279", "323,530,325,430,430,430,430,430,430,430,326,412,430,363,413,532,532", "532,532,430,363,774,430,430,192,430,430,430,430,430,430,430,430,430", "338,430,430,517,430,430,516,637,637,637,637,637,637,637,637,637,637", "637,412,637,637,413,742,637,637,412,430,743,413,430,746,749,430,774", "774,774,774,430,637,750,637,430,637,637,637,637,637,637,637,430,637", "515,752,359,430,430,430,430,430,430,359,96,755,430,430,756,637,757,637", "341,804,430,35,761,430,78,764,430,430,432,432,432,765,432,288,287,480", "432,432,506,780,783,432,480,432,432,432,432,432,432,432,275,275,275", "275,275,432,432,432,432,432,432,432,35,77,432,804,804,804,804,35,503", "432,63,349,432,432,498,432,432,432,432,432,480,432,432,432,439,432,432", "792,432,432,793,462,462,462,462,462,462,462,462,462,462,462,751,462", "462,350,496,462,462,751,432,798,799,432,800,439,432,493,492,439,439", "633,462,41,462,432,462,462,462,462,462,462,462,432,462,816,817,488,432", "432,432,432,432,432,632,824,825,432,432,751,462,462,36,482,605,432,835", "836,432,481,841,432,432,888,888,888,458,888,842,718,718,888,888,718", "718,718,888,20,888,888,888,888,888,888,888,479,847,280,852,853,888,888", "888,888,888,888,888,458,854,888,856,458,458,458,458,857,888,478,444", "888,888,443,888,888,888,888,888,888,888,888,888,442,888,888,441,888", "888,869,425,425,425,425,425,425,425,425,425,425,425,373,425,425,12,612", "425,425,11,888,880,419,888,10,887,888,9,376,411,407,888,425,6,425,888", "425,425,425,425,425,425,425,888,425,896,898,899,888,888,888,888,888", "888,901,622,405,888,888,1,425,393,620,399,,888,,,888,,,888,888,886,886", "886,886,886,,,,886,886,,,,886,,886,886,886,886,886,886,886,,,,,,886", "886,886,886,886,886,886,,546,886,546,546,546,,546,886,886,,886,886,886", ",886,886,886,886,886,,886,886,886,,886,886,,886,886,,740,740,740,740", "740,740,740,740,740,740,740,,740,740,,,740,740,,886,,,886,,,886,,,,", "886,740,,740,886,740,740,740,740,740,740,740,886,740,,,,886,886,886", "886,886,886,,,,886,886,,740,,,,,886,,,886,,,886,886,878,878,878,878", "878,,,,878,878,,,,878,,878,878,878,878,878,878,878,,,,,,878,878,878", "878,878,878,878,,779,878,779,779,779,,779,878,878,,878,878,878,,878", "878,878,878,878,,878,878,878,,878,878,,878,878,,513,513,513,513,513", "513,513,513,513,513,513,,513,513,,,513,513,,878,,,878,,,878,,,,,878", "513,,513,878,513,513,513,513,513,513,513,878,513,,,,878,878,878,878", "878,878,,,,878,878,,513,,,,,878,,,878,,,878,878,366,366,366,459,366", ",,,366,366,,,,366,,366,366,366,366,366,366,366,,,,,,366,366,366,366", "366,366,366,459,,366,,459,459,459,459,,366,,,366,366,,366,366,366,366", "366,,366,366,366,,366,366,,366,366,,735,735,735,735,735,735,735,735", "735,735,735,,735,735,,,735,735,,366,,,366,,,366,,,,,,735,,735,366,735", "735,735,735,735,735,735,366,735,,,,366,366,366,366,366,366,,,,366,366", ",735,,,,,366,,,366,,,366,366,866,866,866,866,866,,,,866,866,,,,866,", "866,866,866,866,866,866,866,,,,,,866,866,866,866,866,866,866,,,866,", ",,,,866,866,,866,866,866,,866,866,866,866,866,,866,866,866,,866,866", ",866,866,,733,733,733,733,733,733,733,733,733,733,733,,733,733,,,733", "733,,866,,,866,,,866,,,,,866,733,,733,866,733,733,733,733,733,733,733", "866,733,,,,866,866,866,866,866,866,,,,866,866,,733,,,,,866,,,866,,,866", "866,864,864,864,,864,,,,864,864,,,,864,,864,864,864,864,864,864,864", ",,,,,864,864,864,864,864,864,864,,,864,,,,,,,864,,,864,864,,864,864", "864,864,864,,864,864,864,,864,864,,864,864,,730,730,730,730,730,730", "730,730,730,730,730,,730,730,,,730,730,,864,,,864,,,864,,,,,864,730", "864,730,864,730,730,730,730,730,730,730,864,730,,,,864,864,864,864,864", "864,,,,864,864,,730,,,,,864,,,864,,,864,864,849,849,849,849,849,,,,849", "849,,,,849,,849,849,849,849,849,849,849,,,,,,849,849,849,849,849,849", "849,,,849,,,,,,849,849,,849,849,849,,849,849,849,849,849,,849,849,849", ",849,849,,849,849,,728,728,728,728,728,728,728,728,728,728,728,,728", "728,,,728,728,,849,,,849,,,849,,,,,849,728,,728,849,728,728,728,728", "728,728,728,849,728,,,,849,849,849,849,849,849,,,,849,849,,728,,,,,849", ",,849,,,849,849,17,17,17,,17,,,,17,17,,,,17,,17,17,17,17,17,17,17,,", ",,,17,17,17,17,17,17,17,,,17,,,,,,,17,,,17,17,,17,17,17,17,17,,17,17", "17,,17,17,,17,17,,658,658,658,658,658,658,658,658,658,658,658,,658,658", ",,658,658,,17,,,17,17,,17,,,,,,658,,658,17,658,658,658,658,658,658,658", "17,658,,,,17,17,17,17,17,17,,,,17,17,,658,,,,,17,,,17,,,17,17,18,18", "18,,18,,,,18,18,,,,18,,18,18,18,18,18,18,18,,,,,,18,18,18,18,18,18,18", ",,18,,,,,,,18,,,18,18,,18,18,18,18,18,,18,18,18,,18,18,,18,18,,819,819", "819,819,819,819,819,819,819,819,819,,819,819,,,819,819,,18,,,18,,,18", ",,,,,819,,819,18,819,819,819,819,819,819,819,18,819,,,,18,18,18,18,18", "18,,,,18,18,,819,,,,,18,,,18,,,18,18,844,844,844,844,844,,,,844,844", ",,,844,,844,844,844,844,844,844,844,,,,,,844,844,844,844,844,844,844", ",,844,,,,,,844,844,,844,844,844,,844,844,844,844,844,,844,844,844,,844", "844,,844,844,,410,410,410,410,410,410,410,410,410,410,410,,410,410,", ",410,410,,844,,,844,,,844,,,,,844,410,,410,844,410,410,410,410,410,410", "410,844,410,,,,844,844,844,844,844,844,,,,844,844,,410,,,,,844,,,844", ",,844,844,843,843,843,,843,,,,843,843,,,,843,,843,843,843,843,843,843", "843,,,,,,843,843,843,843,843,843,843,,,843,,,,,,,843,,,843,843,,843", "843,843,843,843,,843,843,843,,843,843,,843,843,,723,723,723,723,723", "723,723,723,723,723,723,,723,723,,,723,723,,843,,,843,,,843,,,,,843", "723,,723,843,723,723,723,723,723,723,723,843,723,,,,843,843,843,843", "843,843,,,,843,843,,723,,,,,843,,,843,,,843,843,22,22,22,,22,,,,22,22", ",,,22,,22,22,22,22,22,22,22,,,,,,22,22,22,22,22,22,22,,,22,,,,,,,22", ",,22,22,,22,22,22,22,22,22,22,22,22,,22,22,,22,22,,246,246,246,246,246", "246,246,246,246,246,246,,246,246,,,246,246,,22,,,22,,,22,,,,,22,246", "22,246,22,246,246,246,246,246,246,246,22,246,,,,22,22,22,22,22,22,,", ",22,22,,246,,,,,22,,,22,,,22,22,23,23,23,,23,,,,23,23,,,,23,,23,23,23", "23,23,23,23,,,,,,23,23,23,23,23,23,23,,,23,,,,,,,23,,,23,23,,23,23,23", "23,23,23,23,23,23,,23,23,,23,23,,19,19,19,19,19,19,19,19,19,19,19,,19", "19,,,19,19,,23,,,23,,,23,,,,,23,19,23,19,23,19,19,19,19,19,19,19,23", "19,,,,23,23,23,23,23,23,,,,23,23,,19,,,,,23,,,23,,,23,23,24,24,24,,24", ",,,24,24,,,,24,,24,24,24,24,24,24,24,,,,,,24,24,24,24,24,24,24,,681", "24,681,681,681,,681,,24,,,24,24,,24,24,24,24,24,24,24,24,24,,24,24,", "24,24,334,,334,334,334,,334,,,681,,,,,,,,681,,,24,,,24,447,,24,,,,,24", ",24,,24,,,334,,447,447,,24,,,334,,24,24,24,24,24,24,,447,,24,24,447", "447,447,447,,,24,,,24,,,24,24,839,839,839,,839,,,,839,839,,,,839,,839", "839,839,839,839,839,839,,,,,,839,839,839,839,839,839,839,,543,839,543", "543,543,,543,,839,,,839,839,,839,839,839,839,839,,839,839,839,445,839", "839,,839,839,,,,,,,,,,543,445,445,,,,,,543,,,839,,,839,,445,839,445", ",445,445,445,445,,,839,,,,,,,,839,,,,,839,839,839,839,839,839,,,,839", "839,,,,,,,839,,,839,,,839,839,433,433,433,,433,,,,433,433,,,,433,,433", "433,433,433,433,433,433,,,,,,433,433,433,433,433,433,433,,,433,,,,,", ",433,,,433,433,,433,433,433,433,433,,433,433,433,,433,433,,433,433,", "450,,,,,,,,,,,,,,,,450,450,,433,,,433,,,433,,,,,,450,,450,433,450,450", "450,450,,,450,433,450,,,,433,433,433,433,433,433,,,,433,433,,,,,,,433", ",,433,,,433,433,434,434,434,,434,,,,434,434,,,,434,,434,434,434,434", "434,434,434,,,,,,434,434,434,434,434,434,434,,,434,,,,,,,434,,,434,434", ",434,434,434,434,434,,434,434,434,,434,434,,434,434,,449,,,,,,,,,,,", ",,,,449,449,,434,,,434,,,434,,,,,,449,,449,434,449,449,449,449,,,449", "434,449,,,,434,434,434,434,434,434,,,,434,434,,,,,,,434,,,434,,,434", "434,465,465,465,,465,,,,465,465,,,,465,,465,465,465,465,465,465,465", ",,,,,465,465,465,465,465,465,465,,,465,,,,,,,465,,,465,465,,465,465", "465,465,465,465,465,465,465,,465,465,,465,465,,448,448,448,448,448,448", "448,,,448,448,,,,,,448,448,,465,,,465,,,465,,,,,465,448,465,448,465", "448,448,448,448,448,448,448,465,448,,,,465,465,465,465,465,465,,,,465", "465,,,,,,,465,,,465,,,465,465,30,30,30,30,30,,,,30,30,,,,30,,30,30,30", "30,30,30,30,,,,,,30,30,30,30,30,30,30,,,30,,,,,,30,30,,30,30,30,,30", "30,30,30,30,,30,30,30,,30,30,,30,30,,457,457,457,457,457,457,457,,,457", "457,,,,,,457,457,,30,,,30,,,30,,,,,30,457,,457,30,457,457,457,457,457", "457,457,30,457,,,,30,30,30,30,30,30,,,,30,30,,,,,,,30,,,30,,,30,30,31", "31,31,,31,,,,31,31,,,,31,,31,31,31,31,31,31,31,,,,,,31,31,31,31,31,31", "31,,,31,,,,,,,31,,,31,31,,31,31,31,31,31,,31,31,31,,31,31,617,,617,617", "617,,617,,,,,,,,,,,,,,,,,31,,,31,,,31,,,,,31,,,,617,,,,,,,,617,617,617", "617,,31,31,31,31,31,31,617,,,31,31,,,,,,,31,,,31,,,31,31,32,32,32,,32", ",,,32,32,,,,32,,32,32,32,32,32,32,32,,,,,,32,32,32,32,32,32,32,,,32", ",,,,,,32,,,32,32,,32,32,32,32,32,,32,32,32,446,32,32,536,,536,536,536", ",536,,,,,,,446,446,,,,,,,,,32,,,32,,446,32,446,,446,446,446,446,,,536", ",,,,,,,536,536,536,536,,32,32,32,32,32,32,,,,32,32,,,,32,,,32,,,32,", ",32,32,833,833,833,,833,,,,833,833,,,,833,,833,833,833,833,833,833,833", ",,,,,833,833,833,833,833,833,833,,,833,,,,,,,833,,,833,833,,833,833", "833,833,833,,833,833,833,,833,833,318,,318,318,318,,318,,,,,,,,,,,,", ",,,,833,,,833,,,833,,,,,,,,,318,,318,,,,,,318,318,318,318,,833,833,833", "833,833,833,,,,833,833,,,,,,,833,,,833,,,833,833,467,467,467,,467,,", ",467,467,,,,467,,467,467,467,467,467,467,467,,,,,,467,467,467,467,467", "467,467,,,467,,,,,,,467,,,467,467,,467,467,467,467,467,467,467,467,467", ",467,467,,467,467,,460,460,460,460,460,460,460,,,460,460,,,,,,460,460", ",467,,,467,,,467,,,,,,460,467,460,467,460,460,460,460,460,460,460,467", "460,,,,467,467,467,467,467,467,,,,467,467,,,,,,,467,,,467,,,467,467", "829,829,829,829,829,,,,829,829,,,,829,,829,829,829,829,829,829,829,", ",,,,829,829,829,829,829,829,829,,,829,,,,,,829,829,,829,829,829,,829", "829,829,829,829,,829,829,829,,829,829,,829,829,,456,456,456,456,456", "456,456,,,456,456,,,,,,456,456,,829,,,829,,,829,,,,,829,456,,456,829", "456,456,456,456,456,456,456,829,456,,,,829,829,829,829,829,829,,,,829", "829,,,,,,,829,,,829,,,829,829,820,820,820,,820,,,,820,820,,,,820,,820", "820,820,820,820,820,820,,,,,,820,820,820,820,820,820,820,,,820,,,,,", ",820,,,820,820,,820,820,820,820,820,,820,820,820,,820,820,,820,820,", "461,461,461,461,461,461,461,461,,461,461,,,,,,461,461,,820,,,820,,,820", ",,,,,461,,461,820,461,461,461,461,461,461,461,820,461,,,,820,820,820", "820,820,820,,,,820,820,,,,,,,820,,,820,,,820,820,38,38,38,,38,,,,38", "38,,,,38,,38,38,38,38,38,38,38,,,,,,38,38,38,38,38,38,38,,,38,,,,,,", "38,,,38,38,,38,38,38,38,38,,38,38,38,,38,38,,38,38,,455,455,455,455", "455,455,455,,,455,455,,,,,,455,455,,38,,,38,,,38,,,,,,455,,455,38,455", "455,455,455,455,455,455,38,455,,,,38,38,38,38,38,38,,,,38,38,,,,,,,38", ",,38,,,38,38,39,39,39,,39,,,,39,39,,,,39,,39,39,39,39,39,39,39,,,,,", "39,39,39,39,39,39,39,,,39,,,,,,,39,,,39,39,,39,39,39,39,39,,39,39,39", ",39,39,,39,39,,454,454,454,454,454,454,454,,,454,454,,,,,,454,454,,39", ",,39,,,39,,,,,,454,,454,39,454,454,454,454,454,454,454,39,454,,,,39", "39,39,39,39,39,,,,39,39,,,,,,,39,,,39,,,39,39,40,40,40,,40,,,,40,40", ",,,40,,40,40,40,40,40,40,40,,,,,,40,40,40,40,40,40,40,,,40,,,,,,,40", ",,40,40,,40,40,40,40,40,,40,40,40,,40,40,,40,40,,451,,,,,,,,,,,,,,,", "451,451,,40,,,40,,,40,,,,,,451,,451,40,451,451,451,451,,,451,40,451", ",,,40,40,40,40,40,40,,,,40,40,,,,,,,40,,,40,,,40,40,808,808,808,,808", ",,,808,808,,,,808,,808,808,808,808,808,808,808,,,,,,808,808,808,808", "808,808,808,,,808,,,,,,,808,,,808,808,,808,808,808,808,808,,808,808", "808,,808,808,,808,808,,453,453,453,453,453,453,453,,,453,453,,,,,,453", "453,,808,,,808,,,808,,,,,,453,,453,808,453,453,453,453,453,453,453,808", "453,,,,808,808,808,808,808,808,,,,808,808,,,,,,,808,,,808,,,808,808", "794,794,794,794,794,,,,794,794,,,,794,,794,794,794,794,794,794,794,", ",,,,794,794,794,794,794,794,794,,,794,,,,,,794,794,,794,794,794,,794", "794,794,794,794,,794,794,794,,794,794,,794,794,,438,438,438,438,438", "438,438,438,438,438,438,,438,438,,,438,438,,794,,,794,,,794,,,,,794", "438,,438,794,438,438,438,438,438,438,438,794,438,,,,794,794,794,794", "794,794,,,,794,794,,,,,,,794,,,794,,,794,794,469,469,469,,469,,,,469", "469,,,,469,,469,469,469,469,469,469,469,,,,,,469,469,469,469,469,469", "469,,,469,,,,,,,469,,,469,469,,469,469,469,469,469,,469,469,469,,469", "469,,469,469,,452,,,,,,,,,,,,,,,,452,452,,469,,,469,,,469,,,,,,452,", "452,469,452,452,452,452,,,452,469,452,,,,469,469,469,469,469,469,,,", "469,469,,,,,,,469,,,469,,,469,469,52,52,52,,52,,,,52,52,,,,52,,52,52", "52,52,52,52,52,,,,,,52,52,52,52,52,52,52,,,52,,,,,,,52,,,52,52,,52,52", "52,52,52,,52,52,52,,52,52,,52,52,,437,437,437,437,437,437,437,437,437", "437,437,,437,437,,,437,437,,52,,,52,,,52,,,,,,437,,437,52,437,437,437", "437,437,437,437,52,437,,,,52,52,52,52,52,52,,,,52,52,,,,,,,52,,,52,", ",52,52,53,53,53,,53,,,,53,53,,,,53,,53,53,53,53,53,53,53,,,,,,53,53", "53,53,53,53,53,,,53,,,,,,,53,,,53,53,,53,53,53,53,53,53,53,53,53,,53", "53,,53,53,,,,,,,,,,,,,,,,,,,,,53,,,53,,,53,,,,,53,,,,53,,,,,,,,53,,", ",,53,53,53,53,53,53,,,,53,53,,,,,,,53,,,53,,,53,53,54,54,54,,54,,,,54", "54,,,,54,,54,54,54,54,54,54,54,,,,,,54,54,54,54,54,54,54,,,54,,,,,,", "54,,,54,54,,54,54,54,54,54,54,54,54,54,,54,54,,54,54,,,,,,,,,,,,,,,", ",,,,,54,,,54,,,54,,,,,,,,,54,,,,,,,,54,,,,,54,54,54,54,54,54,,,,54,54", ",,,,,,54,,,54,,,54,54,485,485,485,,485,,,,485,485,,,,485,,485,485,485", "485,485,485,485,,,,,,485,485,485,485,485,485,485,,,485,,,,,,,485,,,485", "485,,485,485,485,485,485,,485,485,485,,485,485,,485,485,,,,,,,,,,,,", ",,,,,,,,485,,,485,,485,485,,,,,,,485,,485,,,,,,,,485,,,,,485,485,485", "485,485,485,,,,485,485,,,,,,,485,,,485,,,485,485,491,491,491,491,491", ",,,491,491,,,,491,,491,491,491,491,491,491,491,,,,,,491,491,491,491", "491,491,491,,,491,,,,,,491,491,,491,491,491,,491,491,491,491,491,,491", "491,491,,491,491,,491,491,,,,,,,,,,,,,,,,,,,,,491,,,491,,,491,,,,,491", ",,,491,,,,,,,,491,,,,,491,491,491,491,491,491,,,,491,491,,,,,,491,491", ",,491,,,491,491,57,57,57,,57,,,,57,57,,,,57,,57,57,57,57,57,57,57,,", ",,,57,57,57,57,57,57,57,,,57,,,,,,,57,,,57,57,,57,57,57,57,57,,57,57", "57,,57,57,,57,57,,,,,,,,,,,,,,,,,,,,,57,,,57,,,57,,,,,,,,,57,,,,,,,", "57,,,,,57,57,57,57,57,57,,,,57,57,,,,,,,57,,,57,,,57,57,58,58,58,,58", ",,,58,58,,,,58,,58,58,58,58,58,58,58,,,,,,58,58,58,58,58,58,58,,,58", ",,,,,,58,,,58,58,,58,58,58,58,58,,58,58,58,,58,58,,58,58,,,,,,,,,,,", ",,,,,,,,,58,,,58,,,58,,,,,,,,,58,,,,,,,,58,,,,,58,58,58,58,58,58,,,", "58,58,,,,,,,58,,,58,,,58,58,61,61,61,,61,,,,61,61,,,,61,,61,61,61,61", "61,61,61,,,,,,61,61,61,61,61,61,61,,,61,,,,,,,61,,,61,61,,61,61,61,61", "61,,61,61,61,,61,61,,61,61,,,,,,,,,,,,,,,,,,,,,61,,,61,,,61,,,,,,,,", "61,,,,,,,,61,,,,,61,61,61,61,61,61,,,,61,61,61,,,,,61,61,,,61,,,61,61", "62,62,62,,62,,,,62,62,,,,62,,62,62,62,62,62,62,62,,,,,,62,62,62,62,62", "62,62,,,62,,,,,,,62,,,62,62,,62,62,62,62,62,,62,62,62,,62,62,708,,708", "708,708,,708,,,,,,,,,,,,,,,,,62,,,62,,,62,,,,,62,,,,708,,,,,,,,708,708", "708,708,,62,62,62,62,62,62,,,,62,62,,,,,,,62,,,62,,,62,62,353,353,353", ",353,,,,353,353,,,,353,,353,353,353,353,353,353,353,,,,,,353,353,353", "353,353,353,353,,,353,,,,,,,353,,,353,353,,353,353,353,353,353,,353", "353,353,,353,353,802,,802,802,802,,802,,,,,,,,,,,,,,,,,353,,,353,,,353", ",,,,,,,,802,,,,,,,,802,802,802,802,,353,353,353,353,353,353,,,,353,353", ",,,,,,353,,,353,,,353,353,351,351,351,,351,,,,351,351,,,,351,,351,351", "351,351,351,351,351,,,,,,351,351,351,351,351,351,351,,,351,,,,,,,351", ",,351,351,,351,351,351,351,351,,351,351,351,,351,351,569,,569,569,569", ",569,,,,,,,,,,,,,,,,,351,,,351,,,351,,,,,,,,,569,569,,,,,,,569,569,569", "569,,351,351,351,351,351,351,,,,351,351,,,,,,,351,,,351,,,351,351,558", "558,558,558,558,,,,558,558,,,,558,,558,558,558,558,558,558,558,,,,,", "558,558,558,558,558,558,558,,,558,,,,,,558,558,,558,558,558,,558,558", "558,558,558,,558,558,558,,558,558,,558,558,,,,,,,,,,,,,,,,,,,,,558,", ",558,,,558,,,,,558,,,,558,,,,,,,,558,,,,,558,558,558,558,558,558,,,", "558,558,,,,,,,558,,,558,,,558,558,784,784,784,784,784,,,,784,784,,,", "784,,784,784,784,784,784,784,784,,,,,,784,784,784,784,784,784,784,,", "784,,,,,,784,784,,784,784,784,,784,784,784,784,784,,784,784,784,,784", "784,,784,784,,,,,,,,,,,,,,,,,,,,,784,,,784,,,784,,,,,784,,,,784,,,,", ",,,784,,,,,784,784,784,784,784,784,,,,784,784,,,,,,,784,,,784,,,784", "784,763,763,763,763,763,,,,763,763,,,,763,,763,763,763,763,763,763,763", ",,,,,763,763,763,763,763,763,763,,,763,,,,,,763,763,,763,763,763,,763", "763,763,763,763,,763,763,763,,763,763,,763,763,,,,,,,,,,,,,,,,,,,,,763", ",,763,,,763,,,,,763,,,,763,,,,,,,,763,,,,,763,763,763,763,763,763,,", ",763,763,,,,,,,763,,,763,,,763,763,497,497,497,,497,,,,497,497,,,,497", ",497,497,497,497,497,497,497,,,,,,497,497,497,497,497,497,497,,,497", ",,,,,,497,,,497,497,,497,497,497,497,497,,497,497,497,,497,497,56,,56", "56,56,,56,,,,,,,,,,,,,,,,,497,,,497,,,497,,,,,,,,,56,56,,,,,,,56,56", "56,56,,497,497,497,497,497,497,,,,497,497,,,,,,,497,,,497,,,497,497", "83,83,83,,83,,,,83,83,,,,83,,83,83,83,83,83,83,83,,83,,,,83,83,83,83", "83,83,83,,,83,,,,,,,83,,,83,83,,83,83,83,83,83,83,83,83,83,,83,83,,83", "83,,,,,,,,,,,,,,,,,,,,,83,,,83,83,,83,,,,,83,,83,,83,,,,,,,,83,,83,", ",83,83,83,83,83,83,,,,83,83,,,,,,,83,,,83,,,83,83,86,86,86,,86,,,,86", "86,,,,86,,86,86,86,86,86,86,86,,86,,,,86,86,86,86,86,86,86,,,86,,,,", ",,86,,,86,86,,86,86,86,86,86,86,86,86,86,,86,86,,86,86,,,,,,,,,,,,,", ",,,,,,,86,,,86,86,,86,,,,,86,,86,,86,,,,,,,,86,,86,,,86,86,86,86,86", "86,,,,86,86,,,,,,,86,,,86,,,86,86,753,753,753,,753,,,,753,753,,,,753", ",753,753,753,753,753,753,753,,,,,,753,753,753,753,753,753,753,,,753", ",,,,,,753,,,753,753,,753,753,753,753,753,,753,753,753,,753,753,,753", "753,,,,,,,,,,,,,,,,,,,,,753,,,753,,,753,,,,,753,,,,753,,,,,,,,753,,", ",,753,753,753,753,753,753,,,,753,753,,,,,,,753,,,753,,,753,753,98,98", "98,98,98,,,,98,98,,,,98,,98,98,98,98,98,98,98,,,,,,98,98,98,98,98,98", "98,,,98,,,,,,98,98,98,98,98,98,,98,98,98,98,98,,98,98,98,,98,98,,98", "98,,,,,,,,,,,,,,,,,,,,,98,,,98,,,98,,,,,98,,,,98,,,,,,,,98,,,,,98,98", "98,98,98,98,,,,98,98,,,,,,98,98,,,98,,,98,98,102,102,102,,102,,,,102", "102,,,,102,,102,102,102,102,102,102,102,,,,,,102,102,102,102,102,102", "102,,,102,,,,,,,102,,,102,102,,102,102,102,102,102,,102,102,102,,102", "102,,102,102,,,,,,,,,,,,,,,,,,,,,102,,,102,,,102,,,,,,,,,102,,,,,,,", "102,,,,,102,102,102,102,102,102,,,,102,102,,,,,,,102,,,102,,,102,102", "103,103,103,,103,,,,103,103,,,,103,,103,103,103,103,103,103,103,,,,", ",103,103,103,103,103,103,103,,,103,,,,,,,103,,,103,103,,103,103,103", "103,103,,103,103,103,,103,103,,103,103,,,,,,,,,,,,,,,,,,,,,103,,,103", ",,103,,,,,,,,,103,,,,,,,,103,,,,,103,103,103,103,103,103,,,,103,103", ",,,,,,103,,,103,,,103,103,104,104,104,,104,,,,104,104,,,,104,,104,104", "104,104,104,104,104,,,,,,104,104,104,104,104,104,104,,,104,,,,,,,104", ",,104,104,,104,104,104,104,104,,104,104,104,,104,104,,104,104,,,,,,", ",,,,,,,,,,,,,,104,,,104,,,104,,,,,,,,,104,,,,,,,,104,,,,,104,104,104", "104,104,104,,,,104,104,,,,,,,104,,,104,,,104,104,105,105,105,,105,,", ",105,105,,,,105,,105,105,105,105,105,105,105,,,,,,105,105,105,105,105", "105,105,,,105,,,,,,,105,,,105,105,,105,105,105,105,105,,105,105,105", ",105,105,,105,105,,,,,,,,,,,,,,,,,,,,,105,,,105,,,105,,,,,,,,,105,,", ",,,,,105,,,,,105,105,105,105,105,105,,,,105,105,,,,,,,105,,,105,,,105", "105,106,106,106,106,106,,,,106,106,,,,106,,106,106,106,106,106,106,106", ",,,,,106,106,106,106,106,106,106,,,106,,,,,,106,106,,106,106,106,,106", "106,106,106,106,,106,106,106,,106,106,,106,106,,,,,,,,,,,,,,,,,,,,,106", ",,106,,,106,,,,,106,,,,106,,,,,,,,106,,,,,106,106,106,106,106,106,,", ",106,106,,,,,,,106,,,106,,,106,106,107,107,107,107,107,,,,107,107,,", ",107,,107,107,107,107,107,107,107,,,,,,107,107,107,107,107,107,107,", ",107,,,,,,107,107,107,107,107,107,,107,107,107,107,107,,107,107,107", ",107,107,,107,107,,,,,,,,,,,,,,,,,,,,,107,,,107,,,107,,,,,107,,,,107", ",,,,,,,107,,,,,107,107,107,107,107,107,,,,107,107,,,,,,,107,,,107,,", "107,107,738,738,738,,738,,,,738,738,,,,738,,738,738,738,738,738,738", "738,,,,,,738,738,738,738,738,738,738,,,738,,,,,,,738,,,738,738,,738", "738,738,738,738,,738,738,738,,738,738,,738,738,,,,,,,,,,,,,,,,,,,,,738", ",,738,,,738,,,,,,,,,738,,,,,,,,738,,,,,738,738,738,738,738,738,,,,738", "738,,,,,,,738,,,738,,,738,738,499,499,499,,499,,,,499,499,,,,499,,499", "499,499,499,499,499,499,,,,,,499,499,499,499,499,499,499,,,499,,,,,", ",499,,,499,499,,499,499,499,499,499,499,499,499,499,,499,499,,499,499", ",,,,,,,,,,,,,,,,,,,,499,,,499,,,499,,,,,499,,,,499,,,,,,,,499,,,,,499", "499,499,499,499,499,,,,499,499,,,,,,,499,,,499,,,499,499,737,737,737", ",737,,,,737,737,,,,737,,737,737,737,737,737,737,737,,,,,,737,737,737", "737,737,737,737,,,737,,,,,,,737,,,737,737,,737,737,737,737,737,,737", "737,737,,737,737,,737,737,,,,,,,,,,,,,,,,,,,,,737,,,737,,,737,,,,,,", ",,737,,,,,,,,737,,,,,737,737,737,737,737,737,,,,737,737,,,,,,,737,,", "737,,,737,737,194,194,194,194,194,,,,194,194,,,,194,,194,194,194,194", "194,194,194,,,,,,194,194,194,194,194,194,194,,,194,,,,,,194,194,,194", "194,194,,194,194,194,194,194,,194,194,194,,194,194,,194,194,,,,,,,,", ",,,,,,,,,,,,194,,,194,,,194,,,,,194,,,,194,,,,,,,,194,,,,,194,194,194", "194,194,194,,,,194,194,,,,,,,194,,,194,,,194,194,195,195,195,,195,,", ",195,195,,,,195,,195,195,195,195,195,195,195,,,,,,195,195,195,195,195", "195,195,,,195,,,,,,,195,,,195,195,,195,195,195,195,195,,195,195,195", ",195,195,,195,195,,,,,,,,,,,,,,,,,,,,,195,,,195,,,195,,,,,195,,,,195", ",,,,,,,195,,,,,195,195,195,195,195,195,,,,195,195,,,,,,,195,,,195,,", "195,195,196,196,196,,196,,,,196,196,,,,196,,196,196,196,196,196,196", "196,,,,,,196,196,196,196,196,196,196,,,196,,,,,,,196,,,196,196,,196", "196,196,196,196,,196,196,196,,196,196,,196,196,,,,,,,,,,,,,,,,,,,,,196", ",,196,,,196,,,,,196,,,,196,,,,,,,,196,,,,,196,196,196,196,196,196,,", ",196,196,,,,,,,196,,,196,,,196,196,197,197,197,,197,,,,197,197,,,,197", ",197,197,197,197,197,197,197,,,,,,197,197,197,197,197,197,197,,,197", ",,,,,,197,,,197,197,,197,197,197,197,197,,197,197,197,,197,197,,197", "197,,,,,,,,,,,,,,,,,,,,,197,,,197,,,197,,,,,,,,,197,,,,,,,,197,,,,,197", "197,197,197,197,197,,,,197,197,,,,,,,197,,,197,,,197,197,198,198,198", ",198,,,,198,198,,,,198,,198,198,198,198,198,198,198,,,,,,198,198,198", "198,198,198,198,,,198,,,,,,,198,,,198,198,,198,198,198,198,198,198,198", "198,198,,198,198,,198,198,,,,,,,,,,,,,,,,,,,,,198,,,198,,,198,,,,,198", ",,,198,,,,,,,,198,,,,,198,198,198,198,198,198,,,,198,198,,,,,,,198,", ",198,,,198,198,736,736,736,,736,,,,736,736,,,,736,,736,736,736,736,736", "736,736,,,,,,736,736,736,736,736,736,736,,,736,,,,,,,736,,,736,736,", "736,736,736,736,736,,736,736,736,,736,736,,736,736,,,,,,,,,,,,,,,,,", ",,,736,,,736,,,736,,,,,,,,,736,,,,,,,,736,,,,,736,736,736,736,736,736", ",,,736,736,,,,,,,736,,,736,,,736,736,726,726,726,,726,,,,726,726,,,", "726,,726,726,726,726,726,726,726,,,,,,726,726,726,726,726,726,726,,", "726,,,,,,,726,,,726,726,,726,726,726,726,726,,726,726,726,,726,726,", "726,726,,,,,,,,,,,,,,,,,,,,,726,,,726,,,726,,,,,,,,,726,,,,,,,,726,", ",,,726,726,726,726,726,726,,,,726,726,,,,,,,726,,,726,,,726,726,201", "201,201,,201,,,,201,201,,,,201,,201,201,201,201,201,201,201,,,,,,201", "201,201,201,201,201,201,,,201,,,,,,,201,,,201,201,,201,201,201,201,201", ",201,201,201,,201,201,,201,201,,,,,,,,,,,,,,,,,,,,,201,,,201,,,201,", ",,,,,,,201,,,,,,,,201,,,,,201,201,201,201,201,201,,,,201,201,,,,,,,201", ",,201,,,201,201,202,202,202,,202,,,,202,202,,,,202,,202,202,202,202", "202,202,202,,,,,,202,202,202,202,202,202,202,,,202,,,,,,,202,,,202,202", ",202,202,202,202,202,,202,202,202,,202,202,,202,202,,,,,,,,,,,,,,,,", ",,,,202,,,202,,,202,,,,,,,,,202,,,,,,,,202,,,,,202,202,202,202,202,202", ",,,202,202,,,,,,,202,,,202,,,202,202,203,203,203,,203,,,,203,203,,,", "203,,203,203,203,203,203,203,203,,,,,,203,203,203,203,203,203,203,,", "203,,,,,,,203,,,203,203,,203,203,203,203,203,,203,203,203,,203,203,", "203,203,,,,,,,,,,,,,,,,,,,,,203,,,203,,,203,,,,,,,,,203,,,,,,,,203,", ",,,203,203,203,203,203,203,,,,203,203,,,,,,,203,,,203,,,203,203,725", "725,725,,725,,,,725,725,,,,725,,725,725,725,725,725,725,725,,,,,,725", "725,725,725,725,725,725,,,725,,,,,,,725,,,725,725,,725,725,725,725,725", ",725,725,725,,725,725,,725,725,,,,,,,,,,,,,,,,,,,,,725,,,725,,,725,", ",,,,,,,725,,,,,,,,725,,,,,725,725,725,725,725,725,,,,725,725,,,,,,,725", ",,725,,,725,725,719,719,719,719,719,,,,719,719,,,,719,,719,719,719,719", "719,719,719,,,,,,719,719,719,719,719,719,719,,,719,,,,,,719,719,,719", "719,719,,719,719,719,719,719,,719,719,719,,719,719,,719,719,,,,,,,,", ",,,,,,,,,,,,719,,,719,,,719,,,,,719,,,,719,,,,,,,,719,,,,,719,719,719", "719,719,719,,,,719,719,,,,,,,719,,,719,,,719,719,508,508,508,,508,,", ",508,508,,,,508,,508,508,508,508,508,508,508,,,,,,508,508,508,508,508", "508,508,,,508,,,,,,,508,,,508,508,,508,508,508,508,508,,508,508,508", ",508,508,,508,508,,,,,,,,,,,,,,,,,,,,,508,,,508,,,508,,,,,,,,,508,,", ",,,,,508,,,,,508,508,508,508,508,508,,,,508,508,,,,,,,508,,,508,,,508", "508,707,707,707,707,707,,,,707,707,,,,707,,707,707,707,707,707,707,707", ",,,,,707,707,707,707,707,707,707,,,707,,,,,,707,707,,707,707,707,,707", "707,707,707,707,,707,707,707,,707,707,,707,707,,,,,,,,,,,,,,,,,,,,,707", ",,707,,,707,,,,,707,,,,707,,,,,,,,707,,,,,707,707,707,707,707,707,,", ",707,707,,,,,,,707,,,707,,,707,707,706,706,706,706,706,,,,706,706,,", ",706,,706,706,706,706,706,706,706,,,,,,706,706,706,706,706,706,706,", ",706,,,,,,706,706,,706,706,706,,706,706,706,706,706,,706,706,706,,706", "706,,706,706,,,,,,,,,,,,,,,,,,,,,706,,,706,,,706,,,,,706,,,,706,,,,", ",,,706,,,,,706,706,706,706,706,706,,,,706,706,,,,,,,706,,,706,,,706", "706,509,509,509,,509,,,,509,509,,,,509,,509,509,509,509,509,509,509", ",,,,,509,509,509,509,509,509,509,,,509,,,,,,,509,,,509,509,,509,509", "509,509,509,,509,509,509,,509,509,,509,509,,,,,,,,,,,,,,,,,,,,,509,", ",509,,,509,,,,,,,,,509,,,,,,,,509,,,,,509,509,509,509,509,509,,,,509", "509,,,,,,,509,,,509,,,509,509,211,211,211,211,211,,,,211,211,,,,211", ",211,211,211,211,211,211,211,,,,,,211,211,211,211,211,211,211,,,211", ",,,,,211,211,,211,211,211,,211,211,211,211,211,,211,211,211,,211,211", ",211,211,,,,,,,,,,,,,,,,,,,,,211,,,211,,,211,,,,,211,,,,211,,,,,,,,211", ",,,,211,211,211,211,211,211,,,,211,211,,,,,,,211,,,211,,,211,211,212", "212,212,,212,,,,212,212,,,,212,,212,212,212,212,212,212,212,,,,,,212", "212,212,212,212,212,212,,,212,,,,,,,212,,,212,212,,212,212,212,212,212", ",212,212,212,,212,212,,212,212,,,,,,,,,,,,,,,,,,,,,212,,,212,,212,212", ",,,,,,,,212,,,,,,,,212,,,,,212,212,212,212,212,212,,,,212,212,,,,,,", "212,,,212,,,212,212,215,215,215,,215,,,,215,215,,,,215,,215,215,215", "215,215,215,215,,,,,,215,215,215,215,215,215,215,,,215,,,,,,,215,,,215", "215,,215,215,215,215,215,,215,215,215,,215,215,,215,215,,,,,,,,,,,,", ",,,,,,,,215,,,215,,,215,,,,,,,,,215,,,,,,,,215,,,,,215,215,215,215,215", "215,,,,215,215,,,,,,,215,,,215,,,215,215,703,703,703,,703,,,,703,703", ",,,703,,703,703,703,703,703,703,703,,,,,,703,703,703,703,703,703,703", ",,703,,,,,,,703,,,703,703,,703,703,703,703,703,,703,703,703,,703,703", ",703,703,,,,,,,,,,,,,,,,,,,,,703,,,703,,,703,,,,,,,,,703,,,,,,,,703", ",,,,703,703,703,703,703,703,,,,703,703,,,,,,,703,,,703,,,703,703,217", "217,217,,217,,,,217,217,,,,217,,217,217,217,217,217,217,217,,,,,,217", "217,217,217,217,217,217,,,217,,,,,,,217,,,217,217,,217,217,217,217,217", ",217,217,217,,217,217,,217,217,,,,,,,,,,,,,,,,,,,,,217,,,217,,,217,", ",,,,,,,217,,,,,,,,217,,,,,217,217,217,217,217,217,,,,217,217,,,,,,,217", ",,217,,,217,217,218,218,218,,218,,,,218,218,,,,218,,218,218,218,218", "218,218,218,,,,,,218,218,218,218,218,218,218,,,218,,,,,,,218,,,218,218", ",218,218,218,218,218,,218,218,218,,218,218,,218,218,,,,,,,,,,,,,,,,", ",,,,218,,,218,,,218,,,,,,,,,218,,,,,,,,218,,,,,218,218,218,218,218,218", ",,,218,218,,,,,,,218,,,218,,,218,218,219,219,219,,219,,,,219,219,,,", "219,,219,219,219,219,219,219,219,,,,,,219,219,219,219,219,219,219,,", "219,,,,,,,219,,,219,219,,219,219,219,219,219,,219,219,219,,219,219,", "219,219,,,,,,,,,,,,,,,,,,,,,219,,,219,,,219,,,,,,,,,219,,,,,,,,219,", ",,,219,219,219,219,219,219,,,,219,219,,,,,,,219,,,219,,,219,219,220", "220,220,,220,,,,220,220,,,,220,,220,220,220,220,220,220,220,,,,,,220", "220,220,220,220,220,220,,,220,,,,,,,220,,,220,220,,220,220,220,220,220", ",220,220,220,,220,220,,220,220,,,,,,,,,,,,,,,,,,,,,220,,,220,,,220,", ",,,,,,,220,,,,,,,,220,,,,,220,220,220,220,220,220,,,,220,220,,,,,,,220", ",,220,,,220,220,221,221,221,,221,,,,221,221,,,,221,,221,221,221,221", "221,221,221,,,,,,221,221,221,221,221,221,221,,,221,,,,,,,221,,,221,221", ",221,221,221,221,221,,221,221,221,,221,221,,221,221,,,,,,,,,,,,,,,,", ",,,,221,,,221,,,221,,,,,,,,,221,,,,,,,,221,,,,,221,221,221,221,221,221", ",,,221,221,,,,,,,221,,,221,,,221,221,222,222,222,,222,,,,222,222,,,", "222,,222,222,222,222,222,222,222,,,,,,222,222,222,222,222,222,222,,", "222,,,,,,,222,,,222,222,,222,222,222,222,222,,222,222,222,,222,222,", "222,222,,,,,,,,,,,,,,,,,,,,,222,,,222,,,222,,,,,,,,,222,,,,,,,,222,", ",,,222,222,222,222,222,222,,,,222,222,,,,,,,222,,,222,,,222,222,223", "223,223,,223,,,,223,223,,,,223,,223,223,223,223,223,223,223,,,,,,223", "223,223,223,223,223,223,,,223,,,,,,,223,,,223,223,,223,223,223,223,223", ",223,223,223,,223,223,,223,223,,,,,,,,,,,,,,,,,,,,,223,,,223,,,223,", ",,,,,,,223,,,,,,,,223,,,,,223,223,223,223,223,223,,,,223,223,,,,,,,223", ",,223,,,223,223,224,224,224,,224,,,,224,224,,,,224,,224,224,224,224", "224,224,224,,,,,,224,224,224,224,224,224,224,,,224,,,,,,,224,,,224,224", ",224,224,224,224,224,,224,224,224,,224,224,,224,224,,,,,,,,,,,,,,,,", ",,,,224,,,224,,,224,,,,,,,,,224,,,,,,,,224,,,,,224,224,224,224,224,224", ",,,224,224,,,,,,,224,,,224,,,224,224,225,225,225,,225,,,,225,225,,,", "225,,225,225,225,225,225,225,225,,,,,,225,225,225,225,225,225,225,,", "225,,,,,,,225,,,225,225,,225,225,225,225,225,,225,225,225,,225,225,", "225,225,,,,,,,,,,,,,,,,,,,,,225,,,225,,,225,,,,,,,,,225,,,,,,,,225,", ",,,225,225,225,225,225,225,,,,225,225,,,,,,,225,,,225,,,225,225,226", "226,226,,226,,,,226,226,,,,226,,226,226,226,226,226,226,226,,,,,,226", "226,226,226,226,226,226,,,226,,,,,,,226,,,226,226,,226,226,226,226,226", ",226,226,226,,226,226,,226,226,,,,,,,,,,,,,,,,,,,,,226,,,226,,,226,", ",,,,,,,226,,,,,,,,226,,,,,226,226,226,226,226,226,,,,226,226,,,,,,,226", ",,226,,,226,226,227,227,227,,227,,,,227,227,,,,227,,227,227,227,227", "227,227,227,,,,,,227,227,227,227,227,227,227,,,227,,,,,,,227,,,227,227", ",227,227,227,227,227,,227,227,227,,227,227,,227,227,,,,,,,,,,,,,,,,", ",,,,227,,,227,,,227,,,,,,,,,227,,,,,,,,227,,,,,227,227,227,227,227,227", ",,,227,227,,,,,,,227,,,227,,,227,227,228,228,228,,228,,,,228,228,,,", "228,,228,228,228,228,228,228,228,,,,,,228,228,228,228,228,228,228,,", "228,,,,,,,228,,,228,228,,228,228,228,228,228,,228,228,228,,228,228,", "228,228,,,,,,,,,,,,,,,,,,,,,228,,,228,,,228,,,,,,,,,228,,,,,,,,228,", ",,,228,228,228,228,228,228,,,,228,228,,,,,,,228,,,228,,,228,228,229", "229,229,,229,,,,229,229,,,,229,,229,229,229,229,229,229,229,,,,,,229", "229,229,229,229,229,229,,,229,,,,,,,229,,,229,229,,229,229,229,229,229", ",229,229,229,,229,229,,229,229,,,,,,,,,,,,,,,,,,,,,229,,,229,,,229,", ",,,,,,,229,,,,,,,,229,,,,,229,229,229,229,229,229,,,,229,229,,,,,,,229", ",,229,,,229,229,230,230,230,,230,,,,230,230,,,,230,,230,230,230,230", "230,230,230,,,,,,230,230,230,230,230,230,230,,,230,,,,,,,230,,,230,230", ",230,230,230,230,230,,230,230,230,,230,230,,230,230,,,,,,,,,,,,,,,,", ",,,,230,,,230,,,230,,,,,,,,,230,,,,,,,,230,,,,,230,230,230,230,230,230", ",,,230,230,,,,,,,230,,,230,,,230,230,231,231,231,,231,,,,231,231,,,", "231,,231,231,231,231,231,231,231,,,,,,231,231,231,231,231,231,231,,", "231,,,,,,,231,,,231,231,,231,231,231,231,231,,231,231,231,,231,231,", "231,231,,,,,,,,,,,,,,,,,,,,,231,,,231,,,231,,,,,,,,,231,,,,,,,,231,", ",,,231,231,231,231,231,231,,,,231,231,,,,,,,231,,,231,,,231,231,232", "232,232,,232,,,,232,232,,,,232,,232,232,232,232,232,232,232,,,,,,232", "232,232,232,232,232,232,,,232,,,,,,,232,,,232,232,,232,232,232,232,232", ",232,232,232,,232,232,,232,232,,,,,,,,,,,,,,,,,,,,,232,,,232,,,232,", ",,,,,,,232,,,,,,,,232,,,,,232,232,232,232,232,232,,,,232,232,,,,,,,232", ",,232,,,232,232,233,233,233,,233,,,,233,233,,,,233,,233,233,233,233", "233,233,233,,,,,,233,233,233,233,233,233,233,,,233,,,,,,,233,,,233,233", ",233,233,233,233,233,,233,233,233,,233,233,,233,233,,,,,,,,,,,,,,,,", ",,,,233,,,233,,,233,,,,,,,,,233,,,,,,,,233,,,,,233,233,233,233,233,233", ",,,233,233,,,,,,,233,,,233,,,233,233,234,234,234,,234,,,,234,234,,,", "234,,234,234,234,234,234,234,234,,,,,,234,234,234,234,234,234,234,,", "234,,,,,,,234,,,234,234,,234,234,234,234,234,,234,234,234,,234,234,", "234,234,,,,,,,,,,,,,,,,,,,,,234,,,234,,,234,,,,,,,,,234,,,,,,,,234,", ",,,234,234,234,234,234,234,,,,234,234,,,,,,,234,,,234,,,234,234,235", "235,235,,235,,,,235,235,,,,235,,235,235,235,235,235,235,235,,,,,,235", "235,235,235,235,235,235,,,235,,,,,,,235,,,235,235,,235,235,235,235,235", ",235,235,235,,235,235,,235,235,,,,,,,,,,,,,,,,,,,,,235,,,235,,,235,", ",,,,,,,235,,,,,,,,235,,,,,235,235,235,235,235,235,,,,235,235,,,,,,,235", ",,235,,,235,235,236,236,236,,236,,,,236,236,,,,236,,236,236,236,236", "236,236,236,,,,,,236,236,236,236,236,236,236,,,236,,,,,,,236,,,236,236", ",236,236,236,236,236,,236,236,236,,236,236,,236,236,,,,,,,,,,,,,,,,", ",,,,236,,,236,,,236,,,,,,,,,236,,,,,,,,236,,,,,236,236,236,236,236,236", ",,,236,236,,,,,,,236,,,236,,,236,236,237,237,237,,237,,,,237,237,,,", "237,,237,237,237,237,237,237,237,,,,,,237,237,237,237,237,237,237,,", "237,,,,,,,237,,,237,237,,237,237,237,237,237,,237,237,237,,237,237,", "237,237,,,,,,,,,,,,,,,,,,,,,237,,,237,,,237,,,,,,,,,237,,,,,,,,237,", ",,,237,237,237,237,237,237,,,,237,237,,,,,,,237,,,237,,,237,237,238", "238,238,,238,,,,238,238,,,,238,,238,238,238,238,238,238,238,,,,,,238", "238,238,238,238,238,238,,,238,,,,,,,238,,,238,238,,238,238,238,238,238", ",238,238,238,,238,238,,238,238,,,,,,,,,,,,,,,,,,,,,238,,,238,,,238,", ",,,,,,,238,,,,,,,,238,,,,,238,238,238,238,238,238,,,,238,238,,,,,,,238", ",,238,,,238,238,239,239,239,,239,,,,239,239,,,,239,,239,239,239,239", "239,239,239,,,,,,239,239,239,239,239,239,239,,,239,,,,,,,239,,,239,239", ",239,239,239,239,239,,239,239,239,,239,239,,239,239,,,,,,,,,,,,,,,,", ",,,,239,,,239,,,239,,,,,,,,,239,,,,,,,,239,,,,,239,239,239,239,239,239", ",,,239,239,,,,,,,239,,,239,,,239,239,240,240,240,,240,,,,240,240,,,", "240,,240,240,240,240,240,240,240,,,,,,240,240,240,240,240,240,240,,", "240,,,,,,,240,,,240,240,,240,240,240,240,240,,240,240,240,,240,240,", "240,240,,,,,,,,,,,,,,,,,,,,,240,,,240,,,240,,,,,,,,,240,,,,,,,,240,", ",,,240,240,240,240,240,240,,,,240,240,,,,,,,240,,,240,,,240,240,241", "241,241,,241,,,,241,241,,,,241,,241,241,241,241,241,241,241,,,,,,241", "241,241,241,241,241,241,,,241,,,,,,,241,,,241,241,,241,241,241,241,241", ",241,241,241,,241,241,,241,241,,,,,,,,,,,,,,,,,,,,,241,,,241,,,241,", ",,,,,,,241,,,,,,,,241,,,,,241,241,241,241,241,241,,,,241,241,,,,,,,241", ",,241,,,241,241,242,242,242,,242,,,,242,242,,,,242,,242,242,242,242", "242,242,242,,,,,,242,242,242,242,242,242,242,,,242,,,,,,,242,,,242,242", ",242,242,242,242,242,,242,242,242,,242,242,,242,242,,,,,,,,,,,,,,,,", ",,,,242,,,242,,,242,,,,,,,,,242,,,,,,,,242,,,,,242,242,242,242,242,242", ",,,242,242,,,,,,,242,,,242,,,242,242,699,699,699,,699,,,,699,699,,,", "699,,699,699,699,699,699,699,699,,,,,,699,699,699,699,699,699,699,,", "699,,,,,,,699,,,699,699,,699,699,699,699,699,699,699,699,699,,699,699", ",699,699,,,,,,,,,,,,,,,,,,,,,699,,,699,,,699,,,,,699,,,,699,,,,,,,,699", ",,,,699,699,699,699,699,699,,,,699,699,,,,,,,699,,,699,,,699,699,695", "695,695,,695,,,,695,695,,,,695,,695,695,695,695,695,695,695,,,,,,695", "695,695,695,695,695,695,,,695,,,,,,,695,,,695,695,,695,695,695,695,695", ",695,695,695,,695,695,,695,695,,,,,,,,,,,,,,,,,,,,,695,,,695,,,695,", ",,,,,,,695,,,,,,,,695,,,,,695,695,695,695,695,695,,,,695,695,,,,,,,695", ",,695,,,695,695,694,694,694,,694,,,,694,694,,,,694,,694,694,694,694", "694,694,694,,,,,,694,694,694,694,694,694,694,,,694,,,,,,,694,,,694,694", ",694,694,694,694,694,,694,694,694,,694,694,,694,694,,,,,,,,,,,,,,,,", ",,,,694,,,694,,,694,,,,,694,,,,694,,,,,,,,694,,,,,694,694,694,694,694", "694,,,,694,694,,,,,,,694,,,694,,,694,694,251,251,251,,251,,,,251,251", ",,,251,,251,251,251,251,251,251,251,,,,,,251,251,251,251,251,251,251", ",,251,,,,,,,251,,,251,251,,251,251,251,251,251,,251,251,251,,251,251", ",251,251,,,,,,,,,,,,,,,,,,,,,251,,,251,,,251,,,,,,,,,251,,,,,,,,251", ",,,,251,251,251,251,251,251,,,,251,251,,,,,,,251,,,251,,,251,251,663", "663,663,,663,,,,663,663,,,,663,,663,663,663,663,663,663,663,,,,,,663", "663,663,663,663,663,663,,,663,,,,,,,663,,,663,663,,663,663,663,663,663", ",663,663,663,,663,663,,663,663,,,,,,,,,,,,,,,,,,,,,663,,,663,,,663,", ",,,663,,,,663,,,,,,,,663,,,,,663,663,663,663,663,663,,,,663,663,,,,", ",,663,,,663,,,663,663,253,253,253,,253,,,,253,253,,,,253,,253,253,253", "253,253,253,253,,,,,,253,253,253,253,253,253,253,,,253,,,,,,,253,,,253", "253,,253,253,253,253,253,,253,253,253,,253,253,,253,253,,,,,,,,,,,,", ",,,,,,,,253,,,253,,,253,,,,,,,,,253,,,,,,,,253,,,,,253,253,253,253,253", "253,,,,253,253,,,,,,,253,,,253,,,253,253,258,258,258,,258,,,,258,258", ",,,258,,258,258,258,258,258,258,258,,,,,,258,258,258,258,258,258,258", ",,258,,,,,,,258,,,258,258,,258,258,258,258,258,,258,258,258,,258,258", ",258,258,,,,,,,,,,,,,,,,,,,,,258,,,258,,,258,,,,,,,,,258,,,,,,,,258", ",,,,258,258,258,258,258,258,,,,258,258,,,,,,,258,,,258,,,258,258,657", "657,657,,657,,,,657,657,,,,657,,657,657,657,657,657,657,657,,,,,,657", "657,657,657,657,657,657,,,657,,,,,,,657,,,657,657,,657,657,657,657,657", ",657,657,657,,657,657,860,,860,860,860,,860,,,,,,,,,,,,,,,,,657,,,657", ",,657,,,,,,,,,860,860,,,,,,,860,860,860,860,,657,657,657,657,657,657", ",,,657,657,,,,,,,657,,,657,,,657,657,346,346,346,,346,,,,346,346,,,", "346,,346,346,346,346,346,346,346,,,,,,346,346,346,346,346,346,346,,", "346,,,,,,,346,,,346,346,,346,346,346,346,346,,346,346,346,,346,346,", "346,346,,,,,,,,,,,,,,,,,,,,,346,,,346,,,346,,,,,,,,,346,,,,,,,,346,", ",,,346,346,346,346,346,346,,,,346,346,,,,,,,346,,,346,,,346,346,345", "345,345,,345,,,,345,345,,,,345,,345,345,345,345,345,345,345,,,,,,345", "345,345,345,345,345,345,,,345,,,,,,,345,,,345,345,,345,345,345,345,345", ",345,345,345,,345,345,,345,345,,,,,,,,,,,,,,,,,,,,,345,,,345,,,345,", ",,,,,,,345,,,,,,,,345,,,,,345,345,345,345,345,345,,,,345,345,,,,,,,345", ",,345,,,345,345,264,264,264,,264,,,,264,264,,,,264,,264,264,264,264", "264,264,264,,,,,,264,264,264,264,264,264,264,,,264,,,,,,,264,,,264,264", ",264,264,264,264,264,264,264,264,264,,264,264,,264,264,,,,,,,,,,,,,", ",,,,,,,264,,,264,,,264,,,,,264,,264,,264,,,,,,,,264,,,,,264,264,264", "264,264,264,,,,264,264,,,,,,,264,,,264,,,264,264,265,265,265,,265,,", ",265,265,,,,265,,265,265,265,265,265,265,265,,,,,,265,265,265,265,265", "265,265,,,265,,,,,,,265,,,265,265,,265,265,265,265,265,265,265,265,265", ",265,265,,265,265,,,,,,,,,,,,,,,,,,,,,265,,,265,,,265,,,,,265,,265,", "265,,,,,,,,265,,,,,265,265,265,265,265,265,,,,265,265,,,,,,,265,,,265", ",,265,265,273,273,273,,273,,,,273,273,,,,273,,273,273,273,273,273,273", "273,,,,,,273,273,273,273,273,273,273,,,273,,,,,,,273,,,273,273,,273", "273,273,273,273,273,273,273,273,,273,273,,273,273,,,,,,,,,,,,,,,,,,", ",,273,,,273,,273,273,,,,,273,,273,,273,,,,,,,,273,,,,,273,273,273,273", "273,273,,,,273,273,,,,,,,273,,,273,,,273,273,510,510,510,,510,,,,510", "510,,,,510,,510,510,510,510,510,510,510,,,,,,510,510,510,510,510,510", "510,,,510,,,,,,,510,,,510,510,,510,510,510,510,510,,510,510,510,,510", "510,,510,510,,,,,,,,,,,,,,,,,,,,,510,,,510,,,510,,,,,,,,,510,,,,,,,", "510,,,,,510,510,510,510,510,510,,,,510,510,,,,,,,510,,,510,,,510,510", "647,647,647,,647,,,,647,647,,,,647,,647,647,647,647,647,647,647,,,,", ",647,647,647,647,647,647,647,,,647,,,,,,,647,,,647,647,,647,647,647", "647,647,,647,647,647,,647,647,,,,,,,,,,,,,,,,,,,,,,,,647,,,647,,,647", ",,,,,,,,,,,,,,,,,,,,,647,647,647,647,647,647,,,,647,647,,,,,,,647,,", "647,,,647,647,643,643,643,643,643,,,,643,643,,,,643,,643,643,643,643", "643,643,643,,,,,,643,643,643,643,643,643,643,,,643,,,,,,643,643,,643", "643,643,,643,643,643,643,643,,643,643,643,,643,643,,643,643,,,,,,,,", ",,,,,,,,,,,,643,,,643,,,643,,,,,643,,,,643,,,,,,,,643,,,,,643,643,643", "643,643,643,,,,643,643,,,,,,,643,,,643,,,643,643,277,277,277,277,277", ",,,277,277,,,,277,,277,277,277,277,277,277,277,,,,,,277,277,277,277", "277,277,277,,,277,,,,,,277,277,,277,277,277,,277,277,277,277,277,,277", "277,277,,277,277,,277,277,,,,,,,,,,,,,,,,,,,,,277,,,277,,,277,,,,,277", ",,,277,,,,,,,,277,,,,,277,277,277,277,277,277,,,,277,277,,,,,,,277,", ",277,,,277,277,642,642,642,642,642,,,,642,642,,,,642,,642,642,642,642", "642,642,642,,,,,,642,642,642,642,642,642,642,,,642,,,,,,642,642,,642", "642,642,,642,642,642,642,642,,642,642,642,,642,642,,642,642,,,,,,,,", ",,,,,,,,,,,,642,,,642,,,642,,,,,642,,,,642,,,,,,,,642,,,,,642,642,642", "642,642,642,,,,642,642,,,,,,,642,,,642,,,642,642,636,636,636,,636,,", ",636,636,,,,636,,636,636,636,636,636,636,636,,,,,,636,636,636,636,636", "636,636,,,636,,,,,,,636,,,636,636,,636,636,636,636,636,636,636,636,636", ",636,636,,636,636,,,,,,,,,,,,,,,,,,,,,636,,,636,,,636,,,,,636,,636,", "636,,,,,,,,636,,,,,636,636,636,636,636,636,,,,636,636,,,,,,,636,,,636", ",,636,636,630,630,630,630,630,,,,630,630,,,,630,,630,630,630,630,630", "630,630,,,,,,630,630,630,630,630,630,630,,,630,,,,,,630,630,,630,630", "630,,630,630,630,630,630,,630,630,630,,630,630,,630,630,,,,,,,,,,,,", ",,,,,,,,630,,,630,,,630,,,,,630,,,,630,,,,,,,,630,,,,,630,630,630,630", "630,630,,,,630,630,,,,,,,630,,,630,,,630,630,281,281,281,,281,,,,281", "281,,,,281,,281,281,281,281,281,281,281,,,,,,281,281,281,281,281,281", "281,,,281,,,,,,,281,,,281,281,,281,281,281,281,281,,281,281,281,,281", "281,,,,,,,,,,,,,,,,,,,,,,,,281,,,281,,,281,,,,,,,,,,,,,,,,,,,,,,281", "281,281,281,281,281,,,,281,281,,,,281,,,281,,,281,,,281,281,282,282", "282,282,282,,,,282,282,,,,282,,282,282,282,282,282,282,282,,,,,,282", "282,282,282,282,282,282,,,282,,,,,,282,282,,282,282,282,,282,282,282", "282,282,,282,282,282,,282,282,,282,282,,,,,,,,,,,,,,,,,,,,,282,,,282", ",,282,,,,,282,,,,282,,,,,,,,282,,,,,282,282,282,282,282,282,,,,282,282", ",,,,,,282,,,282,,,282,282,623,623,623,,623,,,,623,623,,,,623,,623,623", "623,623,623,623,623,,,,,,623,623,623,623,623,623,623,,,623,,,,,,,623", ",,623,623,,623,623,623,623,623,,623,623,623,,623,623,,623,623,,,,,,", ",,,,,,,,,,,,,,623,,,623,,,623,,,,,,,,,623,,,,,,,,623,,,,,623,623,623", "623,623,623,,,,623,623,,,,,,,623,,,623,,,623,623,619,619,619,619,619", ",,,619,619,,,,619,,619,619,619,619,619,619,619,,,,,,619,619,619,619", "619,619,619,,,619,,,,,,619,619,,619,619,619,,619,619,619,619,619,,619", "619,619,,619,619,,619,619,,,,,,,,,,,,,,,,,,,,,619,,,619,,,619,,,,,619", ",,,619,,,,,,,,619,,,,,619,619,619,619,619,619,,,,619,619,,,,,,,619,", ",619,,,619,619,615,615,615,,615,,,,615,615,,,,615,,615,615,615,615,615", "615,615,,,,,,615,615,615,615,615,615,615,,,615,,,,,,,615,,,615,615,", "615,615,615,615,615,,615,615,615,,615,615,,615,615,,,,,,,,,,,,,,,,,", ",,,615,,,615,,,615,,,,,,,,,615,,,,,,,,615,,,,,615,615,615,615,615,615", ",,,615,615,,,,,,,615,,,615,,,615,615,514,514,514,,514,,,,514,514,,,", "514,,514,514,514,514,514,514,514,,,,,,514,514,514,514,514,514,514,,", "514,,,,,,,514,,,514,514,,514,514,514,514,514,,514,514,514,,514,514,", "514,514,,,,,,,,,,,,,,,,,,,,,514,,,514,,,514,,,,,,,,,514,,,,,,,,514,", ",,,514,514,514,514,514,514,,,,514,514,,,,,,,514,,,514,,,514,514,520", "520,520,,520,,,,520,520,,,,520,,520,520,520,520,520,520,520,,,,,,520", "520,520,520,520,520,520,,,520,,,,,,,520,,,520,520,,520,520,520,520,520", "520,520,520,520,,520,520,,520,520,,,,,,,,,,,,,,,,,,,,,520,,,520,,,520", ",,,,520,,,,520,,,,,,,,520,,,,,520,520,520,520,520,520,,,,520,520,,,", ",,,520,,,520,,,520,520,523,523,523,,523,,,,523,523,,,,523,,523,523,523", "523,523,523,523,,,,,,523,523,523,523,523,523,523,,,523,,,,,,,523,,,523", "523,,523,523,523,523,523,523,523,523,523,,523,523,,523,523,,,,,,,,,", ",,,,,,,,,,,523,,,523,,,523,,,,,,,,,523,,,,,,,,523,,,,,523,523,523,523", "523,523,,,,523,523,,,,,,,523,,,523,,,523,523,528,528,528,528,528,,,", "528,528,,,,528,,528,528,528,528,528,528,528,,,,,,528,528,528,528,528", "528,528,,,528,,,,,,528,528,,528,528,528,,528,528,528,528,528,,528,528", "528,,528,528,,528,528,,,,,,,,,,,,,,,,,,,,,528,,,528,,,528,,,,,528,,", ",528,,,,,,,,528,,,,,528,528,528,528,528,528,,,,528,528,,,,,,,528,,,528", ",,528,528,607,607,607,,607,,,,607,607,,,,607,,607,607,607,607,607,607", "607,,,,,,607,607,607,607,607,607,607,,,607,,,,,,,607,,,607,607,,607", "607,607,607,607,,607,607,607,,607,607,,607,607,,,,,,,,,,,,,,,,,,,,,607", ",,607,,,607,,,,,,,,,607,,,,,,,,607,,,,,607,607,607,607,607,607,,,,607", "607,,,,,,,607,,,607,,,607,607,604,604,604,,604,,,,604,604,,,,604,,604", "604,604,604,604,604,604,,,,,,604,604,604,604,604,604,604,,,604,,,,,", ",604,,,604,604,,604,604,604,604,604,,604,604,604,,604,604,,604,604,", ",,,,,,,,,,,,,,,,,,,604,,,604,,,604,,,,,,,,,604,,,,,,,,604,,,,,604,604", "604,604,604,604,,,,604,604,,,,,,,604,,,604,,,604,604,294,294,294,,294", ",,,294,294,,,,294,,294,294,294,294,294,294,294,,,,,,294,294,294,294", "294,294,294,,,294,,,,,,,294,,,294,294,,294,294,294,294,294,,294,294", "294,,294,294,,,,,,,,,,,,,,,,,,,,,,,,294,,,294,,,294,,,,,,,,,,,,,,,,", ",,,,,294,294,294,294,294,294,,,,294,294,,,,,,,294,,,294,,,294,294,599", "599,599,,599,,,,599,599,,,,599,,599,599,599,599,599,599,599,,,,,,599", "599,599,599,599,599,599,,,599,,,,,,,599,,,599,599,,599,599,599,599,599", ",599,599,599,,599,599,,599,599,,,,,,,,,,,,,,,,,,,,,599,,,599,,,599,", ",,,,,,,599,,,,,,,,599,,,,,599,599,599,599,599,599,,,,599,599,,,,,,,599", ",,599,,,599,599,598,598,598,,598,,,,598,598,,,,598,,598,598,598,598", "598,598,598,,,,,,598,598,598,598,598,598,598,,,598,,,,,,,598,,,598,598", ",598,598,598,598,598,,598,598,598,,598,598,,598,598,,,,,,,,,,,,,,,,", ",,,,598,,,598,,,598,,,,,,,,,598,,,,,,,,598,,,,,598,598,598,598,598,598", ",,,598,598,,,,,,,598,,,598,,,598,598,596,596,596,,596,,,,596,596,,,", "596,,596,596,596,596,596,596,596,,,,,,596,596,596,596,596,596,596,,", "596,,,,,,,596,,,596,596,,596,596,596,596,596,,596,596,596,,596,596,", "596,596,,,,,,,,,,,,,,,,,,,,,596,,,596,,,596,,,,,596,,,,596,,,,,,,,596", ",,,,596,596,596,596,596,596,,,,596,596,,,,,,,596,,,596,,,596,596,594", "594,594,,594,,,,594,594,,,,594,,594,594,594,594,594,594,594,,,,,,594", "594,594,594,594,594,594,,,594,,,,,,,594,,,594,594,,594,594,594,594,594", ",594,594,594,,594,594,,594,594,,,,,,,,,,,,,,,,,,,,,594,,,594,,,594,", ",,,,,,,594,,,,,,,,594,,,,,594,594,594,594,594,594,,,,594,594,,,,,,,594", ",,594,,,594,594,529,529,529,529,529,,,,529,529,,,,529,,529,529,529,529", "529,529,529,,,,,,529,529,529,529,529,529,529,,,529,,,,,,529,529,,529", "529,529,,529,529,529,529,529,,529,529,529,,529,529,,529,529,,,,,,,,", ",,,,,,,,,,,,529,,,529,,,529,,,,,529,,,,529,,,,,,,,529,,,,,529,529,529", "529,529,529,,,,529,529,,,,,,,529,,,529,,,529,529,303,303,303,,303,,", ",303,303,,,,303,,303,303,303,303,303,303,303,,,,,,303,303,303,303,303", "303,303,,,303,,,,,,,303,,,303,303,,303,303,303,303,303,,303,303,303", ",303,303,,303,303,,,,,,,,,,,,,,,,,,,,,303,,,303,303,,303,,,,,,,,,303", ",,,,,,,303,,,,,303,303,303,303,303,303,,,,303,303,,,,,,,303,,,303,,", "303,303,305,305,305,305,305,,,,305,305,,,,305,,305,305,305,305,305,305", "305,,,,,,305,305,305,305,305,305,305,,,305,,,,,,305,305,,305,305,305", ",305,305,305,305,305,,305,305,305,,305,305,,305,305,,,,,,,,,,,,,,,,", ",,,,305,,,305,,,305,,,,,305,,,,305,,,,,,,,305,,,,,305,305,305,305,305", "305,,,,305,305,,,,,,,305,,,305,,,305,305,535,535,535,,535,,,,535,535", ",,,535,,535,535,535,535,535,535,535,,,,,,535,535,535,535,535,535,535", ",,535,,,,,,,535,,,535,535,,535,535,535,535,535,,535,535,535,,535,535", ",,,,,,,,,,,,,,,,,,,,,,,535,,,535,,,535,,,,,,,,,,,,,,,,,,,,,,535,535", "535,535,535,535,,,,535,535,,,,,,,535,,,535,,,535,535,549,549,549,549", "549,,,,549,549,,,,549,,549,549,549,549,549,549,549,,,,,,549,549,549", "549,549,549,549,,,549,,,,,,549,549,,549,549,549,,549,549,549,549,549", ",549,549,549,,549,549,,549,549,,,,,,,,,,,,,,,,,,,,,549,,,549,,,549,", ",,,549,,,,549,,,,,,,,549,,,,,549,549,549,549,549,549,,,,549,549,,,,", ",,549,,,549,,,549,549,567,567,567,,567,,,,567,567,,,,567,,567,567,567", "567,567,567,567,,,,,,567,567,567,567,567,567,567,,,567,,,,,,,567,,,567", "567,,567,567,567,567,567,,567,567,567,,567,567,,567,567,,,,,,,,,,,,", ",,,,,,,,567,,,567,,,567,,,,,,,,,567,,,,,,,,567,,,,,567,567,567,567,567", "567,,,,567,567,,,,,,,567,,,567,,,567,567,553,553,553,553,553,,,,553", "553,,,,553,,553,553,553,553,553,553,553,,,,,,553,553,553,553,553,553", "553,,,553,,,,,,553,553,,553,553,553,,553,553,553,553,553,,553,553,553", ",553,553,,553,553,,,,,,,,,,,,,,,,,,,,,553,,,553,,,553,,,,,553,,,,553", ",,,,,,,553,,,,,553,553,553,553,553,553,,,,553,553,,,,,,,553,,,553,,", "553,553,785,785,785,785,785,,,,785,785,,,,785,,785,785,785,785,785,785", "785,,,,,,785,785,785,785,785,785,785,,,785,,,,,,785,785,,785,785,785", ",785,785,785,785,785,,785,785,785,,785,785,,785,785,,,,,,,,,,,,,,,,", ",,,,785,,,785,,,785,,,,,785,,,,785,,,,,,,,785,,,,611,785,785,785,785", "785,785,611,611,611,785,785,611,611,611,,611,,785,,,785,,,785,785,611", "611,,,,,,,,,611,611,,611,611,611,611,611,,,,,,,,,,,,,,,,,,,,,,,,611", "611,611,611,611,611,611,611,611,611,611,611,611,611,,,611,611,611,,611", "611,,,611,,,611,,611,,611,,611,,611,611,611,611,611,611,611,,611,,611", ",,,,,,,,,,,,611,611,611,611,610,611,,,611,,611,610,610,610,,,610,610", "610,,610,,,,,,,,,610,610,610,,,,,,,,,610,610,,610,610,610,610,610,,", ",,,,,,,,,,,,,,,,,,,,,610,610,610,610,610,610,610,610,610,610,610,610", "610,610,,,610,610,610,,610,610,,,610,,,610,,610,,610,,610,,610,610,610", "610,610,610,610,,610,610,610,,,,,,,,,,,,,610,610,610,610,418,610,,,610", ",610,418,418,418,,,,418,418,,418,,,,,,,,,418,,,,,,,,,,,418,418,,418", "418,418,418,418,,,,,,,,,,,,,,,,,,,,,,,,418,418,418,418,418,418,418,418", "418,418,418,418,418,418,420,,418,418,418,,418,420,420,420,418,,,420", "420,,420,418,,418,,418,418,418,418,418,418,418,,418,418,418,,,,,420", "420,,420,420,420,420,420,418,418,,418,,418,,,418,,418,,,,,,,,,,,,,420", "420,420,420,420,420,420,420,420,420,420,420,420,420,,,420,420,420,,420", ",,,420,,,,,,,420,,420,,420,420,420,420,420,420,420,,420,,420,,,,,,,", ",,,,,420,420,,420,50,420,,,420,,420,50,50,50,,,50,50,50,,50,,,,,,,,", ",50,50,50,,,,,,,,50,50,,50,50,50,50,50,,,,,,,,,,,,,,,,,,,,,,,,50,50", "50,50,50,50,50,50,50,50,50,50,50,50,,,50,50,50,,,50,,,50,,,50,,50,,50", ",50,,50,50,50,50,50,50,50,,50,,50,,,,,,,,,,,,,50,50,50,50,414,50,,50", "50,,,414,414,414,,,414,414,414,,414,,,,,,,,,414,414,414,,,,,,,,,414", "414,,414,414,414,414,414,,,,,,,,,,,,,,,,,,,,,,,,414,414,414,414,414", "414,414,414,414,414,414,414,414,414,,,414,414,414,,,414,,414,414,,,414", ",414,,414,,414,,414,414,414,414,414,414,414,,414,414,414,,,,,,,,,,,", ",414,414,414,414,28,414,,,414,,,28,28,28,,,28,28,28,,28,,,,,,,,,,28", "28,,,,,,,,,28,28,,28,28,28,28,28,,,,,,,,,,,,,,,,,,,,,,,,28,28,28,28", "28,28,28,28,28,28,28,28,28,28,,,28,28,28,,,28,,28,28,,,28,,28,,28,,28", ",28,28,28,28,28,28,28,,28,,28,,,,,,,,,,,,,28,28,28,28,27,28,,,28,,,27", "27,27,,,27,27,27,,27,,,,,,,,,27,27,27,,,,,,,,,27,27,,27,27,27,27,27", ",,,,,,,,,,,,,,,,,,,,,,,27,27,27,27,27,27,27,27,27,27,27,27,27,27,,,27", "27,27,,,27,,27,27,,,27,,27,,27,,27,,27,27,27,27,27,27,27,,27,27,27,", ",,,,,,,,,,,27,27,27,27,475,27,,,27,,,475,475,475,,,475,475,475,,475", ",,,,,,,,,475,,,,,,,,,,475,475,,475,475,475,475,475,,,,,,,,,,,,,472,", ",,,,,472,472,472,,,472,472,472,,472,,,,,,475,,,,472,,,475,,,,,475,475", "472,472,,472,472,472,472,472,,,,,,,,,,,,,475,,,,,,,,,,,,,475,,475,,", "475,,,,472,,,,,,,472,,,,,472,472,,,,,,,,,,,,,,,,,,,,,472,,,,,,,,,,,", ",472,,472,,,472,398,398,398,398,398,398,398,398,398,398,398,398,398", "398,398,398,398,398,398,398,398,398,398,398,,,,398,398,398,398,398,398", "398,398,398,398,398,398,398,398,398,398,398,398,398,398,398,,398,398", ",,398,,,,,,,,,398,398,,398,398,398,398,398,398,398,,,398,398,,,,398", "398,398,398,,,,,,,,,,,,,398,398,,398,398,398,398,398,398,398,398,398", "398,398,,,398,398,,,,,,,,,,398,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7", "7,7,7,7,7,,,,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,,7,7,7,,7,,,", ",,,,,7,7,,7,7,7,7,7,7,7,,,7,7,,,,7,7,7,7,,,,,,,,,,,,,7,7,,7,7,7,7,7", "7,7,7,7,7,7,,,7,7,,,,,,,,,,7,394,394,394,394,394,394,394,394,394,394", "394,394,394,394,394,394,394,394,394,394,394,394,394,394,,,,394,394,394", "394,394,394,394,394,394,394,394,394,394,394,394,394,394,394,394,394", "394,,394,394,,,394,,,,,,,,,394,394,,394,394,394,394,394,394,394,,,394", "394,,,,394,394,394,394,,,,,,,,,,,,,394,394,,394,394,394,394,394,394", "394,394,394,394,394,,,394,394,,,,,,,,,,394,8,8,8,8,8,8,8,8,8,8,8,8,8", "8,8,8,8,8,8,8,8,8,8,8,,,,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,", "8,8,,,8,,,,,,,,,8,8,,8,8,8,8,8,8,8,,,8,8,,,,8,8,8,8,,,,,,,,,,,,,8,8", ",8,8,8,8,8,8,8,8,8,8,8,,,8,8,,,,,,,,,,8,79,79,79,79,79,79,79,79,79,79", "79,79,79,79,79,79,79,79,79,79,79,79,79,79,,,,79,79,79,79,79,79,79,79", "79,79,79,79,79,79,79,79,79,79,79,79,79,,79,79,79,79,79,,79,,,,,,,79", "79,,79,79,79,79,79,79,79,,,79,79,,,,79,79,79,79,,,,,,,,,,,,,79,79,,79", "79,79,79,79,79,79,79,79,79,79,,,79,191,191,191,191,191,191,191,191,191", "191,191,191,191,191,191,191,191,191,191,191,191,191,191,191,,,,191,191", "191,191,191,191,191,191,191,191,191,191,191,191,191,191,191,191,191", "191,191,,191,191,191,191,191,,191,,,,,,,191,191,,191,191,191,191,191", "191,191,,,191,191,,,,191,191,191,191,,,,,,,,,,,,,191,191,,191,191,191", "191,191,191,191,191,191,191,191,,,191,716,716,716,716,716,716,716,716", "716,716,716,716,716,716,716,716,716,716,716,716,716,716,716,716,,,,716", "716,716,716,716,716,716,716,716,716,716,716,716,716,716,716,716,716", "716,716,716,,716,716,,,716,,,,,,,,,716,716,,716,716,716,716,716,716", "716,,,716,716,,,,716,716,716,716,,,,,,,,,,,,,716,716,,716,716,716,716", "716,716,716,716,716,716,716,,,716,65,65,65,65,65,65,65,65,65,65,65,65", "65,65,65,65,65,65,65,65,65,65,65,65,,,,65,65,65,65,65,65,65,65,65,65", "65,65,65,65,65,65,65,65,65,65,65,,65,65,65,65,65,,65,,,,,,,65,65,,65", "65,65,65,65,65,65,,,65,65,,,,65,65,65,65,,,,,,65,,,,,,,65,65,,65,65", "65,65,65,65,65,65,65,65,65,261,261,65,,261,,,,,,,,,261,261,,261,261", "261,261,261,261,261,,,261,261,,,,261,261,261,261,,,,,,,,,,,,,261,261", ",261,261,261,261,261,261,261,261,261,261,261,700,700,261,,700,,,,,,", ",,700,700,,700,700,700,700,700,700,700,,,700,700,,,,700,700,700,700", ",,,,,700,,,,,,,700,700,,700,700,700,700,700,700,700,700,700,700,700", "500,500,700,,500,,,,,,,,,500,500,,500,500,500,500,500,500,500,,,500", "500,,,,500,500,500,500,,,,,,500,,,,,,,500,500,,500,500,500,500,500,500", "500,500,500,500,500,501,501,500,,501,,,,,,,,,501,501,,501,501,501,501", "501,501,501,,,501,501,,,,501,501,501,501,,,,,,,,,,,,,501,501,,501,501", "501,501,501,501,501,501,501,501,501,698,698,501,,698,,,,,,,,,698,698", ",698,698,698,698,698,698,698,,,698,698,,,,698,698,698,698,,,,,,,,,,", ",,698,698,,698,698,698,698,698,698,698,698,698,698,698,890,890,698,", "890,,,,,,,,,890,890,,890,890,890,890,890,890,890,,,890,890,,,,890,890", "890,890,,,,,,,,,,,,,890,890,,890,890,890,890,890,890,890,890,890,890", "890,772,772,890,,772,,,,,,,,,772,772,,772,772,772,772,772,772,772,,", "772,772,,,,772,772,772,772,,,,,,,,,,,,,772,772,,772,772,772,772,772", "772,772,772,772,772,772,634,634,772,,634,,,,,,,,,634,634,,634,634,634", "634,634,634,634,,,634,634,,,,634,634,634,634,,,,,,,,,,,,,634,634,,634", "634,634,634,634,634,634,634,634,634,634,889,889,634,,889,,,,,,,,,889", "889,,889,889,889,889,889,889,889,,,889,889,,,,889,889,889,889,,,,,,889", ",,,,,,889,889,,889,889,889,889,889,889,889,889,889,889,889,635,635,889", ",635,,,,,,,,,635,635,,635,635,635,635,635,635,635,,,635,635,,,,635,635", "635,635,,,,,,,,,,,,,635,635,,635,635,635,635,635,635,635,635,635,635", "635,262,262,635,,262,,,,,,,,,262,262,,262,262,262,262,262,262,262,,", "262,262,,,,262,262,262,262,,,,,,,,,,,,,262,262,,262,262,262,262,262", "262,262,262,262,262,262,511,511,262,,511,,,,,,,,,511,511,,511,511,511", "511,511,511,511,,,511,511,,,,511,511,511,511,,,,,,511,,,,,,,511,511", ",511,511,511,511,511,511,511,511,511,511,511,199,199,511,,199,,,,,,", ",,199,199,,199,199,199,199,199,199,199,,,199,199,,,,199,199,199,199", ",,,,,199,,,,,,,199,199,,199,199,199,199,199,199,199,199,199,199,199", "512,512,199,,512,,,,,,,,,512,512,,512,512,512,512,512,512,512,,,512", "512,,,,512,512,512,512,,,,,,,,,,,,,512,512,,512,512,512,512,512,512", "512,512,512,512,512,428,428,512,,428,,,,,,,,,428,428,,428,428,428,428", "428,428,428,,,428,428,,,,428,428,428,428,,,,,,428,,,,,,,428,428,,428", "428,428,428,428,428,428,428,428,428,428,429,429,428,,429,,,,,,,,,429", "429,,429,429,429,429,429,429,429,,,429,429,,,,429,429,429,429,,,,,,", ",,,,,,429,429,,429,429,429,429,429,429,429,429,429,429,429,200,200,429", ",200,,,,,,,,,200,200,,200,200,200,200,200,200,200,,,200,200,,,,200,200", "200,200,,,,,,,,,,,,,200,200,,200,200,200,200,200,200,200,200,200,200", "200,,,200"];
 
@@ -12383,11 +13668,21 @@ if (k == null) k = nil;
 
       idx = 0;
 
-      ($a = ($c = clist).$each, $a._p = (TMP_3 = function(str){var self = TMP_3._s || this, $a, $b, TMP_4;if (str == null) str = nil;
-      return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_4 = function(i){var self = TMP_4._s || this, $a;if (i == null) i = nil;
-        if (($a = i['$empty?']()) === false || $a === nil) {
-            arr['$[]='](idx, i.$to_i())};
-          return idx = idx['$+'](1);}, TMP_4._s = self, TMP_4), $a).call($b)}, TMP_3._s = self, TMP_3), $a).call($c);
+      ($a = ($c = clist).$each, $a._p = (TMP_3 = function(str){
+        var self = TMP_3._s || this;
+        var $a;
+        var $b;
+        var TMP_4;
+        if (str == null) str = nil;
+        return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_4 = function(i){
+          var self = TMP_4._s || this;
+          var $a;
+          if (i == null) i = nil;
+          if (($a = i['$empty?']()) === false || $a === nil) {
+              arr['$[]='](idx, i.$to_i())}
+          return idx = idx['$+'](1);
+        }, TMP_4._s = self, TMP_4), $a).call($b);
+      }, TMP_3._s = self, TMP_3), $a).call($c);
 
       racc_action_pointer = [-2, 1082, nil, 184, nil, 531, 945, 22638, 22884, 939, 912, 907, 951, 233, 553, 484, nil, 1916, 2053, 2601, 946, nil, 2464, 2601, 2738, 561, 119, 22201, 22072, nil, 3423, 3560, 3697, nil, -102, 728, 893, 18, 4382, 4519, 4656, 794, 563, nil, nil, nil, nil, nil, nil, nil, 21814, nil, 5204, 5341, 5478, -11, 7134, 5889, 6026, nil, nil, 6163, 6300, 783, nil, 23343, nil, nil, nil, nil, nil, 90, nil, nil, nil, nil, nil, 728, 689, 23007, nil, nil, nil, 7259, nil, nil, 7396, nil, nil, nil, nil, nil, nil, nil, nil, nil, 804, nil, 7670, nil, nil, nil, 7807, 7944, 8081, 8218, 8355, 8492, nil, 8, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 23119, 605, nil, 9040, 9177, 9314, 9451, 9588, 24123, 24363, 9999, 10136, 10273, nil, 155, 161, 601, 56, 495, 539, 11232, 11369, nil, nil, 11506, 516, 11780, 11917, 12054, 12191, 12328, 12465, 12602, 12739, 12876, 13013, 13150, 13287, 13424, 13561, 13698, 13835, 13972, 14109, 14246, 14383, 14520, 14657, 14794, 14931, 15068, 15205, nil, nil, nil, 2464, nil, 408, 394, nil, 15753, 265, 16027, nil, nil, nil, nil, 16164, nil, nil, 23403, 24003, 89, 16712, 16849, nil, nil, nil, nil, nil, nil, nil, 16986, 137, 805, 274, 17534, 400, 617, 855, 18082, 18219, 524, 574, 106, 542, 738, 702, -15, nil, 552, 497, nil, 19589, nil, 544, 180, 231, 409, nil, 340, nil, 20411, nil, 20548, 35, nil, 350, 100, 156, 502, 505, -47, 580, nil, nil, -22, 3846, nil, nil, nil, 554, 574, nil, 583, 591, nil, nil, nil, nil, nil, nil, nil, 2753, nil, nil, nil, 692, nil, nil, 761, 546, 93, -7, 16575, 16438, 229, 283, 737, 877, 6574, nil, 6437, 319, 612, 161, 338, 477, 718, 544, 573, nil, 644, nil, nil, 1368, nil, 409, nil, 272, nil, 297, 913, 493, nil, 929, -19, nil, 135, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 972, 22761, nil, nil, nil, 22515, 974, nil, nil, 272, nil, 135, 951, nil, 925, nil, nil, 2190, 958, 633, 636, 21943, nil, nil, nil, 21604, 955, 21685, nil, 272, 409, nil, 957, nil, nil, 24243, 24303, 683, -33, 820, 3012, 3149, 126, nil, 5204, 4930, 813, 347, 953, 950, 940, 937, 2868, 3690, 2761, 3286, 3149, 3012, 4656, 5067, 4793, 4519, 4382, 4108, 3423, 895, 1306, 3971, 4245, 820, -10, nil, 3286, nil, 3971, nil, 5067, nil, nil, 22386, nil, nil, 22330, 74, nil, 912, 856, 751, 827, 922, nil, nil, 5615, -40, -17, 842, nil, nil, 5752, 823, 785, nil, nil, 774, 7122, 779, 8766, 23523, 23583, 538, 774, nil, nil, 704, nil, 10684, 11095, 17123, 24063, 24183, 1231, 18767, 787, 740, 655, nil, nil, 18904, nil, nil, 19041, nil, nil, nil, nil, 19178, 20274, 619, nil, 627, nil, nil, 20685, 3709, nil, 322, nil, nil, 608, nil, 2861, nil, 567, 1080, nil, nil, 20822, 662, nil, nil, 21096, 51, 47, 620, 625, 6711, nil, nil, -2, 505, nil, 456, nil, 73, 20959, nil, 6586, nil, nil, nil, 1, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, -35, nil, nil, nil, 209, nil, nil, nil, nil, nil, 20137, 172, 20000, 318, 19863, 19726, 147, nil, nil, nil, 19452, 854, nil, 19315, 5, 173, 21475, 21346, 945, 409, nil, 18630, nil, 3572, nil, 18493, 957, nil, 990, 18356, nil, nil, nil, nil, nil, nil, 17945, nil, 849, 826, 23823, 23943, 17808, 683, 426, nil, nil, 447, 17671, 17397, nil, 394, -80, 17260, -64, nil, 10, 110, 135, 141, 151, 534, 175, 16301, 1916, 255, 268, 33, 336, 15890, nil, nil, 23, 255, 376, nil, nil, 264, nil, 274, 186, 370, 323, 331, nil, nil, 381, 2724, nil, 491, nil, 482, nil, nil, nil, nil, nil, 491, nil, 493, 15616, 15479, 183, nil, 23643, 15342, 23463, nil, nil, 11643, 238, 3, 10958, 10821, 6312, 155, 517, 522, 525, nil, 519, nil, 23231, 575, 912, 10547, nil, nil, nil, 2327, 563, 10410, 9862, nil, 1779, nil, 1642, nil, nil, 1505, nil, 1368, 9725, 8903, 8629, -53, 1094, nil, 657, 761, nil, nil, 661, nil, nil, 684, 692, 820, 768, 7533, nil, 693, 799, 682, 412, nil, nil, 808, nil, 6985, 691, 737, nil, nil, nil, nil, nil, nil, 23763, nil, 679, nil, nil, nil, nil, 1217, 824, nil, nil, 825, 6848, 21233, nil, nil, 107, -19, 543, nil, 793, 792, 4930, 17, nil, nil, 898, 899, 785, nil, 6449, nil, 762, nil, nil, 284, 4793, nil, nil, nil, nil, nil, nil, nil, 819, 804, nil, 2053, 4245, nil, nil, nil, 850, 814, nil, nil, nil, 4108, nil, nil, 0, 3834, nil, 862, 825, nil, nil, 2875, nil, 947, 955, 2327, 2190, nil, nil, 973, nil, 1779, nil, nil, 893, 857, 866, nil, 868, 866, nil, nil, 16313, nil, nil, nil, 1642, nil, 1505, 323, 370, 968, 459, nil, nil, 89, nil, nil, nil, 8, 1231, nil, 1035, nil, 488, nil, nil, nil, 1094, 1041, 957, 23883, 23703, 540, 546, nil, nil, nil, 1059, nil, 941, 1061, nil, 983, 85, 77, 81, 559, 299, nil, nil, nil, 144, nil];
 
@@ -12399,11 +13694,21 @@ if (k == null) k = nil;
 
       idx = 0;
 
-      ($a = ($d = clist).$each, $a._p = (TMP_5 = function(str){var self = TMP_5._s || this, $a, $b, TMP_6;if (str == null) str = nil;
-      return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_6 = function(i){var self = TMP_6._s || this, $a;if (i == null) i = nil;
-        if (($a = i['$empty?']()) === false || $a === nil) {
-            arr['$[]='](idx, i.$to_i())};
-          return idx = idx['$+'](1);}, TMP_6._s = self, TMP_6), $a).call($b)}, TMP_5._s = self, TMP_5), $a).call($d);
+      ($a = ($d = clist).$each, $a._p = (TMP_5 = function(str){
+        var self = TMP_5._s || this;
+        var $a;
+        var $b;
+        var TMP_6;
+        if (str == null) str = nil;
+        return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_6 = function(i){
+          var self = TMP_6._s || this;
+          var $a;
+          if (i == null) i = nil;
+          if (($a = i['$empty?']()) === false || $a === nil) {
+              arr['$[]='](idx, i.$to_i())}
+          return idx = idx['$+'](1);
+        }, TMP_6._s = self, TMP_6), $a).call($b);
+      }, TMP_5._s = self, TMP_5), $a).call($d);
 
       clist = ["44,47,56,56,22,54,54,54,29,29,29,59,106,102,32,47,78,10,51,23,137,48", "48,8,43,24,24,81,41,35,44,44,44,6,75,75,26,108,109,29,108,108,139,14", "14,58,4,7,58,23,23,23,60,105,60,38,57,57,140,18,42,76,44,39,11,44,45", "50,50,55,55,26,60,55,2,146,26,26,143,48,26,23,61,31,31,31,46,11,46,52", "52,85,36,48,86,16,16,87,44,16,88,33,33,89,4,36,44,44,90,91,34,34,34", "77,77,36,36,23,92,93,52,26,26,26,26,23,23,47,128,125,125,146,94,125", "128,95,96,97,98,99,16,16,16,16,100,7,101,56,74,22,103,104,72,7,7,71", "143,70,62,84,79,112,114,33,33,115,116,117,118,119,123,124,83,126,127", "82,129,109,54,54,130,2,17,131,29,132,134,135,27,19,15,12,141,5,44,1", ",,,,,,45,,,48,,,,,,44,17,23,48,136,136,136,,,,26,26,60,78,,,43,,137", "23,26,137,,,,18,18,18,,,,18,,,,,54,54,,29,29,,,80,,54,,,29,,,,,,51,", "140,,,,,,,106,102,,44,,11,17,44,44,51,76,51,,,17,17,,41,,,44,105,23", ",20,,23,23,38,,6,44,,38,139,42,39,,80,23,,39,,4,81,57,,57,58,58,23,31", "31,,20,109,33,33,,,31,,,,,52,,,,107,128,,,,77,,,44,52,44,,,,,136,136", ",136,,,26,26,35,137,,,23,35,23,,,,17,43,,56,,22,59,16,16,26,32,,108", "10,4,108,108,17,,,20,53,,,53,,33,136,20,20,,,48,52,,52,48,33,56,21,29", "53,,53,53,53,53,53,8,8,55,,,,14,,21,21,14,,,21,21,21,,,,48,57,21,21", "21,56,57,22,60,,,50,,51,51,50,17,,,,,17,137,,21,21,56,,,21,21,,,21,21", ",75,,,107,,,29,,17,,,,44,20,24,41,,,44,34,,,,57,34,26,57,,,,20,23,,8", "21,,48,23,21,21,21,21,21,21,75,,80,48,,44,44,,,,26,,44,33,33,7,,,,53", ",,78,,23,23,44,51,108,,44,23,52,34,,44,34,,,,,75,,,8,23,,,,23,106,102", "20,107,23,107,,20,107,,,,56,26,59,,,,,,52,,,,,80,,,,33,20,8,,,,53,21", "21,21,21,21,,,21,21,21,44,,,29,,,,21,21,,,44,,,,107,,,,23,18,18,,44", "44,41,18,54,44,56,23,22,,47,,41,,107,44,,,,23,23,,,,23,,,,,,,17,9,,23", "54,,21,21,,,57,,29,57,,21,,,,21,,,,21,21,,,,,,,,52,44,44,,21,17,17,48", ",26,52,,,,44,21,,26,,,23,23,,51,,48,17,,16,,17,54,23,23,,17,16,,,,,", ",,,,110,,,,110,,,53,,21,21,,44,,,21,18,21,,,,,,53,,,51,,57,57,21,23", ",44,44,48,,110,20,,33,,,44,,,,,,,17,,23,23,80,80,53,,,,,17,23,,,53,80", ",53,53,,,,17,17,20,20,,44,53,53,,44,,,,56,9,22,,,,53,44,21,,20,23,44", ",20,23,,,9,20,,26,,,,,23,,,44,,23,,,,,,29,,,16,44,,,,,,,23,44,,17,17", ",52,44,,,,,23,,,21,17,,,48,23,21,,,,,23,21,,21,,,20,,,,9,,,,,9,110,20", "21,,,,,,,,,,,20,20,,21,21,17,,,,,21,,,,,80,80,,,,80,,,,21,,17,17,21", ",,,,21,,,17,,,,,,21,,,,,,,,,,,110,,,,53,,,,,,,20,20,53,53,,,,17,,21", "21,17,,20,,21,,110,,110,,,17,53,,53,,17,,,21,,,,,,80,,,53,,21,80,,17", ",,21,,,,,,21,21,,17,20,21,,,,,,17,,,,21,,17,,,,,110,,,20,20,,,,,,,,", "20,53,53,,,,,,,110,,,,53,,,,53,21,,,,21,,,,21,,,21,21,,,,,20,,,,28,", ",21,28,28,28,,,,21,20,,,,,20,,,,28,28,28,,,,,,,,,,,20,,28,28,,,,,9,9", ",,20,,21,,,,,,20,,,,,,20,,,9,,,,9,,21,21,,9,,,,,,,21,,,,,,,,,,,,53,", ",,,,,,,,,53,,,,,,,,,,,,21,,,,21,,53,,,,21,,,,,21,,,,9,21,,,,,,,,,,9", ",,,,25,,21,,,,,9,9,,,,,,21,,,,,,,,21,,21,,,,21,28,28,28,28,,,28,,,,", ",,,,,,,,,28,,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28", "28,28,28,28,28,28,28,,,,,,,,9,28,,28,,,,,28,,,,,,28,28,,,,,,,,28,,,", ",,,,,,,,,,,,,,,,,9,,,,,,,,,28,,,,25,25,,,,,,,9,9,,,,,,,,,,,,,,,,,,,", ",,37,37,,,,,,37,37,37,,,,,,,,,,,,,9,37,,25,,25,,,,37,25,,,,,9,,,,,,", ",,,,,,,,,,,,,,,9,,,,,,,28,,,,,9,,,,,,,,,,,,,,9,,,,,,,28,,28,28,28,,", ",,,,,,,,,,,,,,,,,,,,,,,,,,,,28,,28,,28,,,,,,,,,,,,,,,,28,,,,,,,,,,,", ",,28,,,,,,,,,28,28,28,,,,,,25,,,,28,,37,28,37,37,37,37,37,37,37,37,37", "37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,37,,,,,,,,,37,,37,,", ",,37,,,,,,,,,,,,25,,25,,25,,,,,,,37,,,,,,28,,28,25,28,28,,37,,,28,,", "28,,,37,,,,,28,,,,,,,,28,,,,,,,,,25,,,25,28,,,,,,,,,,,,,,,,,,,,,,37", ",37,,,28,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,28,,,,,28,,,,,,,,,25,,,37,,,", ",,,,,,,,,,28,28,,,,,,,,,25,28,28,28,37,37,37,,,,,,,25,,,,,28,,,,,,,", ",,,,,,,,,,,37,,37,25,37,,,,,,,,,,,,,,,,,,,,,,,,,,,,37,,25,,28,,,,,,", "37,37,37,,,28,,,,,,,37,,,37,,,,,,,25,,,,,37,28,,,,,,,,,,,,,,,,,,,,,28", "25,,,,,,,,,,,,,,,,,,,,,,,28,,,,,,,,,,,,,37,,37,,,,,,,,,,,37,,,,,,25", ",37,,,,,,,,37,,,,,,,,,,,,,,,,,,,,,,,,37,25,,,,,,,,,37,,,,,,37,,,,,,25", ",,,,,,,,,,,,,,,,,,,,,,,,37,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,37,,,,,,,,", ",,37,37,37,,,,,,,,,,,,,,,37,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,", ",,,,,,,,,,,,,,37,,,,,,,,,,,,37,,,,,,,,,,,,,37,,,,,,,,,,37,,,,,,,,,,", ",,,,,,,,,,37"];
 
@@ -12411,11 +13716,21 @@ if (k == null) k = nil;
 
       idx = 0;
 
-      ($a = ($e = clist).$each, $a._p = (TMP_7 = function(str){var self = TMP_7._s || this, $a, $b, TMP_8;if (str == null) str = nil;
-      return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_8 = function(i){var self = TMP_8._s || this, $a;if (i == null) i = nil;
-        if (($a = i['$empty?']()) === false || $a === nil) {
-            arr['$[]='](idx, i.$to_i())};
-          return idx = idx['$+'](1);}, TMP_8._s = self, TMP_8), $a).call($b)}, TMP_7._s = self, TMP_7), $a).call($e);
+      ($a = ($e = clist).$each, $a._p = (TMP_7 = function(str){
+        var self = TMP_7._s || this;
+        var $a;
+        var $b;
+        var TMP_8;
+        if (str == null) str = nil;
+        return ($a = ($b = str.$split(",", -1)).$each, $a._p = (TMP_8 = function(i){
+          var self = TMP_8._s || this;
+          var $a;
+          if (i == null) i = nil;
+          if (($a = i['$empty?']()) === false || $a === nil) {
+              arr['$[]='](idx, i.$to_i())}
+          return idx = idx['$+'](1);
+        }, TMP_8._s = self, TMP_8), $a).call($b);
+      }, TMP_7._s = self, TMP_7), $a).call($e);
 
       racc_goto_pointer = [nil, 195, 74, nil, 43, 95, 30, 47, -282, 644, -498, -598, -570, nil, 36, 182, 38, 182, 41, 127, 298, 415, -49, 19, -170, 1225, 19, 80, 1113, -14, nil, 61, -250, -98, 84, -234, -371, 1420, 25, 33, nil, -3, 28, -270, 0, -496, -265, -64, 14, nil, 60, -23, 58, 344, -17, -240, -51, 30, -427, -238, -413, -403, -107, nil, nil, nil, nil, nil, nil, nil, 92, 101, 97, nil, 92, -309, -622, -441, -332, -406, 251, -542, 110, -191, 108, 32, -592, 37, -590, -457, -737, 46, -583, -233, -665, 71, -432, -225, -432, -670, 88, -171, -43, -632, -385, -479, -44, -226, -285, -531, 219, nil, -82, nil, -106, -104, -711, -392, -495, -596, nil, nil, nil, 99, 98, 54, 96, -200, -240, 98, -538, -394, -393, nil, -522, -615, -495, -314, nil, -494, -276, -489, nil, -726, nil, nil, -392];
 
@@ -12446,14 +13761,18 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_2 = function(val, _values, result) {
-        var $a, $b, $c, self = this, comp = nil;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
+        var comp = nil;
         comp = self.$new_compstmt(val['$[]'](0));
         if (($a = ($b = (($c = comp !== false && comp !== nil) ? comp.$type()['$==']("begin") : $c), $b !== false && $b !== nil ?comp.$size()['$=='](2) : $b)) !== false && $a !== nil) {
           result = comp['$[]'](1);
           result['$line='](comp.$line());
           } else {
           result = comp
-        };
+        }
         return result;
       };
 
@@ -12489,14 +13808,18 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_9 = function(val, _values, result) {
-        var $a, $b, $c, self = this, comp = nil;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
+        var comp = nil;
         comp = self.$new_compstmt(val['$[]'](0));
         if (($a = ($b = (($c = comp !== false && comp !== nil) ? comp.$type()['$==']("begin") : $c), $b !== false && $b !== nil ?comp.$size()['$=='](2) : $b)) !== false && $a !== nil) {
           result = comp['$[]'](1);
           result['$line='](comp.$line());
           } else {
           result = comp
-        };
+        }
         return result;
       };
 
@@ -12649,28 +13972,31 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_46 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](1);
         if (args.$size()['$=='](2)) {
-          args = args['$[]'](1)};
+          args = args['$[]'](1)}
         result = self.$s("return", args);
         return result;
       };
 
       def.$_reduce_47 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](1);
         if (args.$size()['$=='](2)) {
-          args = args['$[]'](1)};
+          args = args['$[]'](1)}
         result = self.$s("break", args);
         return result;
       };
 
       def.$_reduce_48 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](1);
         if (args.$size()['$=='](2)) {
-          args = args['$[]'](1)};
+          args = args['$[]'](1)}
         result = self.$s("next", args);
         return result;
       };
@@ -12796,10 +14122,11 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_81 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](2);
         if (args.$type()['$==']("array")) {
-          args['$type=']("arglist")};
+          args['$type=']("arglist")}
         result = self.$s("attrasgn", val['$[]'](0), "[]=", args);
         return result;
       };
@@ -12817,10 +14144,11 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_89 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](2);
         if (args.$type()['$==']("array")) {
-          args['$type=']("arglist")};
+          args['$type=']("arglist")}
         result = self.$s("attrasgn", val['$[]'](0), "[]=", args);
         return result;
       };
@@ -12924,10 +14252,11 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_186 = function(val, _values, result) {
-        var self = this, args = nil;
+        var self = this;
+        var args = nil;
         args = val['$[]'](2);
         if (args.$type()['$==']("array")) {
-          args['$type=']("arglist")};
+          args['$type=']("arglist")}
         result = self.$s("op_asgn1", val['$[]'](0), val['$[]'](2), val['$[]'](4).$intern(), val['$[]'](5));
         result['$line='](val['$[]'](0).$line());
         return result;
@@ -12990,10 +14319,11 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_203 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = self.$new_call(val['$[]'](1), "+@", self.$s("arglist"));
         if (($a = ["int", "float"]['$include?'](val['$[]'](1).$type())) !== false && $a !== nil) {
-          result = val['$[]'](1)};
+          result = val['$[]'](1)}
         return result;
       };
 
@@ -13157,14 +14487,16 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_231 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         val['$[]'](0)['$<<'](($a = self).$s.apply($a, ["hash"].concat(val['$[]'](2))));
         result = val['$[]'](0);
         return result;
       };
 
       def.$_reduce_232 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = self.$s("array", ($a = self).$s.apply($a, ["hash"].concat(val['$[]'](0))));
         return result;
       };
@@ -13195,14 +14527,16 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_241 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = self.$s("arglist", ($a = self).$s.apply($a, ["hash"].concat(val['$[]'](0))));
         self.$add_block_pass(result, val['$[]'](1));
         return result;
       };
 
       def.$_reduce_242 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = val['$[]'](0);
         result['$<<'](($a = self).$s.apply($a, ["hash"].concat(val['$[]'](2))));
         return result;
@@ -13315,7 +14649,8 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_273 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = self.$s("paren", ((($a = val['$[]'](1)) !== false && $a !== nil) ? $a : self.$s("nil")));
         return result;
       };
@@ -13339,13 +14674,15 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_277 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = ((($a = val['$[]'](1)) !== false && $a !== nil) ? $a : self.$s("array"));
         return result;
       };
 
       def.$_reduce_278 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = ($a = self).$s.apply($a, ["hash"].concat(val['$[]'](1)));
         return result;
       };
@@ -13466,14 +14803,16 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_298 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = ($a = self).$s.apply($a, ["case", val['$[]'](1)].concat(val['$[]'](3)));
         result['$line='](val['$[]'](1).$line());
         return result;
       };
 
       def.$_reduce_299 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = ($a = self).$s.apply($a, ["case", nil].concat(val['$[]'](2)));
         return result;
       };
@@ -13868,12 +15207,14 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_378 = function(val, _values, result) {
-        var $a, self = this, part = nil;
+        var $a;
+        var self = this;
+        var part = nil;
         part = self.$s("when", val['$[]'](2), val['$[]'](4));
         part['$line='](val['$[]'](2).$line());
         result = [part];
         if (($a = val['$[]'](5)) !== false && $a !== nil) {
-          ($a = result).$push.apply($a, [].concat(val['$[]'](5)))};
+          ($a = result).$push.apply($a, [].concat(val['$[]'](5)))}
         return result;
       };
 
@@ -13884,13 +15225,15 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_381 = function(val, _values, result) {
-        var $a, self = this, exc = nil;
+        var $a;
+        var self = this;
+        var exc = nil;
         exc = ((($a = val['$[]'](1)) !== false && $a !== nil) ? $a : self.$s("array"));
         if (($a = val['$[]'](2)) !== false && $a !== nil) {
-          exc['$<<'](self.$new_assign(val['$[]'](2), self.$s("gvar", "$!".$intern())))};
+          exc['$<<'](self.$new_assign(val['$[]'](2), self.$s("gvar", "$!".$intern())))}
         result = [self.$s("resbody", exc, val['$[]'](4))];
         if (($a = val['$[]'](5)) !== false && $a !== nil) {
-          result.$push(val['$[]'](5).$first())};
+          result.$push(val['$[]'](5).$first())}
         return result;
       };
 
@@ -13919,12 +15262,13 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_388 = function(val, _values, result) {
-        var $a, self = this;
-        result = (function() {if (($a = val['$[]'](1)['$nil?']()) !== false && $a !== nil) {
+        var $a;
+        var self = this;
+        result = ((() => {if (($a = val['$[]'](1)['$nil?']()) !== false && $a !== nil) {
           return self.$s("nil")
           } else {
           return val['$[]'](1)
-        }; return nil; })();
+        }; return nil; }))();
         return result;
       };
 
@@ -13977,10 +15321,11 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_403 = function(val, _values, result) {
-        var self = this, part = nil;
+        var self = this;
+        var part = nil;
         part = val['$[]'](1);
         if (part.$type()['$==']("evstr")) {
-          part = self.$s("dstr", "", val['$[]'](1))};
+          part = self.$s("dstr", "", val['$[]'](1))}
         result = val['$[]'](0)['$<<'](part);
         return result;
       };
@@ -14457,7 +15802,8 @@ if (k == null) k = nil;
       };
 
       def.$_reduce_499 = function(val, _values, result) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         result = ($a = val['$[]'](0)).$push.apply($a, [].concat(val['$[]'](2)));
         return result;
       };
@@ -14484,26 +15830,33 @@ if (k == null) k = nil;
         var self = this;
         return val['$[]'](0);
       }, nil);
-    })(self, ($scope.Racc)._scope.Parser)
-    
-  })(self);
-})(Opal);
+    }))(self, ($scope.Racc)._scope.Parser)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser/grammar.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$attr_reader', '$attr_accessor', '$==', '$<<', '$include?', '$has_local?']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $ParserScope(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $ParserScope(){}
       var self = $ParserScope = $klass($base, $super, 'ParserScope', $ParserScope);
 
-      var def = $ParserScope._proto, $scope = $ParserScope._scope;
+      var def = $ParserScope._proto;
+      var $scope = $ParserScope._scope;
       def.locals = def.parent = def.block = nil;
       self.$attr_reader("locals");
 
@@ -14521,38 +15874,44 @@ if (k == null) k = nil;
         return self.locals['$<<'](local);
       };
 
-      return (def['$has_local?'] = function(local) {
-        var $a, $b, self = this;
+      return def['$has_local?'] = function(local) {
+        var $a;
+        var $b;
+        var self = this;
         if (($a = self.locals['$include?'](local)) !== false && $a !== nil) {
-          return true};
+          return true}
         if (($a = ($b = self.parent, $b !== false && $b !== nil ?self.block : $b)) !== false && $a !== nil) {
-          return self.parent['$has_local?'](local)};
+          return self.parent['$has_local?'](local)}
         return false;
-      }, nil);
-    })(self, null)
-    
-  })(self)
-})(Opal);
+      }, nil;
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser/parser_scope.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$attr_reader', '$new', '$parse_to_sexp', '$push_scope', '$do_parse', '$pop_scope', '$next_token', '$line=', '$line', '$last', '$parent=', '$<<', '$pop', '$raise', '$inspect', '$token_to_str', '$lexer', '$s', '$==', '$size', '$[]', '$each', '$type', '$to_sym', '$end_line=', '$add_local', '$scope', '$to_s', '$empty?', '$is_a?', '$type=', '$length', '$===', '$new_gettable', '$new_call', '$has_local?', '$[]=', '$>']);
-  ;
-  ;
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Parser(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Parser(){}
       var self = $Parser = $klass($base, $super, 'Parser', $Parser);
 
-      var def = $Parser._proto, $scope = $Parser._scope;
+      var def = $Parser._proto;
+      var $scope = $Parser._scope;
       def.lexer = def.scopes = def.file = nil;
       self.$attr_reader("lexer", "file", "scope");
 
@@ -14568,7 +15927,8 @@ if (k == null) k = nil;
       };
 
       def.$parse_to_sexp = function() {
-        var self = this, result = nil;
+        var self = this;
+        var result = nil;
         self.$push_scope();
         result = self.$do_parse();
         self.$pop_scope();
@@ -14581,7 +15941,8 @@ if (k == null) k = nil;
       };
 
       def.$s = function(parts) {
-        var self = this, sexp = nil;
+        var self = this;
+        var sexp = nil;
         parts = $slice.call(arguments, 0);
         sexp = $scope.Sexp.$new(parts);
         sexp['$line='](self.lexer.$line());
@@ -14589,7 +15950,9 @@ if (k == null) k = nil;
       };
 
       def.$push_scope = function(type) {
-        var self = this, top = nil, scope = nil;
+        var self = this;
+        var top = nil;
+        var scope = nil;
         if (type == null) {
           type = nil
         }
@@ -14607,18 +15970,20 @@ if (k == null) k = nil;
       };
 
       def.$on_error = function(t, val, vstack) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return self.$raise("parse error on value " + (val.$inspect()) + " (" + (((($a = self.$token_to_str(t)) !== false && $a !== nil) ? $a : "?")) + ") :" + (self.file) + ":" + (self.$lexer().$line()));
       };
 
       def.$new_block = function(stmt) {
-        var self = this, s = nil;
+        var self = this;
+        var s = nil;
         if (stmt == null) {
           stmt = nil
         }
         s = self.$s("block");
         if (stmt !== false && stmt !== nil) {
-          s['$<<'](stmt)};
+          s['$<<'](stmt)}
         return s;
       };
 
@@ -14635,29 +16000,36 @@ if (k == null) k = nil;
       };
 
       def.$new_body = function(compstmt, res, els, ens) {
-        var $a, $b, TMP_1, self = this, s = nil;
+        var $a;
+        var $b;
+        var TMP_1;
+        var self = this;
+        var s = nil;
         s = ((($a = compstmt) !== false && $a !== nil) ? $a : self.$s("block"));
         if (compstmt !== false && compstmt !== nil) {
-          s['$line='](compstmt.$line())};
+          s['$line='](compstmt.$line())}
         if (res !== false && res !== nil) {
           s = self.$s("rescue", s);
           ($a = ($b = res).$each, $a._p = (TMP_1 = function(r){var self = TMP_1._s || this;if (r == null) r = nil;
           return s['$<<'](r)}, TMP_1._s = self, TMP_1), $a).call($b);
           if (els !== false && els !== nil) {
-            s['$<<'](els)};};
+            s['$<<'](els)};}
         if (ens !== false && ens !== nil) {
           return self.$s("ensure", s, ens)
           } else {
           return s
-        };
+        }
       };
 
       def.$new_def = function(line, recv, name, args, body) {
-        var $a, $b, self = this, s = nil;
+        var $a;
+        var $b;
+        var self = this;
+        var s = nil;
         if (($a = ($b = body.$type()['$==']("block"), ($b === nil || $b === false))) !== false && $a !== nil) {
-          body = self.$s("block", body)};
+          body = self.$s("block", body)}
         if (body.$size()['$=='](1)) {
-          body['$<<'](self.$s("nil"))};
+          body['$<<'](self.$s("nil"))}
         args['$line='](line);
         s = self.$s("def", recv, name.$to_sym(), args, body);
         s['$line='](line);
@@ -14681,16 +16053,18 @@ if (k == null) k = nil;
       };
 
       def.$new_iter = function(args, body) {
-        var self = this, s = nil;
+        var self = this;
+        var s = nil;
         s = self.$s("iter", args);
         if (body !== false && body !== nil) {
-          s['$<<'](body)};
+          s['$<<'](body)}
         s['$end_line='](self.lexer.$line());
         return s;
       };
 
       def.$new_if = function(expr, stmt, tail) {
-        var self = this, s = nil;
+        var self = this;
+        var s = nil;
         s = self.$s("if", expr, stmt, tail);
         s['$line='](expr.$line());
         s['$end_line='](self.lexer.$line());
@@ -14698,84 +16072,107 @@ if (k == null) k = nil;
       };
 
       def.$new_args = function(norm, opt, rest, block) {
-        var $a, $b, TMP_2, $c, TMP_3, self = this, res = nil, rest_str = nil;
+        var $a;
+        var $b;
+        var TMP_2;
+        var $c;
+        var TMP_3;
+        var self = this;
+        var res = nil;
+        var rest_str = nil;
         res = self.$s("args");
         if (norm !== false && norm !== nil) {
           ($a = ($b = norm).$each, $a._p = (TMP_2 = function(arg){var self = TMP_2._s || this;if (arg == null) arg = nil;
           self.$scope().$add_local(arg);
-            return res['$<<'](arg);}, TMP_2._s = self, TMP_2), $a).call($b)};
+            return res['$<<'](arg);}, TMP_2._s = self, TMP_2), $a).call($b)}
         if (opt !== false && opt !== nil) {
           ($a = ($c = opt['$[]']($range(1, -1, false))).$each, $a._p = (TMP_3 = function(_opt){var self = TMP_3._s || this;if (_opt == null) _opt = nil;
-          return res['$<<'](_opt['$[]'](1))}, TMP_3._s = self, TMP_3), $a).call($c)};
+          return res['$<<'](_opt['$[]'](1))}, TMP_3._s = self, TMP_3), $a).call($c)}
         if (rest !== false && rest !== nil) {
           res['$<<'](rest);
           rest_str = rest.$to_s()['$[]']($range(1, -1, false));
           if (($a = rest_str['$empty?']()) === false || $a === nil) {
-            self.$scope().$add_local(rest_str.$to_sym())};};
+            self.$scope().$add_local(rest_str.$to_sym())};}
         if (block !== false && block !== nil) {
           res['$<<'](block);
-          self.$scope().$add_local(block.$to_s()['$[]']($range(1, -1, false)).$to_sym());};
+          self.$scope().$add_local(block.$to_s()['$[]']($range(1, -1, false)).$to_sym());}
         if (opt !== false && opt !== nil) {
-          res['$<<'](opt)};
+          res['$<<'](opt)}
         return res;
       };
 
       def.$new_block_args = function(norm, opt, rest, block) {
-        var $a, $b, TMP_4, $c, TMP_5, $d, self = this, res = nil, r = nil, b = nil, args = nil;
+        var $a;
+        var $b;
+        var TMP_4;
+        var $c;
+        var TMP_5;
+        var $d;
+        var self = this;
+        var res = nil;
+        var r = nil;
+        var b = nil;
+        var args = nil;
         res = self.$s("array");
         if (norm !== false && norm !== nil) {
-          ($a = ($b = norm).$each, $a._p = (TMP_4 = function(arg){var self = TMP_4._s || this, $a;if (arg == null) arg = nil;
-          if (($a = arg['$is_a?']($scope.Symbol)) !== false && $a !== nil) {
-              self.$scope().$add_local(arg);
-              return res['$<<'](self.$s("lasgn", arg));
-              } else {
-              return res['$<<'](arg)
-            }}, TMP_4._s = self, TMP_4), $a).call($b)};
+          ($a = ($b = norm).$each, $a._p = (TMP_4 = function(arg){
+            var self = TMP_4._s || this;
+            var $a;
+            if (arg == null) arg = nil;
+            if (($a = arg['$is_a?']($scope.Symbol)) !== false && $a !== nil) {
+                self.$scope().$add_local(arg);
+                return res['$<<'](self.$s("lasgn", arg));
+                } else {
+                return res['$<<'](arg)
+              }
+          }, TMP_4._s = self, TMP_4), $a).call($b)}
         if (opt !== false && opt !== nil) {
           ($a = ($c = opt['$[]']($range(1, -1, false))).$each, $a._p = (TMP_5 = function(_opt){var self = TMP_5._s || this;if (_opt == null) _opt = nil;
-          return res['$<<'](self.$s("lasgn", _opt['$[]'](1)))}, TMP_5._s = self, TMP_5), $a).call($c)};
+          return res['$<<'](self.$s("lasgn", _opt['$[]'](1)))}, TMP_5._s = self, TMP_5), $a).call($c)}
         if (rest !== false && rest !== nil) {
           r = rest.$to_s()['$[]']($range(1, -1, false)).$to_sym();
           res['$<<'](self.$s("splat", self.$s("lasgn", r)));
-          self.$scope().$add_local(r);};
+          self.$scope().$add_local(r);}
         if (block !== false && block !== nil) {
           b = block.$to_s()['$[]']($range(1, -1, false)).$to_sym();
           res['$<<'](self.$s("block_pass", self.$s("lasgn", b)));
-          self.$scope().$add_local(b);};
+          self.$scope().$add_local(b);}
         if (opt !== false && opt !== nil) {
-          res['$<<'](opt)};
-        args = (function() {if (($a = (($d = res.$size()['$=='](2)) ? norm : $d)) !== false && $a !== nil) {
+          res['$<<'](opt)}
+        args = ((() => {if (($a = (($d = res.$size()['$=='](2)) ? norm : $d)) !== false && $a !== nil) {
           return res['$[]'](1)
           } else {
           return self.$s("masgn", res)
-        }; return nil; })();
+        }; return nil; }))();
         if (args.$type()['$==']("array")) {
           return self.$s("masgn", args)
           } else {
           return args
-        };
+        }
       };
 
       def.$new_call = function(recv, meth, args) {
-        var $a, self = this, call = nil;
+        var $a;
+        var self = this;
+        var call = nil;
         if (args == null) {
           args = nil
         }
         call = self.$s("call", recv, meth);
         if (($a = args) === false || $a === nil) {
-          args = self.$s("arglist")};
+          args = self.$s("arglist")}
         if (args.$type()['$==']("array")) {
-          args['$type=']("arglist")};
+          args['$type=']("arglist")}
         call['$<<'](args);
         if (recv !== false && recv !== nil) {
           call['$line='](recv.$line())
         } else if (($a = args['$[]'](1)) !== false && $a !== nil) {
-          call['$line='](args['$[]'](1).$line())};
+          call['$line='](args['$[]'](1).$line())}
         if (args.$length()['$=='](1)) {
           args['$line='](call.$line())
           } else {
           args['$line='](args['$[]'](1).$line())
-        };
+        }
         return call;
       };
 
@@ -14787,85 +16184,103 @@ if (k == null) k = nil;
       };
 
       def.$new_op_asgn = function(op, lhs, rhs) {
-        var self = this, $case = nil, result = nil;
+        var self = this;
+        var $case = nil;
+        var result = nil;
         $case = op;if ("||"['$===']($case)) {result = self.$s("op_asgn_or", self.$new_gettable(lhs));
-        result['$<<']((lhs['$<<'](rhs)));}else if ("&&"['$===']($case)) {result = self.$s("op_asgn_and", self.$new_gettable(lhs));
-        result['$<<']((lhs['$<<'](rhs)));}else {result = lhs;
-        result['$<<'](self.$new_call(self.$new_gettable(lhs), op, self.$s("arglist", rhs)));};
+          result['$<<']((lhs['$<<'](rhs)));}else if ("&&"['$===']($case)) {result = self.$s("op_asgn_and", self.$new_gettable(lhs));
+          result['$<<']((lhs['$<<'](rhs)));}else {result = lhs;
+          result['$<<'](self.$new_call(self.$new_gettable(lhs), op, self.$s("arglist", rhs)));}
         result['$line='](lhs.$line());
         return result;
       };
 
       def.$new_assign = function(lhs, rhs) {
-        var self = this, $case = nil;
-        return (function() {$case = lhs.$type();if ("iasgn"['$===']($case) || "cdecl"['$===']($case) || "lasgn"['$===']($case) || "gasgn"['$===']($case) || "cvdecl"['$===']($case) || "nth_ref"['$===']($case)) {lhs['$<<'](rhs);
+        var self = this;
+        var $case = nil;
+        return ((() => {$case = lhs.$type();if ("iasgn"['$===']($case) || "cdecl"['$===']($case) || "lasgn"['$===']($case) || "gasgn"['$===']($case) || "cvdecl"['$===']($case) || "nth_ref"['$===']($case)) {lhs['$<<'](rhs);
         return lhs;}else if ("call"['$===']($case) || "attrasgn"['$===']($case)) {lhs.$last()['$<<'](rhs);
         return lhs;}else if ("colon2"['$===']($case)) {lhs['$<<'](rhs);
         lhs['$type=']("casgn");
         return lhs;}else if ("colon3"['$===']($case)) {lhs['$<<'](rhs);
         lhs['$type=']("casgn3");
-        return lhs;}else {return self.$raise("Bad lhs for new_assign: " + (lhs.$type()))}})();
+        return lhs;}else {return self.$raise("Bad lhs for new_assign: " + (lhs.$type()))}}))();
       };
 
       def.$new_assignable = function(ref) {
-        var $a, self = this, $case = nil;
+        var $a;
+        var self = this;
+        var $case = nil;
         $case = ref.$type();if ("ivar"['$===']($case)) {ref['$type=']("iasgn")}else if ("const"['$===']($case)) {ref['$type=']("cdecl")}else if ("identifier"['$===']($case)) {if (($a = self.$scope()['$has_local?'](ref['$[]'](1))) === false || $a === nil) {
-          self.$scope().$add_local(ref['$[]'](1))};
-        ref['$type=']("lasgn");}else if ("gvar"['$===']($case)) {ref['$type=']("gasgn")}else if ("cvar"['$===']($case)) {ref['$type=']("cvdecl")}else {self.$raise("Bad new_assignable type: " + (ref.$type()))};
+            self.$scope().$add_local(ref['$[]'](1))};
+          ref['$type=']("lasgn");}else if ("gvar"['$===']($case)) {ref['$type=']("gasgn")}else if ("cvar"['$===']($case)) {ref['$type=']("cvdecl")}else {self.$raise("Bad new_assignable type: " + (ref.$type()))}
         return ref;
       };
 
       def.$new_gettable = function(ref) {
-        var self = this, res = nil, $case = nil;
-        res = (function() {$case = ref.$type();if ("lasgn"['$===']($case)) {return self.$s("lvar", ref['$[]'](1))}else if ("iasgn"['$===']($case)) {return self.$s("ivar", ref['$[]'](1))}else if ("gasgn"['$===']($case)) {return self.$s("gvar", ref['$[]'](1))}else if ("cvdecl"['$===']($case)) {return self.$s("cvar", ref['$[]'](1))}else {return self.$raise("Bad new_gettable ref: " + (ref.$type()))}})();
+        var self = this;
+        var res = nil;
+        var $case = nil;
+        res = ((() => {$case = ref.$type();if ("lasgn"['$===']($case)) {return self.$s("lvar", ref['$[]'](1))}else if ("iasgn"['$===']($case)) {return self.$s("ivar", ref['$[]'](1))}else if ("gasgn"['$===']($case)) {return self.$s("gvar", ref['$[]'](1))}else if ("cvdecl"['$===']($case)) {return self.$s("cvar", ref['$[]'](1))}else {return self.$raise("Bad new_gettable ref: " + (ref.$type()))}}))();
         res['$line='](ref.$line());
         return res;
       };
 
       def.$new_var_ref = function(ref) {
-        var $a, self = this, $case = nil;
-        return (function() {$case = ref.$type();if ("self"['$===']($case) || "nil"['$===']($case) || "true"['$===']($case) || "false"['$===']($case) || "line"['$===']($case) || "file"['$===']($case)) {return ref}else if ("const"['$===']($case)) {return ref}else if ("ivar"['$===']($case) || "gvar"['$===']($case) || "cvar"['$===']($case)) {return ref}else if ("int"['$===']($case)) {return ref}else if ("str"['$===']($case)) {return ref}else if ("identifier"['$===']($case)) {if (($a = self.$scope()['$has_local?'](ref['$[]'](1))) !== false && $a !== nil) {
+        var $a;
+        var self = this;
+        var $case = nil;
+        return ((() => {$case = ref.$type();if ("self"['$===']($case) || "nil"['$===']($case) || "true"['$===']($case) || "false"['$===']($case) || "line"['$===']($case) || "file"['$===']($case)) {return ref}else if ("const"['$===']($case)) {return ref}else if ("ivar"['$===']($case) || "gvar"['$===']($case) || "cvar"['$===']($case)) {return ref}else if ("int"['$===']($case)) {return ref}else if ("str"['$===']($case)) {return ref}else if ("identifier"['$===']($case)) {if (($a = self.$scope()['$has_local?'](ref['$[]'](1))) !== false && $a !== nil) {
           return self.$s("lvar", ref['$[]'](1))
           } else {
           return self.$s("call", nil, ref['$[]'](1), self.$s("arglist"))
-        }}else {return self.$raise("Bad var_ref type: " + (ref.$type()))}})();
+        }}else {return self.$raise("Bad var_ref type: " + (ref.$type()))}}))();
       };
 
       def.$new_super = function(args) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         args = (((($a = args) !== false && $a !== nil) ? $a : self.$s("arglist")));
         if (args.$type()['$==']("array")) {
-          args['$type=']("arglist")};
+          args['$type=']("arglist")}
         return self.$s("super", args);
       };
 
       def.$new_yield = function(args) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         args = (((($a = args) !== false && $a !== nil) ? $a : self.$s("arglist")))['$[]']($range(1, -1, false));
         return ($a = self).$s.apply($a, ["yield"].concat(args));
       };
 
       def.$new_xstr = function(str) {
-        var $a, self = this, $case = nil;
+        var $a;
+        var self = this;
+        var $case = nil;
         if (($a = str) === false || $a === nil) {
-          return self.$s("xstr", "")};
-        $case = str.$type();if ("str"['$===']($case)) {str['$type=']("xstr")}else if ("dstr"['$===']($case)) {str['$type=']("dxstr")}else if ("evstr"['$===']($case)) {str = self.$s("dxstr", "", str)};
+          return self.$s("xstr", "")}
+        $case = str.$type();if ("str"['$===']($case)) {str['$type=']("xstr")}else if ("dstr"['$===']($case)) {str['$type=']("dxstr")}else if ("evstr"['$===']($case)) {str = self.$s("dxstr", "", str)}
         return str;
       };
 
       def.$new_dsym = function(str) {
-        var $a, self = this, $case = nil;
+        var $a;
+        var self = this;
+        var $case = nil;
         if (($a = str) === false || $a === nil) {
-          return self.$s("nil")};
+          return self.$s("nil")}
         $case = str.$type();if ("str"['$===']($case)) {str['$type=']("sym");
-        str['$[]='](1, str['$[]'](1).$to_sym());}else if ("dstr"['$===']($case)) {str['$type=']("dsym")};
+          str['$[]='](1, str['$[]'](1).$to_sym());}else if ("dstr"['$===']($case)) {str['$type=']("dsym")}
         return str;
       };
 
       def.$new_str = function(str) {
-        var $a, $b, $c, self = this;
+        var $a;
+        var $b;
+        var $c;
+        var self = this;
         if (($a = str) === false || $a === nil) {
-          return self.$s("str", "")};
+          return self.$s("str", "")}
         if (($a = ($b = (($c = str.$size()['$=='](3)) ? str['$[]'](1)['$==']("") : $c), $b !== false && $b !== nil ?str.$type()['$==']("str") : $b)) !== false && $a !== nil) {
           return str['$[]'](2)
         } else if (($a = (($b = str.$type()['$==']("str")) ? str.$size()['$>'](3) : $b)) !== false && $a !== nil) {
@@ -14875,50 +16290,60 @@ if (k == null) k = nil;
           return self.$s("dstr", "", str)
           } else {
           return str
-        };
+        }
       };
 
       def.$new_regexp = function(reg, ending) {
-        var $a, self = this, $case = nil;
+        var $a;
+        var self = this;
+        var $case = nil;
         if (($a = reg) === false || $a === nil) {
-          return self.$s("regexp", /^/)};
-        return (function() {$case = reg.$type();if ("str"['$===']($case)) {return self.$s("regexp", $scope.Regexp.$new(reg['$[]'](1), ending))}else if ("evstr"['$===']($case)) {return self.$s("dregx", "", reg)}else if ("dstr"['$===']($case)) {reg['$type=']("dregx");
-        return reg;}else { return nil }})();
+          return self.$s("regexp", /^/)}
+        return ((() => {$case = reg.$type();if ("str"['$===']($case)) {return self.$s("regexp", $scope.Regexp.$new(reg['$[]'](1), ending))}else if ("evstr"['$===']($case)) {return self.$s("dregx", "", reg)}else if ("dstr"['$===']($case)) {reg['$type=']("dregx");
+        return reg;}else { return nil }}))();
       };
 
-      return (def.$str_append = function(str, str2) {
-        var $a, self = this;
+      return def.$str_append = function(str, str2) {
+        var $a;
+        var self = this;
         if (($a = str) === false || $a === nil) {
-          return str2};
+          return str2}
         if (($a = str2) === false || $a === nil) {
-          return str};
+          return str}
         if (str.$type()['$==']("evstr")) {
           str = self.$s("dstr", "", str)
         } else if (str.$type()['$==']("str")) {
-          str = self.$s("dstr", str['$[]'](1))};
+          str = self.$s("dstr", str['$[]'](1))}
         str['$<<'](str2);
         return str;
-      }, nil);
-    })(self, ($scope.Racc)._scope.Parser)
-    
-  })(self);
-})(Opal);
+      }, nil;
+    }))(self, ($scope.Racc)._scope.Parser)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/parser.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$attr_reader', '$to_s', '$line', '$inspect']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Fragment(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Fragment(){}
       var self = $Fragment = $klass($base, $super, 'Fragment', $Fragment);
 
-      var def = $Fragment._proto, $scope = $Fragment._scope;
+      var def = $Fragment._proto;
+      var $scope = $Fragment._scope;
       def.sexp = def.code = nil;
       self.$attr_reader("code");
 
@@ -14932,12 +16357,13 @@ if (k == null) k = nil;
       };
 
       def.$to_code = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         if (($a = self.sexp) !== false && $a !== nil) {
           return "/*:" + (self.sexp.$line()) + "*/" + (self.code)
           } else {
           return self.code
-        };
+        }
       };
 
       def.$inspect = function() {
@@ -14945,46 +16371,56 @@ if (k == null) k = nil;
         return "f(" + (self.code.$inspect()) + ")";
       };
 
-      return (def.$line = function() {
-        var $a, self = this;
+      return def.$line = function() {
+        var $a;
+        var self = this;
         if (($a = self.sexp) !== false && $a !== nil) {
           return self.sexp.$line()
           } else {
           return nil
-        };
-      }, nil);
-    })(self, null)
-    
-  })(self)
-})(Opal);
+        }
+      }, nil;
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/fragment.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs(['$reserved?', '$include?', '$to_s', '$to_sym', '$=~', '$+', '$indent', '$to_proc', '$compiler', '$parser_indent', '$push', '$current_indent', '$js_truthy_optimize', '$with_temp', '$fragment', '$expr', '$==', '$type', '$[]', '$uses_block!', '$scope', '$block_name', '$dup']);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base) {
+      var def = self._proto;
+      var $scope = self._scope;
+      (($base => {
         var self = $module($base, 'Helpers');
 
-        var def = self._proto, $scope = self._scope, TMP_1;
+        var def = self._proto;
+        var $scope = self._scope;
+        var TMP_1;
         $opal.cdecl($scope, 'RESERVED', ["arguments", "break", "case", "catch", "char", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import", "in", "instanceof", "let", "native", "new", "return", "static", "switch", "super", "this", "throw", "try", "true", "typeof", "var", "void", "while", "with", "undefined"]);
 
         def.$property = function(name) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$reserved?'](name)) !== false && $a !== nil) {
             return "['" + (name) + "']"
             } else {
             return "." + (name)
-          };
+          }
         };
 
         def['$reserved?'] = function(name) {
@@ -14993,32 +16429,39 @@ if (k == null) k = nil;
         };
 
         def.$variable = function(name) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$reserved?'](name.$to_s())) !== false && $a !== nil) {
             return "" + (name) + "$"
             } else {
             return name
-          };
+          }
         };
 
         def.$lvar_to_js = function(var$) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = $scope.RESERVED['$include?'](var$.$to_s())) !== false && $a !== nil) {
-            var$ = "" + (var$) + "$"};
+            var$ = "" + (var$) + "$"}
           return var$.$to_sym();
         };
 
         def.$mid_to_jsid = function(mid) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = /\=|\+|\-|\*|\/|\!|\?|\<|\>|\&|\||\^|\%|\~|\[/['$=~'](mid.$to_s())) !== false && $a !== nil) {
             return "['$" + (mid) + "']"
             } else {
             return ".$"['$+'](mid)
-          };
+          }
         };
 
         def.$indent = TMP_1 = function() {
-          var $a, $b, self = this, $iter = TMP_1._p, block = $iter || nil;
+          var $a;
+          var $b;
+          var self = this;
+          var $iter = TMP_1._p;
+          var block = $iter || nil;
           TMP_1._p = null;
           return ($a = ($b = self.$compiler()).$indent, $a._p = block.$to_proc(), $a).call($b);
         };
@@ -15029,7 +16472,8 @@ if (k == null) k = nil;
         };
 
         def.$line = function(strs) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           strs = $slice.call(arguments, 0);
           self.$push("\n" + (self.$current_indent()));
           return ($a = self).$push.apply($a, [].concat(strs));
@@ -15041,26 +16485,36 @@ if (k == null) k = nil;
         };
 
         def.$js_truthy = function(sexp) {
-          var $a, $b, TMP_2, self = this, optimize = nil;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
+          var optimize = nil;
           if (($a = optimize = self.$js_truthy_optimize(sexp)) !== false && $a !== nil) {
-            return optimize};
+            return optimize}
           return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this;if (tmp == null) tmp = nil;
           return [self.$fragment("(" + (tmp) + " = "), self.$expr(sexp), self.$fragment(") !== false && " + (tmp) + " !== nil")]}, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$js_falsy = function(sexp) {
-          var $a, $b, TMP_3, self = this, mid = nil;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var mid = nil;
           if (sexp.$type()['$==']("call")) {
             mid = sexp['$[]'](2);
             if (mid['$==']("block_given?")) {
               self.$scope()['$uses_block!']();
-              return "" + (self.$scope().$block_name()) + " === nil";};};
+              return "" + (self.$scope().$block_name()) + " === nil";};}
           return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){var self = TMP_3._s || this;if (tmp == null) tmp = nil;
           return [self.$fragment("(" + (tmp) + " = "), self.$expr(sexp), self.$fragment(") === false || " + (tmp) + " === nil")]}, TMP_3._s = self, TMP_3), $a).call($b);
         };
 
         def.$js_truthy_optimize = function(sexp) {
-          var $a, self = this, mid = nil;
+          var $a;
+          var self = this;
+          var mid = nil;
           if (sexp.$type()['$==']("call")) {
             mid = sexp['$[]'](2);
             if (mid['$==']("block_given?")) {
@@ -15076,61 +16530,83 @@ if (k == null) k = nil;
             return [self.$expr(sexp.$dup()), self.$fragment(" !== false && "), self.$expr(sexp.$dup()), self.$fragment(" !== nil")]
             } else {
             return nil
-          };
+          }
         };
-                ;$opal.donate(self, ["$property", "$reserved?", "$variable", "$lvar_to_js", "$mid_to_jsid", "$indent", "$current_indent", "$line", "$empty_line", "$js_truthy", "$js_falsy", "$js_truthy_optimize"]);
-      })(self)
-      
-    })(self)
-    
-  })(self)
-})(Opal);
+        $opal.donate(self, ["$property", "$reserved?", "$variable", "$lvar_to_js", "$mid_to_jsid", "$indent", "$current_indent", "$line", "$empty_line", "$js_truthy", "$js_falsy", "$js_truthy_optimize"]);
+      }))(self)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/helpers.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
+  var $range = $opal.range;
   $opal.add_stubs(['$include', '$each', '$[]=', '$handlers', '$each_with_index', '$define_method', '$[]', '$+', '$attr_reader', '$type', '$compile', '$raise', '$is_a?', '$fragment', '$<<', '$unshift', '$reverse', '$push', '$new', '$error', '$scope', '$s', '$==', '$process', '$expr', '$add_scope_local', '$to_sym', '$add_scope_ivar', '$add_scope_temp', '$helper', '$with_temp', '$to_proc', '$in_while?', '$instance_variable_get']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $Base(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $Base(){}
         var self = $Base = $klass($base, $super, 'Base', $Base);
 
-        var def = $Base._proto, $scope = $Base._scope, TMP_6;
+        var def = $Base._proto;
+        var $scope = $Base._scope;
+        var TMP_6;
         def.sexp = def.fragments = def.compiler = def.level = nil;
         self.$include($scope.Helpers);
 
         $opal.defs(self, '$handlers', function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (self.handlers == null) self.handlers = nil;
 
           return ((($a = self.handlers) !== false && $a !== nil) ? $a : self.handlers = $hash2([], {}));
         });
 
         $opal.defs(self, '$handle', function(types) {
-          var $a, $b, TMP_1, self = this;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           types = $slice.call(arguments, 0);
           return ($a = ($b = types).$each, $a._p = (TMP_1 = function(type){var self = TMP_1._s || this;if (type == null) type = nil;
           return $scope.Base.$handlers()['$[]='](type, self)}, TMP_1._s = self, TMP_1), $a).call($b);
         });
 
         $opal.defs(self, '$children', function(names) {
-          var $a, $b, TMP_2, self = this;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           names = $slice.call(arguments, 0);
-          return ($a = ($b = names).$each_with_index, $a._p = (TMP_2 = function(name, idx){var self = TMP_2._s || this, $a, $b, TMP_3;if (name == null) name = nil;if (idx == null) idx = nil;
-          return ($a = ($b = self).$define_method, $a._p = (TMP_3 = function(){var self = TMP_3._s || this;
-              if (self.sexp == null) self.sexp = nil;
+          return ($a = ($b = names).$each_with_index, $a._p = (TMP_2 = function(name, idx){
+            var self = TMP_2._s || this;
+            var $a;
+            var $b;
+            var TMP_3;
+            if (name == null) name = nil;if (idx == null) idx = nil;
+            return ($a = ($b = self).$define_method, $a._p = (TMP_3 = function(){var self = TMP_3._s || this;
+                if (self.sexp == null) self.sexp = nil;
 
-            return self.sexp['$[]'](idx['$+'](1))}, TMP_3._s = self, TMP_3), $a).call($b, name)}, TMP_2._s = self, TMP_2), $a).call($b);
+              return self.sexp['$[]'](idx['$+'](1))}, TMP_3._s = self, TMP_3), $a).call($b, name)
+          }, TMP_2._s = self, TMP_2), $a).call($b);
         });
 
         self.$attr_reader("compiler", "type");
@@ -15149,9 +16625,10 @@ if (k == null) k = nil;
         };
 
         def.$compile_to_fragments = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.fragments) !== false && $a !== nil) {
-            return self.fragments};
+            return self.fragments}
           self.fragments = [];
           self.$compile();
           return self.fragments;
@@ -15163,25 +16640,37 @@ if (k == null) k = nil;
         };
 
         def.$push = function(strs) {
-          var $a, $b, TMP_4, self = this;
+          var $a;
+          var $b;
+          var TMP_4;
+          var self = this;
           strs = $slice.call(arguments, 0);
-          return ($a = ($b = strs).$each, $a._p = (TMP_4 = function(str){var self = TMP_4._s || this, $a;
+          return ($a = ($b = strs).$each, $a._p = (TMP_4 = function(str){
+            var self = TMP_4._s || this;
+            var $a;
             if (self.fragments == null) self.fragments = nil;
-if (str == null) str = nil;
-          if (($a = str['$is_a?']($scope.String)) !== false && $a !== nil) {
-              str = self.$fragment(str)};
-            return self.fragments['$<<'](str);}, TMP_4._s = self, TMP_4), $a).call($b);
+            if (str == null) str = nil;
+            if (($a = str['$is_a?']($scope.String)) !== false && $a !== nil) {
+                str = self.$fragment(str)}
+            return self.fragments['$<<'](str);
+          }, TMP_4._s = self, TMP_4), $a).call($b);
         };
 
         def.$unshift = function(strs) {
-          var $a, $b, TMP_5, self = this;
+          var $a;
+          var $b;
+          var TMP_5;
+          var self = this;
           strs = $slice.call(arguments, 0);
-          return ($a = ($b = strs.$reverse()).$each, $a._p = (TMP_5 = function(str){var self = TMP_5._s || this, $a;
+          return ($a = ($b = strs.$reverse()).$each, $a._p = (TMP_5 = function(str){
+            var self = TMP_5._s || this;
+            var $a;
             if (self.fragments == null) self.fragments = nil;
-if (str == null) str = nil;
-          if (($a = str['$is_a?']($scope.String)) !== false && $a !== nil) {
-              str = self.$fragment(str)};
-            return self.fragments.$unshift(str);}, TMP_5._s = self, TMP_5), $a).call($b);
+            if (str == null) str = nil;
+            if (($a = str['$is_a?']($scope.String)) !== false && $a !== nil) {
+                str = self.$fragment(str)}
+            return self.fragments.$unshift(str);
+          }, TMP_5._s = self, TMP_5), $a).call($b);
         };
 
         def.$wrap = function(pre, post) {
@@ -15206,7 +16695,8 @@ if (str == null) str = nil;
         };
 
         def.$s = function(args) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           args = $slice.call(arguments, 0);
           return ($a = self.compiler).$s.apply($a, [].concat(args));
         };
@@ -15279,7 +16769,11 @@ if (str == null) str = nil;
         };
 
         def.$with_temp = TMP_6 = function() {
-          var $a, $b, self = this, $iter = TMP_6._p, block = $iter || nil;
+          var $a;
+          var $b;
+          var self = this;
+          var $iter = TMP_6._p;
+          var block = $iter || nil;
           TMP_6._p = null;
           return ($a = ($b = self.compiler).$with_temp, $a._p = block.$to_proc(), $a).call($b);
         };
@@ -15293,66 +16787,75 @@ if (str == null) str = nil;
           var self = this;
           return self.compiler.$instance_variable_get("@while_loop");
         }, nil);
-      })(self, null)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, null)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/base.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$push', '$to_s', '$type', '$children', '$value', '$recv?', '$wrap', '$inspect', '$==', '$stmt?', '$include?', '$needs_semicolon?', '$each_with_index', '$===', '$expr', '$[]', '$raise', '$s', '$last', '$each', '$requires_semicolon', '$helper', '$start', '$finish']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ValueNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ValueNode(){}
         var self = $ValueNode = $klass($base, $super, 'ValueNode', $ValueNode);
 
-        var def = $ValueNode._proto, $scope = $ValueNode._scope;
+        var def = $ValueNode._proto;
+        var $scope = $ValueNode._scope;
         self.$handle("true", "false", "self", "nil");
 
         return (def.$compile = function() {
           var self = this;
           return self.$push(self.$type().$to_s());
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $NumericNode(){};
+      ((($base, $super) => {
+        function $NumericNode(){}
         var self = $NumericNode = $klass($base, $super, 'NumericNode', $NumericNode);
 
-        var def = $NumericNode._proto, $scope = $NumericNode._scope;
+        var def = $NumericNode._proto;
+        var $scope = $NumericNode._scope;
         self.$handle("int", "float");
 
         self.$children("value");
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           self.$push(self.$value().$to_s());
           if (($a = self['$recv?']()) !== false && $a !== nil) {
             return self.$wrap("(", ")")
             } else {
             return nil
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $StringNode(){};
+      ((($base, $super) => {
+        function $StringNode(){}
         var self = $StringNode = $klass($base, $super, 'StringNode', $StringNode);
 
-        var def = $StringNode._proto, $scope = $StringNode._scope;
+        var def = $StringNode._proto;
+        var $scope = $StringNode._scope;
         self.$handle("str");
 
         self.$children("value");
@@ -15361,13 +16864,14 @@ if (str == null) str = nil;
           var self = this;
           return self.$push(self.$value().$inspect());
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $SymbolNode(){};
+      ((($base, $super) => {
+        function $SymbolNode(){}
         var self = $SymbolNode = $klass($base, $super, 'SymbolNode', $SymbolNode);
 
-        var def = $SymbolNode._proto, $scope = $SymbolNode._scope;
+        var def = $SymbolNode._proto;
+        var $scope = $SymbolNode._scope;
         self.$handle("sym");
 
         self.$children("value");
@@ -15376,66 +16880,78 @@ if (str == null) str = nil;
           var self = this;
           return self.$push(self.$value().$to_s().$inspect());
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $RegexpNode(){};
+      ((($base, $super) => {
+        function $RegexpNode(){}
         var self = $RegexpNode = $klass($base, $super, 'RegexpNode', $RegexpNode);
 
-        var def = $RegexpNode._proto, $scope = $RegexpNode._scope;
+        var def = $RegexpNode._proto;
+        var $scope = $RegexpNode._scope;
         self.$handle("regexp");
 
         self.$children("value");
 
-        return (def.$compile = function() {
+        return def.$compile = function() {
           var self = this;
-          return self.$push(((function() {if (self.$value()['$=='](/^/)) {
+          return self.$push((((() => {if (self.$value()['$=='](/^/)) {
             return /^/
             } else {
             return self.$value()
-          }; return nil; })()).$inspect());
-        }, nil);
-      })(self, $scope.Base);
+          }; return nil; }))()).$inspect());
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $XStringNode(){};
+      ((($base, $super) => {
+        function $XStringNode(){}
         var self = $XStringNode = $klass($base, $super, 'XStringNode', $XStringNode);
 
-        var def = $XStringNode._proto, $scope = $XStringNode._scope;
+        var def = $XStringNode._proto;
+        var $scope = $XStringNode._scope;
         self.$handle("xstr");
 
         self.$children("value");
 
         def['$needs_semicolon?'] = function() {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           return ($a = self['$stmt?'](), $a !== false && $a !== nil ?($b = self.$value().$to_s()['$include?'](";"), ($b === nil || $b === false)) : $a);
         };
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           self.$push(self.$value().$to_s());
           if (($a = self['$needs_semicolon?']()) !== false && $a !== nil) {
-            self.$push(";")};
+            self.$push(";")}
           if (($a = self['$recv?']()) !== false && $a !== nil) {
             return self.$wrap("(", ")")
             } else {
             return nil
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $DynamicStringNode(){};
+      ((($base, $super) => {
+        function $DynamicStringNode(){}
         var self = $DynamicStringNode = $klass($base, $super, 'DynamicStringNode', $DynamicStringNode);
 
-        var def = $DynamicStringNode._proto, $scope = $DynamicStringNode._scope;
+        var def = $DynamicStringNode._proto;
+        var $scope = $DynamicStringNode._scope;
         self.$handle("dstr");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
-          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_1 = function(part, idx){var self = TMP_1._s || this, $a;if (part == null) part = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(" + ")};
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_1 = function(part, idx){
+            var self = TMP_1._s || this;
+            var $a;
+            if (part == null) part = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(" + ")}
             if (($a = $scope.String['$==='](part)) !== false && $a !== nil) {
               self.$push(part.$inspect())
             } else if (part.$type()['$==']("evstr")) {
@@ -15446,27 +16962,35 @@ if (str == null) str = nil;
               self.$push(part['$[]'](1).$inspect())
               } else {
               self.$raise("Bad dstr part")
-            };
+            }
             if (($a = self['$recv?']()) !== false && $a !== nil) {
               return self.$wrap("(", ")")
               } else {
               return nil
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $DynamicSymbolNode(){};
+      ((($base, $super) => {
+        function $DynamicSymbolNode(){}
         var self = $DynamicSymbolNode = $klass($base, $super, 'DynamicSymbolNode', $DynamicSymbolNode);
 
-        var def = $DynamicSymbolNode._proto, $scope = $DynamicSymbolNode._scope;
+        var def = $DynamicSymbolNode._proto;
+        var $scope = $DynamicSymbolNode._scope;
         self.$handle("dsym");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
-          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_2 = function(part, idx){var self = TMP_2._s || this, $a;if (part == null) part = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(" + ")};
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
+          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_2 = function(part, idx){
+            var self = TMP_2._s || this;
+            var $a;
+            if (part == null) part = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(" + ")}
             if (($a = $scope.String['$==='](part)) !== false && $a !== nil) {
               return self.$push(part.$inspect())
             } else if (part.$type()['$==']("evstr")) {
@@ -15475,84 +16999,105 @@ if (str == null) str = nil;
               return self.$push(part.$last().$inspect())
               } else {
               return self.$raise("Bad dsym part")
-            };}, TMP_2._s = self, TMP_2), $a).call($b);
+            }
+          }, TMP_2._s = self, TMP_2), $a).call($b);
           return self.$wrap("(", ")");
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $DynamicXStringNode(){};
+      ((($base, $super) => {
+        function $DynamicXStringNode(){}
         var self = $DynamicXStringNode = $klass($base, $super, 'DynamicXStringNode', $DynamicXStringNode);
 
-        var def = $DynamicXStringNode._proto, $scope = $DynamicXStringNode._scope;
+        var def = $DynamicXStringNode._proto;
+        var $scope = $DynamicXStringNode._scope;
         self.$handle("dxstr");
 
         def.$requires_semicolon = function(code) {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           return ($a = self['$stmt?'](), $a !== false && $a !== nil ?($b = code['$include?'](";"), ($b === nil || $b === false)) : $a);
         };
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_3, self = this, needs_semicolon = nil;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var needs_semicolon = nil;
           needs_semicolon = false;
-          ($a = ($b = self.$children()).$each, $a._p = (TMP_3 = function(part){var self = TMP_3._s || this, $a;if (part == null) part = nil;
-          if (($a = $scope.String['$==='](part)) !== false && $a !== nil) {
-              self.$push(part.$to_s());
-              if (($a = self.$requires_semicolon(part.$to_s())) !== false && $a !== nil) {
-                return needs_semicolon = true
+          ($a = ($b = self.$children()).$each, $a._p = (TMP_3 = function(part){
+            var self = TMP_3._s || this;
+            var $a;
+            if (part == null) part = nil;
+            if (($a = $scope.String['$==='](part)) !== false && $a !== nil) {
+                self.$push(part.$to_s());
+                if (($a = self.$requires_semicolon(part.$to_s())) !== false && $a !== nil) {
+                  return needs_semicolon = true
+                  } else {
+                  return nil
+                };
+              } else if (part.$type()['$==']("evstr")) {
+                return self.$push(self.$expr(part['$[]'](1)))
+              } else if (part.$type()['$==']("str")) {
+                self.$push(part.$last().$to_s());
+                if (($a = self.$requires_semicolon(part.$last().$to_s())) !== false && $a !== nil) {
+                  return needs_semicolon = true
+                  } else {
+                  return nil
+                };
                 } else {
-                return nil
-              };
-            } else if (part.$type()['$==']("evstr")) {
-              return self.$push(self.$expr(part['$[]'](1)))
-            } else if (part.$type()['$==']("str")) {
-              self.$push(part.$last().$to_s());
-              if (($a = self.$requires_semicolon(part.$last().$to_s())) !== false && $a !== nil) {
-                return needs_semicolon = true
-                } else {
-                return nil
-              };
-              } else {
-              return self.$raise("Bad dxstr part")
-            }}, TMP_3._s = self, TMP_3), $a).call($b);
+                return self.$raise("Bad dxstr part")
+              }
+          }, TMP_3._s = self, TMP_3), $a).call($b);
           if (needs_semicolon !== false && needs_semicolon !== nil) {
-            self.$push(";")};
+            self.$push(";")}
           if (($a = self['$recv?']()) !== false && $a !== nil) {
             return self.$wrap("(", ")")
             } else {
             return nil
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $DynamicRegexpNode(){};
+      ((($base, $super) => {
+        function $DynamicRegexpNode(){}
         var self = $DynamicRegexpNode = $klass($base, $super, 'DynamicRegexpNode', $DynamicRegexpNode);
 
-        var def = $DynamicRegexpNode._proto, $scope = $DynamicRegexpNode._scope;
+        var def = $DynamicRegexpNode._proto;
+        var $scope = $DynamicRegexpNode._scope;
         self.$handle("dregx");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_4, self = this;
-          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_4 = function(part, idx){var self = TMP_4._s || this, $a;if (part == null) part = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(" + ")};
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_4;
+          var self = this;
+          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_4 = function(part, idx){
+            var self = TMP_4._s || this;
+            var $a;
+            if (part == null) part = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(" + ")}
             if (($a = $scope.String['$==='](part)) !== false && $a !== nil) {
               return self.$push(part.$inspect())
             } else if (part.$type()['$==']("str")) {
               return self.$push(part['$[]'](1).$inspect())
               } else {
               return self.$push(self.$expr(part['$[]'](1)))
-            };}, TMP_4._s = self, TMP_4), $a).call($b);
+            }
+          }, TMP_4._s = self, TMP_4), $a).call($b);
           return self.$wrap("(new RegExp(", "))");
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $InclusiveRangeNode(){};
+      ((($base, $super) => {
+        function $InclusiveRangeNode(){}
         var self = $InclusiveRangeNode = $klass($base, $super, 'InclusiveRangeNode', $InclusiveRangeNode);
 
-        var def = $InclusiveRangeNode._proto, $scope = $InclusiveRangeNode._scope;
+        var def = $InclusiveRangeNode._proto;
+        var $scope = $InclusiveRangeNode._scope;
         self.$handle("irange");
 
         self.$children("start", "finish");
@@ -15562,13 +17107,14 @@ if (str == null) str = nil;
           self.$helper("range");
           return self.$push("$range(", self.$expr(self.$start()), ", ", self.$expr(self.$finish()), ", false)");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ExclusiveRangeNode(){};
+      ((($base, $super) => {
+        function $ExclusiveRangeNode(){}
         var self = $ExclusiveRangeNode = $klass($base, $super, 'ExclusiveRangeNode', $ExclusiveRangeNode);
 
-        var def = $ExclusiveRangeNode._proto, $scope = $ExclusiveRangeNode._scope;
+        var def = $ExclusiveRangeNode._proto;
+        var $scope = $ExclusiveRangeNode._scope;
         self.$handle("erange");
 
         self.$children("start", "finish");
@@ -15578,68 +17124,82 @@ if (str == null) str = nil;
           self.$helper("range");
           return self.$push("$range(", self.$expr(self.$start()), ", ", self.$expr(self.$finish()), ", true)");
         }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/literal.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$irb?', '$compiler', '$top?', '$scope', '$using_irb?', '$push', '$variable', '$to_s', '$var_name', '$with_temp', '$property', '$wrap', '$expr', '$value', '$add_local', '$recv?', '$[]', '$name', '$add_ivar', '$helper', '$inspect']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $LocalVariableNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $LocalVariableNode(){}
         var self = $LocalVariableNode = $klass($base, $super, 'LocalVariableNode', $LocalVariableNode);
 
-        var def = $LocalVariableNode._proto, $scope = $LocalVariableNode._scope;
+        var def = $LocalVariableNode._proto;
+        var $scope = $LocalVariableNode._scope;
         self.$handle("lvar");
 
         self.$children("var_name");
 
         def['$using_irb?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = self.$compiler()['$irb?'](), $a !== false && $a !== nil ?self.$scope()['$top?']() : $a);
         };
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           if (($a = self['$using_irb?']()) === false || $a === nil) {
-            return self.$push(self.$variable(self.$var_name().$to_s()))};
+            return self.$push(self.$variable(self.$var_name().$to_s()))}
           return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(tmp){var self = TMP_1._s || this;if (tmp == null) tmp = nil;
           self.$push(self.$property(self.$var_name().$to_s()));
             return self.$wrap("((" + (tmp) + " = $opal.irb_vars", ") == null ? nil : " + (tmp) + ")");}, TMP_1._s = self, TMP_1), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $LocalAssignNode(){};
+      ((($base, $super) => {
+        function $LocalAssignNode(){}
         var self = $LocalAssignNode = $klass($base, $super, 'LocalAssignNode', $LocalAssignNode);
 
-        var def = $LocalAssignNode._proto, $scope = $LocalAssignNode._scope;
+        var def = $LocalAssignNode._proto;
+        var $scope = $LocalAssignNode._scope;
         self.$handle("lasgn");
 
         self.$children("var_name", "value");
 
         def['$using_irb?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = self.$compiler()['$irb?'](), $a !== false && $a !== nil ?self.$scope()['$top?']() : $a);
         };
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           if (($a = self['$using_irb?']()) !== false && $a !== nil) {
             self.$push("$opal.irb_vars" + (self.$property(self.$var_name().$to_s())) + " = ");
             self.$push(self.$expr(self.$value()));
@@ -15647,20 +17207,21 @@ if (str == null) str = nil;
             self.$add_local(self.$variable(self.$var_name().$to_s()));
             self.$push("" + (self.$variable(self.$var_name().$to_s())) + " = ");
             self.$push(self.$expr(self.$value()));
-          };
+          }
           if (($a = self['$recv?']()) !== false && $a !== nil) {
             return self.$wrap("(", ")")
             } else {
             return nil
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $InstanceVariableNode(){};
+      ((($base, $super) => {
+        function $InstanceVariableNode(){}
         var self = $InstanceVariableNode = $klass($base, $super, 'InstanceVariableNode', $InstanceVariableNode);
 
-        var def = $InstanceVariableNode._proto, $scope = $InstanceVariableNode._scope;
+        var def = $InstanceVariableNode._proto;
+        var $scope = $InstanceVariableNode._scope;
         self.$handle("ivar");
 
         self.$children("name");
@@ -15670,19 +17231,21 @@ if (str == null) str = nil;
           return self.$name().$to_s()['$[]']($range(1, -1, false));
         };
 
-        return (def.$compile = function() {
-          var self = this, name = nil;
+        return def.$compile = function() {
+          var self = this;
+          var name = nil;
           name = self.$property(self.$var_name());
           self.$add_ivar(name);
           return self.$push("self" + (name));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $InstanceAssignNode(){};
+      ((($base, $super) => {
+        function $InstanceAssignNode(){}
         var self = $InstanceAssignNode = $klass($base, $super, 'InstanceAssignNode', $InstanceAssignNode);
 
-        var def = $InstanceAssignNode._proto, $scope = $InstanceAssignNode._scope;
+        var def = $InstanceAssignNode._proto;
+        var $scope = $InstanceAssignNode._scope;
         self.$handle("iasgn");
 
         self.$children("name", "value");
@@ -15692,19 +17255,21 @@ if (str == null) str = nil;
           return self.$name().$to_s()['$[]']($range(1, -1, false));
         };
 
-        return (def.$compile = function() {
-          var self = this, name = nil;
+        return def.$compile = function() {
+          var self = this;
+          var name = nil;
           name = self.$property(self.$var_name());
           self.$push("self" + (name) + " = ");
           return self.$push(self.$expr(self.$value()));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $GlobalVariableNode(){};
+      ((($base, $super) => {
+        function $GlobalVariableNode(){}
         var self = $GlobalVariableNode = $klass($base, $super, 'GlobalVariableNode', $GlobalVariableNode);
 
-        var def = $GlobalVariableNode._proto, $scope = $GlobalVariableNode._scope;
+        var def = $GlobalVariableNode._proto;
+        var $scope = $GlobalVariableNode._scope;
         self.$handle("gvar");
 
         self.$children("name");
@@ -15719,13 +17284,14 @@ if (str == null) str = nil;
           self.$helper("gvars");
           return self.$push("$gvars[" + (self.$var_name().$inspect()) + "]");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $GlobalAssignNode(){};
+      ((($base, $super) => {
+        function $GlobalAssignNode(){}
         var self = $GlobalAssignNode = $klass($base, $super, 'GlobalAssignNode', $GlobalAssignNode);
 
-        var def = $GlobalAssignNode._proto, $scope = $GlobalAssignNode._scope;
+        var def = $GlobalAssignNode._proto;
+        var $scope = $GlobalAssignNode._scope;
         self.$handle("gasgn");
 
         self.$children("name", "value");
@@ -15741,42 +17307,48 @@ if (str == null) str = nil;
           self.$push("$gvars[" + (self.$var_name().$inspect()) + "] = ");
           return self.$push(self.$expr(self.$value()));
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $BackrefNode(){};
+      ((($base, $super) => {
+        function $BackrefNode(){}
         var self = $BackrefNode = $klass($base, $super, 'BackrefNode', $BackrefNode);
 
-        var def = $BackrefNode._proto, $scope = $BackrefNode._scope;
+        var def = $BackrefNode._proto;
+        var $scope = $BackrefNode._scope;
         self.$handle("nth_ref");
 
         return (def.$compile = function() {
           var self = this;
           return self.$push("nil");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ClassVariableNode(){};
+      ((($base, $super) => {
+        function $ClassVariableNode(){}
         var self = $ClassVariableNode = $klass($base, $super, 'ClassVariableNode', $ClassVariableNode);
 
-        var def = $ClassVariableNode._proto, $scope = $ClassVariableNode._scope;
+        var def = $ClassVariableNode._proto;
+        var $scope = $ClassVariableNode._scope;
         self.$handle("cvar");
 
         self.$children("name");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this;if (tmp == null) tmp = nil;
           return self.$push("((" + (tmp) + " = $opal.cvars['" + (self.$name()) + "']) == null ? nil : " + (tmp) + ")")}, TMP_2._s = self, TMP_2), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ClassVarAssignNode(){};
+      ((($base, $super) => {
+        function $ClassVarAssignNode(){}
         var self = $ClassVarAssignNode = $klass($base, $super, 'ClassVarAssignNode', $ClassVarAssignNode);
 
-        var def = $ClassVarAssignNode._proto, $scope = $ClassVarAssignNode._scope;
+        var def = $ClassVarAssignNode._proto;
+        var $scope = $ClassVarAssignNode._scope;
         self.$handle("casgn");
 
         self.$children("name", "value");
@@ -15787,13 +17359,14 @@ if (str == null) str = nil;
           self.$push(self.$expr(self.$value()));
           return self.$push(")");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ClassVarDeclNode(){};
+      ((($base, $super) => {
+        function $ClassVarDeclNode(){}
         var self = $ClassVarDeclNode = $klass($base, $super, 'ClassVarDeclNode', $ClassVarDeclNode);
 
-        var def = $ClassVarDeclNode._proto, $scope = $ClassVarDeclNode._scope;
+        var def = $ClassVarDeclNode._proto;
+        var $scope = $ClassVarDeclNode._scope;
         self.$handle("cvdecl");
 
         self.$children("name", "value");
@@ -15804,53 +17377,63 @@ if (str == null) str = nil;
           self.$push(self.$expr(self.$value()));
           return self.$push(")");
         }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/variables.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$const_missing?', '$compiler', '$with_temp', '$push', '$name', '$expr', '$base', '$wrap', '$value']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ConstNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ConstNode(){}
         var self = $ConstNode = $klass($base, $super, 'ConstNode', $ConstNode);
 
-        var def = $ConstNode._proto, $scope = $ConstNode._scope;
+        var def = $ConstNode._proto;
+        var $scope = $ConstNode._scope;
         self.$handle("const");
 
         self.$children("name");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           if (($a = self.$compiler()['$const_missing?']()) !== false && $a !== nil) {
             return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(tmp){var self = TMP_1._s || this;if (tmp == null) tmp = nil;
             return self.$push("((" + (tmp) + " = $scope." + (self.$name()) + ") == null ? $opal.cm('" + (self.$name()) + "') : " + (tmp) + ")")}, TMP_1._s = self, TMP_1), $a).call($b)
             } else {
             return self.$push("$scope." + (self.$name()))
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ConstDeclarationNode(){};
+      ((($base, $super) => {
+        function $ConstDeclarationNode(){}
         var self = $ConstDeclarationNode = $klass($base, $super, 'ConstDeclarationNode', $ConstDeclarationNode);
 
-        var def = $ConstDeclarationNode._proto, $scope = $ConstDeclarationNode._scope;
+        var def = $ConstDeclarationNode._proto;
+        var $scope = $ConstDeclarationNode._scope;
         self.$handle("cdecl");
 
         self.$children("name", "base");
@@ -15860,13 +17443,14 @@ if (str == null) str = nil;
           self.$push(self.$expr(self.$base()));
           return self.$wrap("$opal.cdecl($scope, '" + (self.$name()) + "', ", ")");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ConstAssignNode(){};
+      ((($base, $super) => {
+        function $ConstAssignNode(){}
         var self = $ConstAssignNode = $klass($base, $super, 'ConstAssignNode', $ConstAssignNode);
 
-        var def = $ConstAssignNode._proto, $scope = $ConstAssignNode._scope;
+        var def = $ConstAssignNode._proto;
+        var $scope = $ConstAssignNode._scope;
         self.$handle("casgn");
 
         self.$children("base", "name", "value");
@@ -15879,19 +17463,23 @@ if (str == null) str = nil;
           self.$push(self.$expr(self.$value()));
           return self.$push(")");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ConstGetNode(){};
+      ((($base, $super) => {
+        function $ConstGetNode(){}
         var self = $ConstGetNode = $klass($base, $super, 'ConstGetNode', $ConstGetNode);
 
-        var def = $ConstGetNode._proto, $scope = $ConstGetNode._scope;
+        var def = $ConstGetNode._proto;
+        var $scope = $ConstGetNode._scope;
         self.$handle("colon2");
 
         self.$children("base", "name");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           if (($a = self.$compiler()['$const_missing?']()) !== false && $a !== nil) {
             return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this;if (tmp == null) tmp = nil;
             self.$push("((" + (tmp) + " = (");
@@ -15901,32 +17489,37 @@ if (str == null) str = nil;
             } else {
             self.$push(self.$expr(self.$base()));
             return self.$wrap("(", ")._scope." + (self.$name()));
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $TopConstNode(){};
+      ((($base, $super) => {
+        function $TopConstNode(){}
         var self = $TopConstNode = $klass($base, $super, 'TopConstNode', $TopConstNode);
 
-        var def = $TopConstNode._proto, $scope = $TopConstNode._scope;
+        var def = $TopConstNode._proto;
+        var $scope = $TopConstNode._scope;
         self.$handle("colon3");
 
         self.$children("name");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_3, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
           return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){var self = TMP_3._s || this;if (tmp == null) tmp = nil;
           self.$push("((" + (tmp) + " = $opal.Object._scope." + (self.$name()) + ") == null ? ");
             return self.$push("$opal.cm('" + (self.$name()) + "') : " + (tmp) + ")");}, TMP_3._s = self, TMP_3), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $TopConstAssignNode(){};
+      ((($base, $super) => {
+        function $TopConstAssignNode(){}
         var self = $TopConstAssignNode = $klass($base, $super, 'TopConstAssignNode', $TopConstAssignNode);
 
-        var def = $TopConstAssignNode._proto, $scope = $TopConstAssignNode._scope;
+        var def = $TopConstAssignNode._proto;
+        var $scope = $TopConstAssignNode._scope;
         self.$handle("casgn3");
 
         self.$children("name", "value");
@@ -15937,97 +17530,139 @@ if (str == null) str = nil;
           self.$push(self.$expr(self.$value()));
           return self.$push(")");
         }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/constants.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$new', '$children', '$==', '$include?', '$to_sym', '$<<', '$define_method', '$to_proc', '$meth', '$__send__', '$raise', '$helper', '$[]', '$arglist', '$js_truthy', '$js_falsy']);
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $RuntimeHelpers(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $RuntimeHelpers(){}
         var self = $RuntimeHelpers = $klass($base, $super, 'RuntimeHelpers', $RuntimeHelpers);
 
-        var def = $RuntimeHelpers._proto, $scope = $RuntimeHelpers._scope, TMP_1, $a, $b, TMP_2, $c, TMP_3;
+        var def = $RuntimeHelpers._proto;
+        var $scope = $RuntimeHelpers._scope;
+        var TMP_1;
+        var $a;
+        var $b;
+        var TMP_2;
+        var $c;
+        var TMP_3;
         $opal.cdecl($scope, 'HELPERS', $scope.Set.$new());
 
         self.$children("recvr", "meth", "arglist");
 
         $opal.defs(self, '$compatible?', function(recvr, meth, arglist) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return (($a = recvr['$=='](["const", "Opal"])) ? $scope.HELPERS['$include?'](meth.$to_sym()) : $a);
         });
 
         $opal.defs(self, '$helper', TMP_1 = function(name) {
-          var $a, $b, self = this, $iter = TMP_1._p, block = $iter || nil;
+          var $a;
+          var $b;
+          var self = this;
+          var $iter = TMP_1._p;
+          var block = $iter || nil;
           TMP_1._p = null;
           $scope.HELPERS['$<<'](name);
           return ($a = ($b = self).$define_method, $a._p = block.$to_proc(), $a).call($b, "compile_" + (name));
         });
 
         def.$compile = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = $scope.HELPERS['$include?'](self.$meth().$to_sym())) !== false && $a !== nil) {
             return self.$__send__("compile_" + (self.$meth()))
             } else {
             return self.$raise("Helper not supported: " + (self.$meth()))
-          };
+          }
         };
 
-        ($a = ($b = self).$helper, $a._p = (TMP_2 = function(){var self = TMP_2._s || this, $a, sexp = nil;
-        if (($a = sexp = self.$arglist()['$[]'](1)) === false || $a === nil) {
-            self.$raise("truthy? requires an object")};
-          return self.$js_truthy(sexp);}, TMP_2._s = self, TMP_2), $a).call($b, "truthy?");
+        ($a = ($b = self).$helper, $a._p = (TMP_2 = function(){
+          var self = TMP_2._s || this;
+          var $a;
+          var sexp = nil;
+          if (($a = sexp = self.$arglist()['$[]'](1)) === false || $a === nil) {
+              self.$raise("truthy? requires an object")}
+          return self.$js_truthy(sexp);
+        }, TMP_2._s = self, TMP_2), $a).call($b, "truthy?");
 
-        return ($a = ($c = self).$helper, $a._p = (TMP_3 = function(){var self = TMP_3._s || this, $a, sexp = nil;
-        if (($a = sexp = self.$arglist()['$[]'](1)) === false || $a === nil) {
-            self.$raise("falsy? requires an object")};
-          return self.$js_falsy(sexp);}, TMP_3._s = self, TMP_3), $a).call($c, "falsy?");
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        return ($a = ($c = self).$helper, $a._p = (TMP_3 = function(){
+          var self = TMP_3._s || this;
+          var $a;
+          var sexp = nil;
+          if (($a = sexp = self.$arglist()['$[]'](1)) === false || $a === nil) {
+              self.$raise("falsy? requires an object")}
+          return self.$js_falsy(sexp);
+        }, TMP_3._s = self, TMP_3), $a).call($c, "falsy?");
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/runtime_helpers.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$new', '$<<', '$define_method', '$to_proc', '$handle_special', '$method_calls', '$compiler', '$to_sym', '$meth', '$using_irb?', '$compile_irb_var', '$mid_to_jsid', '$to_s', '$any?', '$==', '$first', '$[]', '$arglist', '$===', '$last', '$type', '$pop', '$iter', '$new_temp', '$scope', '$expr', '$recv', '$recv_sexp', '$s', '$insert', '$push', '$unshift', '$queue_temp', '$recvr', '$with_temp', '$variable', '$intern', '$irb?', '$top?', '$nil?', '$include?', '$__send__', '$compatible?', '$compile', '$add_special', '$resolve', '$requires', '$stmt?', '$fragment', '$class_scope?', '$handle_block_given_call', '$def?', '$inspect', '$mid', '$handle_part', '$map', '$expand_path', '$join', '$split', '$dynamic_require_severity', '$error', '$warning', '$inject']);
-  ;
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $CallNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $CallNode(){}
         var self = $CallNode = $klass($base, $super, 'CallNode', $CallNode);
 
-        var def = $CallNode._proto, $scope = $CallNode._scope, TMP_1, $a, $b, TMP_4, $c, TMP_5, $d, TMP_6, $e, TMP_7, $f, TMP_8;
+        var def = $CallNode._proto;
+        var $scope = $CallNode._scope;
+        var TMP_1;
+        var $a;
+        var $b;
+        var TMP_4;
+        var $c;
+        var TMP_5;
+        var $d;
+        var TMP_6;
+        var $e;
+        var TMP_7;
+        var $f;
+        var TMP_8;
         def.compiler = def.sexp = def.level = nil;
         self.$handle("call");
 
@@ -16036,79 +17671,111 @@ if (str == null) str = nil;
         $opal.cdecl($scope, 'SPECIALS', $scope.Set.$new());
 
         $opal.defs(self, '$add_special', TMP_1 = function(name) {
-          var $a, $b, self = this, $iter = TMP_1._p, handler = $iter || nil;
+          var $a;
+          var $b;
+          var self = this;
+          var $iter = TMP_1._p;
+          var handler = $iter || nil;
           TMP_1._p = null;
           $scope.SPECIALS['$<<'](name);
           return ($a = ($b = self).$define_method, $a._p = handler.$to_proc(), $a).call($b, "handle_" + (name));
         });
 
         def.$compile = function() {
-          var $a, $b, TMP_2, $c, $d, self = this, mid = nil, splat = nil, block = nil, tmpfunc = nil, tmprecv = nil, recv_code = nil, call_recv = nil, args = nil;
+          var $a;
+          var $b;
+          var TMP_2;
+          var $c;
+          var $d;
+          var self = this;
+          var mid = nil;
+          var splat = nil;
+          var block = nil;
+          var tmpfunc = nil;
+          var tmprecv = nil;
+          var recv_code = nil;
+          var call_recv = nil;
+          var args = nil;
           if (($a = self.$handle_special()) !== false && $a !== nil) {
-            return nil};
+            return nil}
           self.$compiler().$method_calls()['$<<'](self.$meth().$to_sym());
           if (($a = self['$using_irb?']()) !== false && $a !== nil) {
-            return self.$compile_irb_var()};
+            return self.$compile_irb_var()}
           mid = self.$mid_to_jsid(self.$meth().$to_s());
           splat = ($a = ($b = self.$arglist()['$[]']($range(1, -1, false)))['$any?'], $a._p = (TMP_2 = function(a){var self = TMP_2._s || this;if (a == null) a = nil;
           return a.$first()['$==']("splat")}, TMP_2._s = self, TMP_2), $a).call($b);
           if (($a = ($c = $scope.Sexp['$==='](self.$arglist().$last()), $c !== false && $c !== nil ?self.$arglist().$last().$type()['$==']("block_pass") : $c)) !== false && $a !== nil) {
             block = self.$arglist().$pop()
           } else if (($a = self.$iter()) !== false && $a !== nil) {
-            block = self.$iter()};
+            block = self.$iter()}
           if (block !== false && block !== nil) {
-            tmpfunc = self.$scope().$new_temp()};
+            tmpfunc = self.$scope().$new_temp()}
           if (($a = ((($c = splat) !== false && $c !== nil) ? $c : tmpfunc)) !== false && $a !== nil) {
-            tmprecv = self.$scope().$new_temp()};
+            tmprecv = self.$scope().$new_temp()}
           if (block !== false && block !== nil) {
-            block = self.$expr(block)};
+            block = self.$expr(block)}
           recv_code = self.$recv(self.$recv_sexp());
           call_recv = self.$s("js_tmp", ((($a = tmprecv) !== false && $a !== nil) ? $a : recv_code));
           if (($a = (($c = tmpfunc !== false && tmpfunc !== nil) ? ($d = splat, ($d === nil || $d === false)) : $c)) !== false && $a !== nil) {
-            self.$arglist().$insert(1, call_recv)};
+            self.$arglist().$insert(1, call_recv)}
           args = self.$expr(self.$arglist());
           if (tmprecv !== false && tmprecv !== nil) {
             self.$push("(" + (tmprecv) + " = ", recv_code, ")" + (mid))
             } else {
             self.$push(recv_code, mid)
-          };
+          }
           if (tmpfunc !== false && tmpfunc !== nil) {
             self.$unshift("(" + (tmpfunc) + " = ");
-            self.$push(", " + (tmpfunc) + "._p = ", block, ", " + (tmpfunc) + ")");};
+            self.$push(", " + (tmpfunc) + "._p = ", block, ", " + (tmpfunc) + ")");}
           if (splat !== false && splat !== nil) {
             self.$push(".apply(", (((($a = tmprecv) !== false && $a !== nil) ? $a : recv_code)), ", ", args, ")")
           } else if (tmpfunc !== false && tmpfunc !== nil) {
             self.$push(".call(", args, ")")
             } else {
             self.$push("(", args, ")")
-          };
+          }
           if (tmpfunc !== false && tmpfunc !== nil) {
             return self.$scope().$queue_temp(tmpfunc)
             } else {
             return nil
-          };
+          }
         };
 
         def.$recv_sexp = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self.$recvr()) !== false && $a !== nil) ? $a : self.$s("self"));
         };
 
         def.$compile_irb_var = function() {
-          var $a, $b, TMP_3, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){var self = TMP_3._s || this, lvar = nil, call = nil;if (tmp == null) tmp = nil;
-          lvar = self.$variable(self.$meth());
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){
+            var self = TMP_3._s || this;
+            var lvar = nil;
+            var call = nil;
+            if (tmp == null) tmp = nil;
+            lvar = self.$variable(self.$meth());
             call = self.$s("call", self.$s("self"), self.$meth().$intern(), self.$s("arglist"));
-            return self.$push("((" + (tmp) + " = $opal.irb_vars." + (lvar) + ") == null ? ", self.$expr(call), " : " + (tmp) + ")");}, TMP_3._s = self, TMP_3), $a).call($b);
+            return self.$push("((" + (tmp) + " = $opal.irb_vars." + (lvar) + ") == null ? ", self.$expr(call), " : " + (tmp) + ")");
+          }, TMP_3._s = self, TMP_3), $a).call($b);
         };
 
         def['$using_irb?'] = function() {
-          var $a, $b, $c, $d, self = this;
+          var $a;
+          var $b;
+          var $c;
+          var $d;
+          var self = this;
           return ($a = ($b = ($c = ($d = self.compiler['$irb?'](), $d !== false && $d !== nil ?self.$scope()['$top?']() : $d), $c !== false && $c !== nil ?self.$arglist()['$=='](self.$s("arglist")) : $c), $b !== false && $b !== nil ?self.$recvr()['$nil?']() : $b), $a !== false && $a !== nil ?self.$iter()['$nil?']() : $a);
         };
 
         def.$handle_special = function() {
-          var $a, self = this, result = nil;
+          var $a;
+          var self = this;
+          var result = nil;
           if (($a = $scope.SPECIALS['$include?'](self.$meth())) !== false && $a !== nil) {
             if (($a = result = self.$__send__("handle_" + (self.$meth()))) !== false && $a !== nil) {
               self.$push(result);
@@ -16121,53 +17788,68 @@ if (str == null) str = nil;
             return true;
             } else {
             return nil
-          };
+          }
         };
 
-        ($a = ($b = self).$add_special, $a._p = (TMP_4 = function(){var self = TMP_4._s || this, $a, str = nil;
-        str = $scope.DependencyResolver.$new(self.$compiler(), self.$arglist()['$[]'](1)).$resolve();
+        ($a = ($b = self).$add_special, $a._p = (TMP_4 = function(){
+          var self = TMP_4._s || this;
+          var $a;
+          var str = nil;
+          str = $scope.DependencyResolver.$new(self.$compiler(), self.$arglist()['$[]'](1)).$resolve();
           if (($a = str['$nil?']()) === false || $a === nil) {
-            self.$compiler().$requires()['$<<'](str)};
+            self.$compiler().$requires()['$<<'](str)}
           if (($a = self['$stmt?']()) !== false && $a !== nil) {
             return self.$fragment("")
             } else {
             return self.$fragment("true")
-          };}, TMP_4._s = self, TMP_4), $a).call($b, "require");
+          }
+        }, TMP_4._s = self, TMP_4), $a).call($b, "require");
 
-        ($a = ($c = self).$add_special, $a._p = (TMP_5 = function(){var self = TMP_5._s || this, $a, str = nil;
-        if (($a = self.$scope()['$class_scope?']()) !== false && $a !== nil) {
-            str = $scope.DependencyResolver.$new(self.$compiler(), self.$arglist()['$[]'](2)).$resolve();
-            if (($a = str['$nil?']()) === false || $a === nil) {
-              self.$compiler().$requires()['$<<'](str)};
-            return self.$fragment("");
-            } else {
-            return nil
-          }}, TMP_5._s = self, TMP_5), $a).call($c, "autoload");
+        ($a = ($c = self).$add_special, $a._p = (TMP_5 = function(){
+          var self = TMP_5._s || this;
+          var $a;
+          var str = nil;
+          if (($a = self.$scope()['$class_scope?']()) !== false && $a !== nil) {
+              str = $scope.DependencyResolver.$new(self.$compiler(), self.$arglist()['$[]'](2)).$resolve();
+              if (($a = str['$nil?']()) === false || $a === nil) {
+                self.$compiler().$requires()['$<<'](str)};
+              return self.$fragment("");
+              } else {
+              return nil
+            }
+        }, TMP_5._s = self, TMP_5), $a).call($c, "autoload");
 
         ($a = ($d = self).$add_special, $a._p = (TMP_6 = function(){var self = TMP_6._s || this;
           if (self.sexp == null) self.sexp = nil;
 
         return self.$compiler().$handle_block_given_call(self.sexp)}, TMP_6._s = self, TMP_6), $a).call($d, "block_given?");
 
-        ($a = ($e = self).$add_special, $a._p = (TMP_7 = function(){var self = TMP_7._s || this, $a;
-        if (($a = self.$scope()['$def?']()) !== false && $a !== nil) {
-            return self.$fragment(self.$scope().$mid().$to_s().$inspect())
-            } else {
-            return self.$fragment("nil")
-          }}, TMP_7._s = self, TMP_7), $a).call($e, "__callee__");
+        ($a = ($e = self).$add_special, $a._p = (TMP_7 = function(){
+          var self = TMP_7._s || this;
+          var $a;
+          if (($a = self.$scope()['$def?']()) !== false && $a !== nil) {
+              return self.$fragment(self.$scope().$mid().$to_s().$inspect())
+              } else {
+              return self.$fragment("nil")
+            }
+        }, TMP_7._s = self, TMP_7), $a).call($e, "__callee__");
 
-        ($a = ($f = self).$add_special, $a._p = (TMP_8 = function(){var self = TMP_8._s || this, $a;
-        if (($a = self.$scope()['$def?']()) !== false && $a !== nil) {
-            return self.$fragment(self.$scope().$mid().$to_s().$inspect())
-            } else {
-            return self.$fragment("nil")
-          }}, TMP_8._s = self, TMP_8), $a).call($f, "__method__");
+        ($a = ($f = self).$add_special, $a._p = (TMP_8 = function(){
+          var self = TMP_8._s || this;
+          var $a;
+          if (($a = self.$scope()['$def?']()) !== false && $a !== nil) {
+              return self.$fragment(self.$scope().$mid().$to_s().$inspect())
+              } else {
+              return self.$fragment("nil")
+            }
+        }, TMP_8._s = self, TMP_8), $a).call($f, "__method__");
 
-        return (function($base, $super) {
-          function $DependencyResolver(){};
+        return ((($base, $super) => {
+          function $DependencyResolver(){}
           var self = $DependencyResolver = $klass($base, $super, 'DependencyResolver', $DependencyResolver);
 
-          var def = $DependencyResolver._proto, $scope = $DependencyResolver._scope;
+          var def = $DependencyResolver._proto;
+          var $scope = $DependencyResolver._scope;
           def.sexp = def.compiler = nil;
           def.$initialize = function(compiler, sexp) {
             var self = this;
@@ -16181,7 +17863,18 @@ if (str == null) str = nil;
           };
 
           def.$handle_part = function(sexp) {
-            var $a, $b, TMP_9, self = this, type = nil, _ = nil, recv = nil, meth = nil, args = nil, parts = nil, msg = nil, $case = nil;
+            var $a;
+            var $b;
+            var TMP_9;
+            var self = this;
+            var type = nil;
+            var _ = nil;
+            var recv = nil;
+            var meth = nil;
+            var args = nil;
+            var parts = nil;
+            var msg = nil;
+            var $case = nil;
             type = sexp.$type();
             if (type['$==']("str")) {
               return sexp['$[]'](1)
@@ -16195,119 +17888,141 @@ if (str == null) str = nil;
                 } else if (meth['$==']("join")) {
                   return self.$expand_path(parts.$join("/"))
                 } else if (meth['$==']("dirname")) {
-                  return self.$expand_path(parts['$[]'](0).$split("/")['$[]']($range(0, -1, true)).$join("/"))}};};
+                  return self.$expand_path(parts['$[]'](0).$split("/")['$[]']($range(0, -1, true)).$join("/"))}};}
             msg = "Cannot handle dynamic require";
-            return (function() {$case = self.compiler.$dynamic_require_severity();if ("error"['$===']($case)) {return self.compiler.$error(msg)}else if ("warning"['$===']($case)) {return self.compiler.$warning(msg)}else { return nil }})();
+            return ((() => {$case = self.compiler.$dynamic_require_severity();if ("error"['$===']($case)) {return self.compiler.$error(msg)}else if ("warning"['$===']($case)) {return self.compiler.$warning(msg)}else { return nil }}))();
           };
 
-          return (def.$expand_path = function(path, base) {
-            var $a, $b, TMP_10, self = this;
+          return def.$expand_path = function(path, base) {
+            var $a;
+            var $b;
+            var TMP_10;
+            var self = this;
             if (base == null) {
               base = ""
             }
-            return ($a = ($b = (((("") + (base)) + "/") + (path)).$split("/")).$inject, $a._p = (TMP_10 = function(p, part){var self = TMP_10._s || this, $a;if (p == null) p = nil;if (part == null) part = nil;
-            if (($a = part['$==']("")) === false || $a === nil) {
-                if (part['$==']("..")) {
-                  p.$pop()
-                  } else {
-                  p['$<<'](part)
-                }};
-              return p;}, TMP_10._s = self, TMP_10), $a).call($b, []).$join("/");
-          }, nil);
-        })(self, null);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+            return ($a = ($b = (((("") + (base)) + "/") + (path)).$split("/")).$inject, $a._p = (TMP_10 = function(p, part){
+              var self = TMP_10._s || this;
+              var $a;
+              if (p == null) p = nil;if (part == null) part = nil;
+              if (($a = part['$==']("")) === false || $a === nil) {
+                  if (part['$==']("..")) {
+                    p.$pop()
+                    } else {
+                    p['$<<'](part)
+                  }}
+              return p;
+            }, TMP_10._s = self, TMP_10), $a).call($b, []).$join("/");
+          }, nil;
+        }))(self, null);
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/call.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$s', '$recvr', '$mid', '$arglist', '$push', '$process', '$lhs', '$rhs', '$expr', '$[]', '$args', '$to_s', '$op', '$===', '$compile_or', '$compile_and', '$compile_operator', '$with_temp', '$first_arg', '$meth']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $AttrAssignNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $AttrAssignNode(){}
         var self = $AttrAssignNode = $klass($base, $super, 'AttrAssignNode', $AttrAssignNode);
 
-        var def = $AttrAssignNode._proto, $scope = $AttrAssignNode._scope;
+        var def = $AttrAssignNode._proto;
+        var $scope = $AttrAssignNode._scope;
         def.level = nil;
         self.$handle("attrasgn");
 
         self.$children("recvr", "mid", "arglist");
 
-        return (def.$compile = function() {
-          var self = this, sexp = nil;
+        return def.$compile = function() {
+          var self = this;
+          var sexp = nil;
           sexp = self.$s("call", self.$recvr(), self.$mid(), self.$arglist());
           return self.$push(self.$process(sexp, self.level));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $Match3Node(){};
+      ((($base, $super) => {
+        function $Match3Node(){}
         var self = $Match3Node = $klass($base, $super, 'Match3Node', $Match3Node);
 
-        var def = $Match3Node._proto, $scope = $Match3Node._scope;
+        var def = $Match3Node._proto;
+        var $scope = $Match3Node._scope;
         def.level = nil;
         self.$handle("match3");
 
         self.$children("lhs", "rhs");
 
-        return (def.$compile = function() {
-          var self = this, sexp = nil;
+        return def.$compile = function() {
+          var self = this;
+          var sexp = nil;
           sexp = self.$s("call", self.$lhs(), "=~", self.$s("arglist", self.$rhs()));
           return self.$push(self.$process(sexp, self.level));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $OpAsgnOrNode(){};
+      ((($base, $super) => {
+        function $OpAsgnOrNode(){}
         var self = $OpAsgnOrNode = $klass($base, $super, 'OpAsgnOrNode', $OpAsgnOrNode);
 
-        var def = $OpAsgnOrNode._proto, $scope = $OpAsgnOrNode._scope;
+        var def = $OpAsgnOrNode._proto;
+        var $scope = $OpAsgnOrNode._scope;
         self.$handle("op_asgn_or");
 
         self.$children("recvr", "rhs");
 
-        return (def.$compile = function() {
-          var self = this, sexp = nil;
+        return def.$compile = function() {
+          var self = this;
+          var sexp = nil;
           sexp = self.$s("or", self.$recvr(), self.$rhs());
           return self.$push(self.$expr(sexp));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $OpAsgnAndNode(){};
+      ((($base, $super) => {
+        function $OpAsgnAndNode(){}
         var self = $OpAsgnAndNode = $klass($base, $super, 'OpAsgnAndNode', $OpAsgnAndNode);
 
-        var def = $OpAsgnAndNode._proto, $scope = $OpAsgnAndNode._scope;
+        var def = $OpAsgnAndNode._proto;
+        var $scope = $OpAsgnAndNode._scope;
         self.$handle("op_asgn_and");
 
         self.$children("recvr", "rhs");
 
-        return (def.$compile = function() {
-          var self = this, sexp = nil;
+        return def.$compile = function() {
+          var self = this;
+          var sexp = nil;
           sexp = self.$s("and", self.$recvr(), self.$rhs());
           return self.$push(self.$expr(sexp));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $OpAsgn1Node(){};
+      ((($base, $super) => {
+        function $OpAsgn1Node(){}
         var self = $OpAsgn1Node = $klass($base, $super, 'OpAsgn1Node', $OpAsgn1Node);
 
-        var def = $OpAsgn1Node._proto, $scope = $OpAsgn1Node._scope;
+        var def = $OpAsgn1Node._proto;
+        var $scope = $OpAsgn1Node._scope;
         self.$handle("op_asgn1");
 
         self.$children("lhs", "args", "op", "rhs");
@@ -16318,38 +18033,70 @@ if (str == null) str = nil;
         };
 
         def.$compile = function() {
-          var self = this, $case = nil;
-          return (function() {$case = self.$op().$to_s();if ("||"['$===']($case)) {return self.$compile_or()}else if ("&&"['$===']($case)) {return self.$compile_and()}else {return self.$compile_operator()}})();
+          var self = this;
+          var $case = nil;
+          return ((() => {$case = self.$op().$to_s();if ("||"['$===']($case)) {return self.$compile_or()}else if ("&&"['$===']($case)) {return self.$compile_and()}else {return self.$compile_operator()}}))();
         };
 
         def.$compile_operator = function() {
-          var $a, $b, TMP_1, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(a){var self = TMP_1._s || this, $a, $b, TMP_2;if (a == null) a = nil;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(r){var self = TMP_2._s || this, cur = nil, rhs = nil, call = nil;if (r == null) r = nil;
-            cur = self.$s("call", self.$s("js_tmp", r), "[]", self.$s("arglist", self.$s("js_tmp", a)));
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(a){
+            var self = TMP_1._s || this;
+            var $a;
+            var $b;
+            var TMP_2;
+            if (a == null) a = nil;
+            return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(r){
+              var self = TMP_2._s || this;
+              var cur = nil;
+              var rhs = nil;
+              var call = nil;
+              if (r == null) r = nil;
+              cur = self.$s("call", self.$s("js_tmp", r), "[]", self.$s("arglist", self.$s("js_tmp", a)));
               rhs = self.$s("call", cur, "+", self.$s("arglist", self.$rhs()));
               call = self.$s("call", self.$s("js_tmp", r), "[]=", self.$s("arglist", self.$s("js_tmp", a), rhs));
               self.$push("(" + (a) + " = ", self.$expr(self.$first_arg()), ", " + (r) + " = ", self.$expr(self.$lhs()));
-              return self.$push(", ", self.$expr(call), ")");}, TMP_2._s = self, TMP_2), $a).call($b)}, TMP_1._s = self, TMP_1), $a).call($b);
+              return self.$push(", ", self.$expr(call), ")");
+            }, TMP_2._s = self, TMP_2), $a).call($b);
+          }, TMP_1._s = self, TMP_1), $a).call($b);
         };
 
-        return (def.$compile_or = function() {
-          var $a, $b, TMP_3, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(a){var self = TMP_3._s || this, $a, $b, TMP_4;if (a == null) a = nil;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_4 = function(r){var self = TMP_4._s || this, aref = nil, aset = nil, orop = nil;if (r == null) r = nil;
-            aref = self.$s("call", self.$s("js_tmp", r), "[]", self.$s("arglist", self.$s("js_tmp", a)));
+        return def.$compile_or = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(a){
+            var self = TMP_3._s || this;
+            var $a;
+            var $b;
+            var TMP_4;
+            if (a == null) a = nil;
+            return ($a = ($b = self).$with_temp, $a._p = (TMP_4 = function(r){
+              var self = TMP_4._s || this;
+              var aref = nil;
+              var aset = nil;
+              var orop = nil;
+              if (r == null) r = nil;
+              aref = self.$s("call", self.$s("js_tmp", r), "[]", self.$s("arglist", self.$s("js_tmp", a)));
               aset = self.$s("call", self.$s("js_tmp", r), "[]=", self.$s("arglist", self.$s("js_tmp", a), self.$rhs()));
               orop = self.$s("or", aref, aset);
               self.$push("(" + (a) + " = ", self.$expr(self.$first_arg()), ", " + (r) + " = ", self.$expr(self.$lhs()));
-              return self.$push(", ", self.$expr(orop), ")");}, TMP_4._s = self, TMP_4), $a).call($b)}, TMP_3._s = self, TMP_3), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+              return self.$push(", ", self.$expr(orop), ")");
+            }, TMP_4._s = self, TMP_4), $a).call($b);
+          }, TMP_3._s = self, TMP_3), $a).call($b);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $OpAsgn2Node(){};
+      ((($base, $super) => {
+        function $OpAsgn2Node(){}
         var self = $OpAsgn2Node = $klass($base, $super, 'OpAsgn2Node', $OpAsgn2Node);
 
-        var def = $OpAsgn2Node._proto, $scope = $OpAsgn2Node._scope;
+        var def = $OpAsgn2Node._proto;
+        var $scope = $OpAsgn2Node._scope;
         self.$handle("op_asgn2");
 
         self.$children("lhs", "mid", "op", "rhs");
@@ -16360,63 +18107,100 @@ if (str == null) str = nil;
         };
 
         def.$compile = function() {
-          var self = this, $case = nil;
-          return (function() {$case = self.$op().$to_s();if ("||"['$===']($case)) {return self.$compile_or()}else if ("&&"['$===']($case)) {return self.$compile_and()}else {return self.$compile_operator()}})();
+          var self = this;
+          var $case = nil;
+          return ((() => {$case = self.$op().$to_s();if ("||"['$===']($case)) {return self.$compile_or()}else if ("&&"['$===']($case)) {return self.$compile_and()}else {return self.$compile_operator()}}))();
         };
 
         def.$compile_or = function() {
-          var $a, $b, TMP_5, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_5 = function(tmp){var self = TMP_5._s || this, getr = nil, asgn = nil, orop = nil;if (tmp == null) tmp = nil;
-          getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
+          var $a;
+          var $b;
+          var TMP_5;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_5 = function(tmp){
+            var self = TMP_5._s || this;
+            var getr = nil;
+            var asgn = nil;
+            var orop = nil;
+            if (tmp == null) tmp = nil;
+            getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
             asgn = self.$s("call", self.$s("js_tmp", tmp), self.$mid(), self.$s("arglist", self.$rhs()));
             orop = self.$s("or", getr, asgn);
-            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(orop), ")");}, TMP_5._s = self, TMP_5), $a).call($b);
+            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(orop), ")");
+          }, TMP_5._s = self, TMP_5), $a).call($b);
         };
 
         def.$compile_and = function() {
-          var $a, $b, TMP_6, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_6 = function(tmp){var self = TMP_6._s || this, getr = nil, asgn = nil, andop = nil;if (tmp == null) tmp = nil;
-          getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
+          var $a;
+          var $b;
+          var TMP_6;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_6 = function(tmp){
+            var self = TMP_6._s || this;
+            var getr = nil;
+            var asgn = nil;
+            var andop = nil;
+            if (tmp == null) tmp = nil;
+            getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
             asgn = self.$s("call", self.$s("js_tmp", tmp), self.$mid(), self.$s("arglist", self.$rhs()));
             andop = self.$s("and", getr, asgn);
-            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(andop), ")");}, TMP_6._s = self, TMP_6), $a).call($b);
+            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(andop), ")");
+          }, TMP_6._s = self, TMP_6), $a).call($b);
         };
 
-        return (def.$compile_operator = function() {
-          var $a, $b, TMP_7, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_7 = function(tmp){var self = TMP_7._s || this, getr = nil, oper = nil, asgn = nil;if (tmp == null) tmp = nil;
-          getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
+        return def.$compile_operator = function() {
+          var $a;
+          var $b;
+          var TMP_7;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_7 = function(tmp){
+            var self = TMP_7._s || this;
+            var getr = nil;
+            var oper = nil;
+            var asgn = nil;
+            if (tmp == null) tmp = nil;
+            getr = self.$s("call", self.$s("js_tmp", tmp), self.$meth(), self.$s("arglist"));
             oper = self.$s("call", getr, self.$op(), self.$s("arglist", self.$rhs()));
             asgn = self.$s("call", self.$s("js_tmp", tmp), self.$mid(), self.$s("arglist", oper));
-            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(asgn), ")");}, TMP_7._s = self, TMP_7), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+            return self.$push("(" + (tmp) + " = ", self.$expr(self.$lhs()), ", ", self.$expr(asgn), ")");
+          }, TMP_7._s = self, TMP_7), $a).call($b);
+        }, nil;
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/call_special.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$attr_accessor', '$attr_reader', '$indent', '$scope', '$compiler', '$scope=', '$call', '$==', '$class?', '$dup', '$push', '$map', '$ivars', '$parser_indent', '$empty?', '$join', '$proto', '$%', '$fragment', '$should_donate?', '$to_proc', '$def_in_class?', '$add_proto_ivar', '$include?', '$<<', '$has_local?', '$pop', '$next_temp', '$succ', '$uses_block!', '$identify!', '$unique_temp', '$add_scope_temp', '$parent', '$def?', '$type', '$mid']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ScopeNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ScopeNode(){}
         var self = $ScopeNode = $klass($base, $super, 'ScopeNode', $ScopeNode);
 
-        var def = $ScopeNode._proto, $scope = $ScopeNode._scope, TMP_1, TMP_2;
+        var def = $ScopeNode._proto;
+        var $scope = $ScopeNode._scope;
+        var TMP_1;
+        var TMP_2;
         def.type = def.defs = def.parent = def.temps = def.locals = def.compiler = def.proto_ivars = def.methods = def.ivars = def.args = def.queue = def.unique = def.while_stack = def.identity = def.uses_block = nil;
         self.$attr_accessor("parent");
 
@@ -16440,8 +18224,11 @@ if (str == null) str = nil;
 
         self.$attr_accessor("catch_return");
 
-        def.$initialize = TMP_1 = function() {var $zuper = $slice.call(arguments, 0);
-          var self = this, $iter = TMP_1._p, $yield = $iter || nil;
+        def.$initialize = TMP_1 = function(...args) {
+          var $zuper = $slice.call(args, 0);
+          var self = this;
+          var $iter = TMP_1._p;
+          var $yield = $iter || nil;
           TMP_1._p = null;
           $opal.find_super_dispatcher(self, 'initialize', TMP_1, $iter).apply(self, $zuper);
           self.locals = [];
@@ -16458,7 +18245,12 @@ if (str == null) str = nil;
         };
 
         def.$in_scope = TMP_2 = function() {
-          var $a, $b, TMP_3, self = this, $iter = TMP_2._p, block = $iter || nil;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var $iter = TMP_2._p;
+          var block = $iter || nil;
           TMP_2._p = null;
           return ($a = ($b = self).$indent, $a._p = (TMP_3 = function(){var self = TMP_3._s || this;
             if (self.parent == null) self.parent = nil;
@@ -16470,7 +18262,8 @@ if (str == null) str = nil;
         };
 
         def['$class_scope?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self.type['$==']("class")) !== false && $a !== nil) ? $a : self.type['$==']("module"));
         };
 
@@ -16505,7 +18298,11 @@ if (str == null) str = nil;
         };
 
         def['$def_in_class?'] = function() {
-          var $a, $b, $c, $d, self = this;
+          var $a;
+          var $b;
+          var $c;
+          var $d;
+          var self = this;
           return ($a = ($b = ($c = ($d = self.defs, ($d === nil || $d === false)), $c !== false && $c !== nil ?self.type['$==']("def") : $c), $b !== false && $b !== nil ?self.parent : $b), $a !== false && $a !== nil ?self.parent['$class?']() : $a);
         };
 
@@ -16520,87 +18317,113 @@ if (str == null) str = nil;
         };
 
         def.$to_vars = function() {
-          var $a, $b, $c, TMP_4, $d, TMP_5, $e, $f, TMP_6, self = this, vars = nil, iv = nil, indent = nil, res = nil, str = nil, pvars = nil, result = nil;
+          var $a;
+          var $b;
+          var $c;
+          var TMP_4;
+          var $d;
+          var TMP_5;
+          var $e;
+          var $f;
+          var TMP_6;
+          var self = this;
+          var vars = nil;
+          var iv = nil;
+          var indent = nil;
+          var res = nil;
+          var str = nil;
+          var pvars = nil;
+          var result = nil;
           vars = self.temps.$dup();
           ($a = vars).$push.apply($a, [].concat(($b = ($c = self.locals).$map, $b._p = (TMP_4 = function(l){var self = TMP_4._s || this;if (l == null) l = nil;
           return "" + (l) + " = nil"}, TMP_4._s = self, TMP_4), $b).call($c)));
           iv = ($b = ($d = self.$ivars()).$map, $b._p = (TMP_5 = function(ivar){var self = TMP_5._s || this;if (ivar == null) ivar = nil;
           return "if (self" + (ivar) + " == null) self" + (ivar) + " = nil;\n"}, TMP_5._s = self, TMP_5), $b).call($d);
           indent = self.compiler.$parser_indent();
-          res = (function() {if (($b = vars['$empty?']()) !== false && $b !== nil) {
+          res = ((() => {if (($b = vars['$empty?']()) !== false && $b !== nil) {
             return ""
             } else {
             return "var " + (vars.$join(", ")) + ";"
-          }; return nil; })();
-          str = (function() {if (($b = self.$ivars()['$empty?']()) !== false && $b !== nil) {
+          }; return nil; }))();
+          str = ((() => {if (($b = self.$ivars()['$empty?']()) !== false && $b !== nil) {
             return res
             } else {
             return "" + (res) + "\n" + (indent) + (iv.$join(indent))
-          }; return nil; })();
+          }; return nil; }))();
           if (($b = ($e = self['$class?'](), $e !== false && $e !== nil ?($f = self.proto_ivars['$empty?'](), ($f === nil || $f === false)) : $e)) !== false && $b !== nil) {
             pvars = ($b = ($e = self.proto_ivars).$map, $b._p = (TMP_6 = function(i){var self = TMP_6._s || this;if (i == null) i = nil;
             return "" + (self.$proto()) + (i)}, TMP_6._s = self, TMP_6), $b).call($e).$join(" = ");
             result = "%s\n%s%s = nil;"['$%']([str, indent, pvars]);
             } else {
             result = str
-          };
+          }
           return self.$fragment(result);
         };
 
         def.$to_donate_methods = function() {
-          var $a, $b, $c, self = this;
+          var $a;
+          var $b;
+          var $c;
+          var self = this;
           if (($a = ($b = self['$should_donate?'](), $b !== false && $b !== nil ?($c = self.methods['$empty?'](), ($c === nil || $c === false)) : $b)) !== false && $a !== nil) {
             return self.$fragment("%s;$opal.donate(self, [%s]);"['$%']([self.compiler.$parser_indent(), ($a = ($b = self.methods).$map, $a._p = "inspect".$to_proc(), $a).call($b).$join(", ")]))
             } else {
             return self.$fragment("")
-          };
+          }
         };
 
         def.$add_scope_ivar = function(ivar) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$def_in_class?']()) !== false && $a !== nil) {
             return self.parent.$add_proto_ivar(ivar)
           } else if (($a = self.ivars['$include?'](ivar)) !== false && $a !== nil) {
             return nil
             } else {
             return self.ivars['$<<'](ivar)
-          };
+          }
         };
 
         def.$add_proto_ivar = function(ivar) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.proto_ivars['$include?'](ivar)) !== false && $a !== nil) {
             return nil
             } else {
             return self.proto_ivars['$<<'](ivar)
-          };
+          }
         };
 
         def.$add_arg = function(arg) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.args['$include?'](arg)) === false || $a === nil) {
-            self.args['$<<'](arg)};
+            self.args['$<<'](arg)}
           return arg;
         };
 
         def.$add_scope_local = function(local) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$has_local?'](local)) !== false && $a !== nil) {
-            return nil};
+            return nil}
           return self.locals['$<<'](local);
         };
 
         def['$has_local?'] = function(local) {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           if (($a = ((($b = self.locals['$include?'](local)) !== false && $b !== nil) ? $b : self.args['$include?'](local))) !== false && $a !== nil) {
-            return true};
+            return true}
           if (($a = ($b = self.parent, $b !== false && $b !== nil ?self.type['$==']("iter") : $b)) !== false && $a !== nil) {
-            return self.parent['$has_local?'](local)};
+            return self.parent['$has_local?'](local)}
           return false;
         };
 
         def.$add_scope_temp = function(tmps) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           tmps = $slice.call(arguments, 0);
           return ($a = self.temps).$push.apply($a, [].concat(tmps));
         };
@@ -16611,16 +18434,19 @@ if (str == null) str = nil;
         };
 
         def.$new_temp = function() {
-          var $a, self = this, tmp = nil;
+          var $a;
+          var self = this;
+          var tmp = nil;
           if (($a = self.queue['$empty?']()) === false || $a === nil) {
-            return self.queue.$pop()};
+            return self.queue.$pop()}
           tmp = self.$next_temp();
           self.temps['$<<'](tmp);
           return tmp;
         };
 
         def.$next_temp = function() {
-          var self = this, tmp = nil;
+          var self = this;
+          var tmp = nil;
           tmp = "$" + (self.unique);
           self.unique = self.unique.$succ();
           return tmp;
@@ -16632,7 +18458,8 @@ if (str == null) str = nil;
         };
 
         def.$push_while = function() {
-          var self = this, info = nil;
+          var self = this;
+          var info = nil;
           info = $hash2([], {});
           self.while_stack.$push(info);
           return info;
@@ -16644,27 +18471,31 @@ if (str == null) str = nil;
         };
 
         def['$in_while?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = self.while_stack['$empty?'](), ($a === nil || $a === false));
         };
 
         def['$uses_block!'] = function() {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           if (($a = (($b = self.type['$==']("iter")) ? self.parent : $b)) !== false && $a !== nil) {
             return self.parent['$uses_block!']()
             } else {
             self.uses_block = true;
             return self['$identify!']();
-          };
+          }
         };
 
         def['$identify!'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.identity) !== false && $a !== nil) {
-            return self.identity};
+            return self.identity}
           self.identity = self.compiler.$unique_temp();
           if (($a = self.parent) !== false && $a !== nil) {
-            self.parent.$add_scope_temp(self.identity)};
+            self.parent.$add_scope_temp(self.identity)}
           return self.identity;
         };
 
@@ -16674,16 +18505,25 @@ if (str == null) str = nil;
         };
 
         def.$find_parent_def = function() {
-          var $a, $b, self = this, scope = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var scope = nil;
           scope = self;
           while (($b = scope = scope.$parent()) !== false && $b !== nil) {
           if (($b = scope['$def?']()) !== false && $b !== nil) {
-            return scope}};
+            return scope}}
           return nil;
         };
 
         def.$get_super_chain = function() {
-          var $a, $b, self = this, chain = nil, scope = nil, defn = nil, mid = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var chain = nil;
+          var scope = nil;
+          var defn = nil;
+          var mid = nil;
           $a = [[], self, "null", "null"], chain = $a[0], scope = $a[1], defn = $a[2], mid = $a[3];
           while (scope !== false && scope !== nil) {
           if (scope.$type()['$==']("iter")) {
@@ -16696,7 +18536,7 @@ if (str == null) str = nil;
             break;;
             } else {
             break;
-          }};
+          }}
           return [chain, defn, mid];
         };
 
@@ -16704,57 +18544,74 @@ if (str == null) str = nil;
           var self = this;
           return self.uses_block;
         }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/scope.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$name_and_base', '$helper', '$push', '$line', '$in_scope', '$name=', '$scope', '$add_temp', '$proto', '$stmt', '$body', '$s', '$empty_line', '$to_vars', '$to_donate_methods', '$===', '$cid', '$to_s', '$==', '$type', '$[]', '$expr', '$raise']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ModuleNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ModuleNode(){}
         var self = $ModuleNode = $klass($base, $super, 'ModuleNode', $ModuleNode);
 
-        var def = $ModuleNode._proto, $scope = $ModuleNode._scope;
+        var def = $ModuleNode._proto;
+        var $scope = $ModuleNode._scope;
         self.$handle("module");
 
         self.$children("cid", "body");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this, name = nil, base = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var name = nil;
+          var base = nil;
           $a = $opal.to_ary(self.$name_and_base()), name = ($a[0] == null ? nil : $a[0]), base = ($a[1] == null ? nil : $a[1]);
           self.$helper("module");
           self.$push("(function($base) {");
           self.$line("  var self = $module($base, '" + (name) + "');");
-          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, body_code = nil;
-          self.$scope()['$name='](name);
+          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var $a;
+            var body_code = nil;
+            self.$scope()['$name='](name);
             self.$add_temp("" + (self.$scope().$proto()) + " = self._proto");
             self.$add_temp("$scope = self._scope");
             body_code = self.$stmt(((($a = self.$body()) !== false && $a !== nil) ? $a : self.$s("nil")));
             self.$empty_line();
             self.$line(self.$scope().$to_vars());
             self.$line(body_code);
-            return self.$line(self.$scope().$to_donate_methods());}, TMP_1._s = self, TMP_1), $a).call($b);
+            return self.$line(self.$scope().$to_donate_methods());
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           return self.$line("})(", base, ")");
         };
 
-        return (def.$name_and_base = function() {
-          var $a, $b, self = this;
+        return def.$name_and_base = function() {
+          var $a;
+          var $b;
+          var self = this;
           if (($a = ((($b = $scope.Symbol['$==='](self.$cid())) !== false && $b !== nil) ? $b : $scope.String['$==='](self.$cid()))) !== false && $a !== nil) {
             return [self.$cid().$to_s(), "self"]
           } else if (self.$cid().$type()['$==']("colon2")) {
@@ -16763,103 +18620,128 @@ if (str == null) str = nil;
             return [self.$cid()['$[]'](1).$to_s(), "$opal.Object"]
             } else {
             return self.$raise("Bad receiver in module")
-          };
-        }, nil);
-      })(self, $scope.ScopeNode)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+          }
+        }, nil;
+      }))(self, $scope.ScopeNode)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/module.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$name_and_base', '$helper', '$push', '$line', '$in_scope', '$name=', '$scope', '$add_temp', '$proto', '$body_code', '$empty_line', '$to_vars', '$super_code', '$sup', '$expr', '$stmt', '$returns', '$compiler', '$body', '$s']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ClassNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ClassNode(){}
         var self = $ClassNode = $klass($base, $super, 'ClassNode', $ClassNode);
 
-        var def = $ClassNode._proto, $scope = $ClassNode._scope;
+        var def = $ClassNode._proto;
+        var $scope = $ClassNode._scope;
         self.$handle("class");
 
         self.$children("cid", "sup", "body");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this, name = nil, base = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var name = nil;
+          var base = nil;
           $a = $opal.to_ary(self.$name_and_base()), name = ($a[0] == null ? nil : $a[0]), base = ($a[1] == null ? nil : $a[1]);
           self.$helper("klass");
           self.$push("(function($base, $super) {");
           self.$line("  function $" + (name) + "(){};");
           self.$line("  var self = $" + (name) + " = $klass($base, $super, '" + (name) + "', $" + (name) + ");");
-          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, body_code = nil;
-          self.$scope()['$name='](name);
+          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var body_code = nil;
+            self.$scope()['$name='](name);
             self.$add_temp("" + (self.$scope().$proto()) + " = $" + (name) + "._proto");
             self.$add_temp("$scope = $" + (name) + "._scope");
             body_code = self.$body_code();
             self.$empty_line();
             self.$line(self.$scope().$to_vars());
-            return self.$line(body_code);}, TMP_1._s = self, TMP_1), $a).call($b);
+            return self.$line(body_code);
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           return self.$line("})(", base, ", ", self.$super_code(), ")");
         };
 
         def.$super_code = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.$sup()) !== false && $a !== nil) {
             return self.$expr(self.$sup())
             } else {
             return "null"
-          };
+          }
         };
 
-        return (def.$body_code = function() {
-          var $a, self = this;
+        return def.$body_code = function() {
+          var $a;
+          var self = this;
           return self.$stmt(self.$compiler().$returns(((($a = self.$body()) !== false && $a !== nil) ? $a : self.$s("nil"))));
-        }, nil);
-      })(self, $scope.ModuleNode)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.ModuleNode)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/class.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$push', '$in_scope', '$add_temp', '$line', '$to_vars', '$scope', '$stmt', '$returns', '$compiler', '$body', '$recv', '$object']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $SingletonClassNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $SingletonClassNode(){}
         var self = $SingletonClassNode = $klass($base, $super, 'SingletonClassNode', $SingletonClassNode);
 
-        var def = $SingletonClassNode._proto, $scope = $SingletonClassNode._scope;
+        var def = $SingletonClassNode._proto;
+        var $scope = $SingletonClassNode._scope;
         self.$handle("sclass");
 
         self.$children("object", "body");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           self.$push("(function(self) {");
           ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this;
           self.$add_temp("$scope = self._scope");
@@ -16867,64 +18749,85 @@ if (str == null) str = nil;
             self.$line(self.$scope().$to_vars());
             return self.$line(self.$stmt(self.$compiler().$returns(self.$body())));}, TMP_1._s = self, TMP_1), $a).call($b);
           return self.$line("})(", self.$recv(self.$object()), ".$singleton_class())");
-        }, nil);
-      })(self, $scope.ScopeNode)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.ScopeNode)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/singleton_class.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$extract_opt_args', '$extract_block_arg', '$is_a?', '$last', '$args', '$==', '$type', '$[]', '$pop', '$length', '$args_to_params', '$<<', '$in_scope', '$identify!', '$scope', '$add_temp', '$compile_args', '$add_arg', '$push', '$-', '$block_name=', '$line', '$stmt', '$body', '$to_vars', '$unshift', '$join', '$each_with_index', '$variable', '$find', '$to_sym', '$expr', '$raise', '$shift', '$===', '$args_sexp', '$nil?', '$s', '$returns', '$compiler', '$body_sexp', '$each', '$next_temp']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $IterNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $IterNode(){}
         var self = $IterNode = $klass($base, $super, 'IterNode', $IterNode);
 
-        var def = $IterNode._proto, $scope = $IterNode._scope;
+        var def = $IterNode._proto;
+        var $scope = $IterNode._scope;
         self.$handle("iter");
 
         self.$children("args_sexp", "body_sexp");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this, opt_args = nil, block_arg = nil, splat = nil, len = nil, params = nil, to_vars = nil, identity = nil, body_code = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var opt_args = nil;
+          var block_arg = nil;
+          var splat = nil;
+          var len = nil;
+          var params = nil;
+          var to_vars = nil;
+          var identity = nil;
+          var body_code = nil;
           opt_args = self.$extract_opt_args();
           block_arg = self.$extract_block_arg();
           if (($a = ($b = self.$args().$last()['$is_a?']($scope.Sexp), $b !== false && $b !== nil ?self.$args().$last().$type()['$==']("splat") : $b)) !== false && $a !== nil) {
             splat = self.$args().$last()['$[]'](1)['$[]'](1);
             self.$args().$pop();
-            len = self.$args().$length();};
+            len = self.$args().$length();}
           params = self.$args_to_params(self.$args()['$[]']($range(1, -1, false)));
           if (splat !== false && splat !== nil) {
-            params['$<<'](splat)};
+            params['$<<'](splat)}
           to_vars = identity = body_code = nil;
-          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, scope_name = nil;
-          identity = self.$scope()['$identify!']();
+          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var scope_name = nil;
+            identity = self.$scope()['$identify!']();
             self.$add_temp("self = " + (identity) + "._s || this");
             self.$compile_args(self.$args()['$[]']($range(1, -1, false)), opt_args, params);
             if (splat !== false && splat !== nil) {
               self.$scope().$add_arg(splat);
-              self.$push("" + (splat) + " = $slice.call(arguments, " + (len['$-'](1)) + ");");};
+              self.$push("" + (splat) + " = $slice.call(arguments, " + (len['$-'](1)) + ");");}
             if (block_arg !== false && block_arg !== nil) {
               self.$scope()['$block_name='](block_arg);
               self.$scope().$add_temp(block_arg);
               scope_name = self.$scope()['$identify!']();
-              self.$line("" + (block_arg) + " = " + (scope_name) + "._p || nil, " + (scope_name) + "._p = null;");};
+              self.$line("" + (block_arg) + " = " + (scope_name) + "._p || nil, " + (scope_name) + "._p = null;");}
             body_code = self.$stmt(self.$body());
-            return to_vars = self.$scope().$to_vars();}, TMP_1._s = self, TMP_1), $a).call($b);
+            return to_vars = self.$scope().$to_vars();
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           self.$line(body_code);
           self.$unshift(to_vars);
           self.$unshift("(" + (identity) + " = function(" + (params.$join(", ")) + "){");
@@ -16932,119 +18835,169 @@ if (str == null) str = nil;
         };
 
         def.$compile_args = function(args, opt_args, params) {
-          var $a, $b, TMP_2, self = this;
-          return ($a = ($b = args).$each_with_index, $a._p = (TMP_2 = function(arg, idx){var self = TMP_2._s || this, $a, $b, $c, $d, TMP_3, TMP_4, current_opt = nil;if (arg == null) arg = nil;if (idx == null) idx = nil;
-          if (arg.$type()['$==']("lasgn")) {
-              arg = self.$variable(arg['$[]'](1));
-              if (($a = (($b = opt_args !== false && opt_args !== nil) ? current_opt = ($c = ($d = opt_args).$find, $c._p = (TMP_3 = function(s){var self = TMP_3._s || this;if (s == null) s = nil;
-              return s['$[]'](1)['$=='](arg.$to_sym())}, TMP_3._s = self, TMP_3), $c).call($d) : $b)) !== false && $a !== nil) {
-                return self.$push("if (" + (arg) + " == null) " + (arg) + " = ", self.$expr(current_opt['$[]'](2)), ";")
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
+          return ($a = ($b = args).$each_with_index, $a._p = (TMP_2 = function(arg, idx){
+            var self = TMP_2._s || this;
+            var $a;
+            var $b;
+            var $c;
+            var $d;
+            var TMP_3;
+            var TMP_4;
+            var current_opt = nil;
+            if (arg == null) arg = nil;if (idx == null) idx = nil;
+            if (arg.$type()['$==']("lasgn")) {
+                arg = self.$variable(arg['$[]'](1));
+                if (($a = (($b = opt_args !== false && opt_args !== nil) ? current_opt = ($c = ($d = opt_args).$find, $c._p = (TMP_3 = function(s){var self = TMP_3._s || this;if (s == null) s = nil;
+                return s['$[]'](1)['$=='](arg.$to_sym())}, TMP_3._s = self, TMP_3), $c).call($d) : $b)) !== false && $a !== nil) {
+                  return self.$push("if (" + (arg) + " == null) " + (arg) + " = ", self.$expr(current_opt['$[]'](2)), ";")
+                  } else {
+                  return self.$push("if (" + (arg) + " == null) " + (arg) + " = nil;")
+                };
+              } else if (arg.$type()['$==']("array")) {
+                return ($a = ($b = arg['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_4 = function(_arg, _idx){var self = TMP_4._s || this;if (_arg == null) _arg = nil;if (_idx == null) _idx = nil;
+                _arg = self.$variable(_arg['$[]'](1));
+                  return self.$push("" + (_arg) + " = " + (params['$[]'](idx)) + "[" + (_idx) + "];");}, TMP_4._s = self, TMP_4), $a).call($b)
                 } else {
-                return self.$push("if (" + (arg) + " == null) " + (arg) + " = nil;")
-              };
-            } else if (arg.$type()['$==']("array")) {
-              return ($a = ($b = arg['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_4 = function(_arg, _idx){var self = TMP_4._s || this;if (_arg == null) _arg = nil;if (_idx == null) _idx = nil;
-              _arg = self.$variable(_arg['$[]'](1));
-                return self.$push("" + (_arg) + " = " + (params['$[]'](idx)) + "[" + (_idx) + "];");}, TMP_4._s = self, TMP_4), $a).call($b)
-              } else {
-              return self.$raise("Bad block arg type")
-            }}, TMP_2._s = self, TMP_2), $a).call($b);
+                return self.$raise("Bad block arg type")
+              }
+          }, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$extract_opt_args = function() {
-          var $a, $b, self = this, opt_args = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var opt_args = nil;
           if (($a = ($b = self.$args().$last()['$is_a?']($scope.Sexp), $b !== false && $b !== nil ?self.$args().$last().$type()['$==']("block") : $b)) !== false && $a !== nil) {
             opt_args = self.$args().$pop();
             opt_args.$shift();
             return opt_args;
             } else {
             return nil
-          };
+          }
         };
 
         def.$extract_block_arg = function() {
-          var $a, $b, self = this, block_arg = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var block_arg = nil;
           if (($a = ($b = self.$args().$last()['$is_a?']($scope.Sexp), $b !== false && $b !== nil ?self.$args().$last().$type()['$==']("block_pass") : $b)) !== false && $a !== nil) {
             block_arg = self.$args().$pop();
             return block_arg = block_arg['$[]'](1)['$[]'](1).$to_sym();
             } else {
             return nil
-          };
+          }
         };
 
         def.$args = function() {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           if (($a = ((($b = $scope.Fixnum['$==='](self.$args_sexp())) !== false && $b !== nil) ? $b : self.$args_sexp()['$nil?']())) !== false && $a !== nil) {
             return self.$s("array")
           } else if (self.$args_sexp().$type()['$==']("lasgn")) {
             return self.$s("array", self.$args_sexp())
             } else {
             return self.$args_sexp()['$[]'](1)
-          };
+          }
         };
 
         def.$body = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return self.$compiler().$returns(((($a = self.$body_sexp()) !== false && $a !== nil) ? $a : self.$s("nil")));
         };
 
-        return (def.$args_to_params = function(sexp) {
-          var $a, $b, TMP_5, self = this, result = nil;
+        return def.$args_to_params = function(sexp) {
+          var $a;
+          var $b;
+          var TMP_5;
+          var self = this;
+          var result = nil;
           result = [];
-          ($a = ($b = sexp).$each, $a._p = (TMP_5 = function(arg){var self = TMP_5._s || this, ref = nil;if (arg == null) arg = nil;
-          if (arg['$[]'](0)['$==']("lasgn")) {
-              ref = self.$variable(arg['$[]'](1));
-              self.$scope().$add_arg(ref);
-              return result['$<<'](ref);
-            } else if (arg['$[]'](0)['$==']("array")) {
-              return result['$<<'](self.$scope().$next_temp())
-              } else {
-              return self.$raise("Bad js_block_arg: " + (arg['$[]'](0)))
-            }}, TMP_5._s = self, TMP_5), $a).call($b);
+          ($a = ($b = sexp).$each, $a._p = (TMP_5 = function(arg){
+            var self = TMP_5._s || this;
+            var ref = nil;
+            if (arg == null) arg = nil;
+            if (arg['$[]'](0)['$==']("lasgn")) {
+                ref = self.$variable(arg['$[]'](1));
+                self.$scope().$add_arg(ref);
+                return result['$<<'](ref);
+              } else if (arg['$[]'](0)['$==']("array")) {
+                return result['$<<'](self.$scope().$next_temp())
+                } else {
+                return self.$raise("Bad js_block_arg: " + (arg['$[]'](0)))
+              }
+          }, TMP_5._s = self, TMP_5), $a).call($b);
           return result;
-        }, nil);
-      })(self, $scope.ScopeNode)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.ScopeNode)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/iter.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$mid_to_jsid', '$to_s', '$mid', '$===', '$last', '$args', '$pop', '$-', '$length', '$start_with?', '$to_sym', '$variable', '$[]', '$==', '$[]=', '$arity_check?', '$compiler', '$arity_check', '$in_scope', '$mid=', '$scope', '$recvr', '$defs=', '$uses_block!', '$add_arg', '$block_name=', '$process', '$stmt', '$returns', '$stmts', '$add_temp', '$line', '$each', '$expr', '$identity', '$uses_block?', '$unshift', '$current_indent', '$to_vars', '$uses_zuper', '$catch_return', '$push', '$recv', '$class?', '$include?', '$name', '$wrap', '$class_scope?', '$<<', '$methods', '$proto', '$iter?', '$type', '$top?', '$expr?', '$inspect', '$size', '$-@', '$<', '$+', '$each_with_index']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $DefNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $DefNode(){}
         var self = $DefNode = $klass($base, $super, 'DefNode', $DefNode);
 
-        var def = $DefNode._proto, $scope = $DefNode._scope;
+        var def = $DefNode._proto;
+        var $scope = $DefNode._scope;
         self.$handle("def");
 
         self.$children("recvr", "mid", "args", "stmts");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, $c, self = this, jsid = nil, params = nil, scope_name = nil, opt = nil, argc = nil, block_name = nil, uses_splat = nil, splat = nil, arity_code = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var $c;
+          var self = this;
+          var jsid = nil;
+          var params = nil;
+          var scope_name = nil;
+          var opt = nil;
+          var argc = nil;
+          var block_name = nil;
+          var uses_splat = nil;
+          var splat = nil;
+          var arity_code = nil;
           jsid = self.$mid_to_jsid(self.$mid().$to_s());
           params = nil;
           scope_name = nil;
           if (($a = $scope.Sexp['$==='](self.$args().$last())) !== false && $a !== nil) {
-            opt = self.$args().$pop()};
+            opt = self.$args().$pop()}
           argc = self.$args().$length()['$-'](1);
           if (($a = self.$args().$last().$to_s()['$start_with?']("&")) !== false && $a !== nil) {
             block_name = self.$variable(self.$args().$pop().$to_s()['$[]']($range(1, -1, false))).$to_sym();
-            argc = argc['$-'](1);};
+            argc = argc['$-'](1);}
           if (($a = self.$args().$last().$to_s()['$start_with?']("*")) !== false && $a !== nil) {
             uses_splat = true;
             if (self.$args().$last()['$==']("*")) {
@@ -17053,53 +19006,60 @@ if (str == null) str = nil;
               splat = self.$args()['$[]'](-1).$to_s()['$[]']($range(1, -1, false)).$to_sym();
               self.$args()['$[]='](-1, splat);
               argc = argc['$-'](1);
-            };};
+            };}
           if (($a = self.$compiler()['$arity_check?']()) !== false && $a !== nil) {
-            arity_code = self.$arity_check(self.$args(), opt, uses_splat, block_name, self.$mid())};
-          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, $b, TMP_2, yielder = nil, stmt_code = nil;
-          self.$scope()['$mid='](self.$mid());
+            arity_code = self.$arity_check(self.$args(), opt, uses_splat, block_name, self.$mid())}
+          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var $a;
+            var $b;
+            var TMP_2;
+            var yielder = nil;
+            var stmt_code = nil;
+            self.$scope()['$mid='](self.$mid());
             if (($a = self.$recvr()) !== false && $a !== nil) {
-              self.$scope()['$defs='](true)};
+              self.$scope()['$defs='](true)}
             if (block_name !== false && block_name !== nil) {
               self.$scope()['$uses_block!']();
-              self.$scope().$add_arg(block_name);};
+              self.$scope().$add_arg(block_name);}
             yielder = ((($a = block_name) !== false && $a !== nil) ? $a : "$yield");
             self.$scope()['$block_name='](yielder);
             params = self.$process(self.$args());
             stmt_code = self.$stmt(self.$compiler().$returns(self.$stmts()));
             self.$add_temp("self = this");
             if (splat !== false && splat !== nil) {
-              self.$line("" + (self.$variable(splat)) + " = $slice.call(arguments, " + (argc) + ");")};
+              self.$line("" + (self.$variable(splat)) + " = $slice.call(arguments, " + (argc) + ");")}
             if (opt !== false && opt !== nil) {
               ($a = ($b = opt['$[]']($range(1, -1, false))).$each, $a._p = (TMP_2 = function(o){var self = TMP_2._s || this;if (o == null) o = nil;
               if (o['$[]'](2)['$[]'](2)['$==']("undefined")) {
                   return nil;};
                 self.$line("if (" + (self.$variable(o['$[]'](1))) + " == null) {");
                 self.$line("  ", self.$expr(o));
-                return self.$line("}");}, TMP_2._s = self, TMP_2), $a).call($b)};
+                return self.$line("}");}, TMP_2._s = self, TMP_2), $a).call($b)}
             scope_name = self.$scope().$identity();
             if (($a = self.$scope()['$uses_block?']()) !== false && $a !== nil) {
               self.$add_temp("$iter = " + (scope_name) + "._p");
               self.$add_temp("" + (yielder) + " = $iter || nil");
-              self.$line("" + (scope_name) + "._p = null;");};
+              self.$line("" + (scope_name) + "._p = null;");}
             self.$unshift("\n" + (self.$current_indent()), self.$scope().$to_vars());
             self.$line(stmt_code);
             if (arity_code !== false && arity_code !== nil) {
-              self.$unshift(arity_code)};
+              self.$unshift(arity_code)}
             if (($a = self.$scope().$uses_zuper()) !== false && $a !== nil) {
-              self.$unshift("var $zuper = $slice.call(arguments, 0);")};
+              self.$unshift("var $zuper = $slice.call(arguments, 0);")}
             if (($a = self.$scope().$catch_return()) !== false && $a !== nil) {
               self.$unshift("try {\n");
               self.$line("} catch ($returner) { if ($returner === $opal.returner) { return $returner.$v }");
               return self.$push(" throw $returner; }");
               } else {
               return nil
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           self.$unshift(") {");
           self.$unshift(params);
           self.$unshift("function(");
           if (scope_name !== false && scope_name !== nil) {
-            self.$unshift("" + (scope_name) + " = ")};
+            self.$unshift("" + (scope_name) + " = ")}
           self.$line("}");
           if (($a = self.$recvr()) !== false && $a !== nil) {
             self.$unshift("$opal.defs(", self.$recv(self.$recvr()), ", '$" + (self.$mid()) + "', ");
@@ -17117,85 +19077,111 @@ if (str == null) str = nil;
             self.$unshift("$opal.Object._proto" + (jsid) + " = ")
             } else {
             self.$unshift("def" + (jsid) + " = ")
-          };
+          }
           if (($a = self['$expr?']()) !== false && $a !== nil) {
             return self.$wrap("(", ", nil)")
             } else {
             return nil
-          };
+          }
         };
 
-        return (def.$arity_check = function(args, opt, splat, block_name, mid) {
-          var $a, $b, self = this, meth = nil, arity = nil, aritycode = nil;
+        return def.$arity_check = function(args, opt, splat, block_name, mid) {
+          var $a;
+          var $b;
+          var self = this;
+          var meth = nil;
+          var arity = nil;
+          var aritycode = nil;
           meth = mid.$to_s().$inspect();
           arity = args.$size()['$-'](1);
           if (opt !== false && opt !== nil) {
-            arity = arity['$-']((opt.$size()['$-'](1)))};
+            arity = arity['$-']((opt.$size()['$-'](1)))}
           if (splat !== false && splat !== nil) {
-            arity = arity['$-'](1)};
+            arity = arity['$-'](1)}
           if (($a = ((($b = opt) !== false && $b !== nil) ? $b : splat)) !== false && $a !== nil) {
-            arity = arity['$-@']()['$-'](1)};
+            arity = arity['$-@']()['$-'](1)}
           aritycode = "var $arity = arguments.length;";
           if (arity['$<'](0)) {
             return aritycode['$+']("if ($arity < " + ((arity['$+'](1))['$-@']()) + ") { $opal.ac($arity, " + (arity) + ", this, " + (meth) + "); }")
             } else {
             return aritycode['$+']("if ($arity !== " + (arity) + ") { $opal.ac($arity, " + (arity) + ", this, " + (meth) + "); }")
-          };
-        }, nil);
-      })(self, $scope.ScopeNode);
+          }
+        }, nil;
+      }))(self, $scope.ScopeNode);
 
-      (function($base, $super) {
-        function $ArgsNode(){};
+      ((($base, $super) => {
+        function $ArgsNode(){}
         var self = $ArgsNode = $klass($base, $super, 'ArgsNode', $ArgsNode);
 
-        var def = $ArgsNode._proto, $scope = $ArgsNode._scope;
+        var def = $ArgsNode._proto;
+        var $scope = $ArgsNode._scope;
         self.$handle("args");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_3, self = this;
-          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_3 = function(child, idx){var self = TMP_3._s || this, $a;if (child == null) child = nil;if (idx == null) idx = nil;
-          if (child.$to_s()['$==']("*")) {
-              return nil;};
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_3 = function(child, idx){
+            var self = TMP_3._s || this;
+            var $a;
+            if (child == null) child = nil;if (idx == null) idx = nil;
+            if (child.$to_s()['$==']("*")) {
+                return nil;}
             child = child.$to_sym();
             if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(", ")};
+              self.$push(", ")}
             child = self.$variable(child);
             self.$scope().$add_arg(child.$to_sym());
-            return self.$push(child.$to_s());}, TMP_3._s = self, TMP_3), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+            return self.$push(child.$to_s());
+          }, TMP_3._s = self, TMP_3), $a).call($b);
+        }, nil;
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/def.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$truthy', '$falsy', '$push', '$js_falsy', '$test', '$js_truthy', '$indent', '$line', '$stmt', '$==', '$type', '$needs_wrapper?', '$wrap', '$returns', '$compiler', '$true_body', '$s', '$false_body', '$expr?', '$recv?']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $IfNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $IfNode(){}
         var self = $IfNode = $klass($base, $super, 'IfNode', $IfNode);
 
-        var def = $IfNode._proto, $scope = $IfNode._scope;
+        var def = $IfNode._proto;
+        var $scope = $IfNode._scope;
         self.$handle("if");
 
         self.$children("test", "true_body", "false_body");
 
         def.$compile = function() {
-          var $a, $b, $c, TMP_1, TMP_2, self = this, truthy = nil, falsy = nil;
+          var $a;
+          var $b;
+          var $c;
+          var TMP_1;
+          var TMP_2;
+          var self = this;
+          var truthy = nil;
+          var falsy = nil;
           $a = [self.$truthy(), self.$falsy()], truthy = $a[0], falsy = $a[1];
           self.$push("if (");
           if (($a = (($b = falsy !== false && falsy !== nil) ? ($c = truthy, ($c === nil || $c === false)) : $b)) !== false && $a !== nil) {
@@ -17204,11 +19190,11 @@ if (str == null) str = nil;
             self.$push(self.$js_falsy(self.$test()));
             } else {
             self.$push(self.$js_truthy(self.$test()))
-          };
+          }
           self.$push(") {");
           if (truthy !== false && truthy !== nil) {
             ($a = ($b = self).$indent, $a._p = (TMP_1 = function(){var self = TMP_1._s || this;
-            return self.$line(self.$stmt(truthy))}, TMP_1._s = self, TMP_1), $a).call($b)};
+            return self.$line(self.$stmt(truthy))}, TMP_1._s = self, TMP_1), $a).call($b)}
           if (falsy !== false && falsy !== nil) {
             if (falsy.$type()['$==']("if")) {
               self.$line("} else ", self.$stmt(falsy))
@@ -17220,130 +19206,146 @@ if (str == null) str = nil;
             }
             } else {
             self.$push("}")
-          };
+          }
           if (($a = self['$needs_wrapper?']()) !== false && $a !== nil) {
             return self.$wrap("(function() {", "; return nil; })()")
             } else {
             return nil
-          };
+          }
         };
 
         def.$truthy = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$needs_wrapper?']()) !== false && $a !== nil) {
             return self.$compiler().$returns(((($a = self.$true_body()) !== false && $a !== nil) ? $a : self.$s("nil")))
             } else {
             return self.$true_body()
-          };
+          }
         };
 
         def.$falsy = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$needs_wrapper?']()) !== false && $a !== nil) {
             return self.$compiler().$returns(((($a = self.$false_body()) !== false && $a !== nil) ? $a : self.$s("nil")))
             } else {
             return self.$false_body()
-          };
+          }
         };
 
-        return (def['$needs_wrapper?'] = function() {
-          var $a, self = this;
+        return def['$needs_wrapper?'] = function() {
+          var $a;
+          var self = this;
           return ((($a = self['$expr?']()) !== false && $a !== nil) ? $a : self['$recv?']());
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/if.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$in_while?', '$push', '$expr_or_nil', '$value', '$wrap', '$compile_while', '$iter?', '$scope', '$compile_iter', '$error', '$[]', '$while_loop', '$stmt?', '$[]=', '$identity', '$with_temp', '$expr', '$==', '$empty_splat?', '$type', '$recv', '$lhs', '$rhs', '$js_truthy_optimize', '$find_parent_def', '$expr?', '$def?', '$return_in_iter?', '$return_expr_in_def?', '$scope_to_catch_return', '$catch_return=', '$return_val', '$raise', '$to_s', '$s']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $NextNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $NextNode(){}
         var self = $NextNode = $klass($base, $super, 'NextNode', $NextNode);
 
-        var def = $NextNode._proto, $scope = $NextNode._scope;
+        var def = $NextNode._proto;
+        var $scope = $NextNode._scope;
         self.$handle("next");
 
         self.$children("value");
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           if (($a = self['$in_while?']()) !== false && $a !== nil) {
-            return self.$push("continue;")};
+            return self.$push("continue;")}
           self.$push(self.$expr_or_nil(self.$value()));
           return self.$wrap("return ", ";");
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $BreakNode(){};
+      ((($base, $super) => {
+        function $BreakNode(){}
         var self = $BreakNode = $klass($base, $super, 'BreakNode', $BreakNode);
 
-        var def = $BreakNode._proto, $scope = $BreakNode._scope;
+        var def = $BreakNode._proto;
+        var $scope = $BreakNode._scope;
         self.$handle("break");
 
         self.$children("value");
 
         def.$compile = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$in_while?']()) !== false && $a !== nil) {
             return self.$compile_while()
           } else if (($a = self.$scope()['$iter?']()) !== false && $a !== nil) {
             return self.$compile_iter()
             } else {
             return self.$error("void value expression: cannot use break outside of iter/while")
-          };
+          }
         };
 
         def.$compile_while = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.$while_loop()['$[]']("closure")) !== false && $a !== nil) {
             return self.$push("return ", self.$expr_or_nil(self.$value()))
             } else {
             return self.$push("break;")
-          };
+          }
         };
 
-        return (def.$compile_iter = function() {
-          var $a, self = this;
+        return def.$compile_iter = function() {
+          var $a;
+          var self = this;
           if (($a = self['$stmt?']()) === false || $a === nil) {
-            self.$error("break must be used as a statement")};
+            self.$error("break must be used as a statement")}
           self.$push(self.$expr_or_nil(self.$value()));
           return self.$wrap("return ($breaker.$v = ", ", $breaker)");
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $RedoNode(){};
+      ((($base, $super) => {
+        function $RedoNode(){}
         var self = $RedoNode = $klass($base, $super, 'RedoNode', $RedoNode);
 
-        var def = $RedoNode._proto, $scope = $RedoNode._scope;
+        var def = $RedoNode._proto;
+        var $scope = $RedoNode._scope;
         self.$handle("redo");
 
         def.$compile = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$in_while?']()) !== false && $a !== nil) {
             return self.$compile_while()
           } else if (($a = self.$scope()['$iter?']()) !== false && $a !== nil) {
             return self.$compile_iter()
             } else {
             return self.$push("REDO()")
-          };
+          }
         };
 
         def.$compile_while = function() {
@@ -17356,104 +19358,125 @@ if (str == null) str = nil;
           var self = this;
           return self.$push("return " + (self.$scope().$identity()) + ".apply(null, $slice.call(arguments))");
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $NotNode(){};
+      ((($base, $super) => {
+        function $NotNode(){}
         var self = $NotNode = $klass($base, $super, 'NotNode', $NotNode);
 
-        var def = $NotNode._proto, $scope = $NotNode._scope;
+        var def = $NotNode._proto;
+        var $scope = $NotNode._scope;
         self.$handle("not");
 
         self.$children("value");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(tmp){var self = TMP_1._s || this;if (tmp == null) tmp = nil;
           self.$push(self.$expr(self.$value()));
             return self.$wrap("(" + (tmp) + " = ", ", (" + (tmp) + " === nil || " + (tmp) + " === false))");}, TMP_1._s = self, TMP_1), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $SplatNode(){};
+      ((($base, $super) => {
+        function $SplatNode(){}
         var self = $SplatNode = $klass($base, $super, 'SplatNode', $SplatNode);
 
-        var def = $SplatNode._proto, $scope = $SplatNode._scope;
+        var def = $SplatNode._proto;
+        var $scope = $SplatNode._scope;
         self.$handle("splat");
 
         self.$children("value");
 
         def['$empty_splat?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self.$value()['$=='](["nil"])) !== false && $a !== nil) ? $a : self.$value()['$=='](["paren", ["nil"]]));
         };
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           if (($a = self['$empty_splat?']()) !== false && $a !== nil) {
             return self.$push("[]")
           } else if (self.$value().$type()['$==']("sym")) {
             return self.$push("[", self.$expr(self.$value()), "]")
             } else {
             return self.$push(self.$recv(self.$value()))
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $OrNode(){};
+      ((($base, $super) => {
+        function $OrNode(){}
         var self = $OrNode = $klass($base, $super, 'OrNode', $OrNode);
 
-        var def = $OrNode._proto, $scope = $OrNode._scope;
+        var def = $OrNode._proto;
+        var $scope = $OrNode._scope;
         self.$handle("or");
 
         self.$children("lhs", "rhs");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this;if (tmp == null) tmp = nil;
           self.$push("(((" + (tmp) + " = ");
             self.$push(self.$expr(self.$lhs()));
             self.$push(") !== false && " + (tmp) + " !== nil) ? " + (tmp) + " : ");
             self.$push(self.$expr(self.$rhs()));
             return self.$push(")");}, TMP_2._s = self, TMP_2), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $AndNode(){};
+      ((($base, $super) => {
+        function $AndNode(){}
         var self = $AndNode = $klass($base, $super, 'AndNode', $AndNode);
 
-        var def = $AndNode._proto, $scope = $AndNode._scope;
+        var def = $AndNode._proto;
+        var $scope = $AndNode._scope;
         self.$handle("and");
 
         self.$children("lhs", "rhs");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_3, self = this, truthy_opt = nil;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var truthy_opt = nil;
           truthy_opt = nil;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){var self = TMP_3._s || this, $a;if (tmp == null) tmp = nil;
-          if (($a = truthy_opt = self.$js_truthy_optimize(self.$lhs())) !== false && $a !== nil) {
-              self.$push("((" + (tmp) + " = ", truthy_opt);
-              self.$push(") ? ");
-              self.$push(self.$expr(self.$rhs()));
-              return self.$push(" : " + (tmp) + ")");
-              } else {
-              self.$push("(" + (tmp) + " = ");
-              self.$push(self.$expr(self.$lhs()));
-              self.$push(", " + (tmp) + " !== false && " + (tmp) + " !== nil ?");
-              self.$push(self.$expr(self.$rhs()));
-              return self.$push(" : " + (tmp) + ")");
-            }}, TMP_3._s = self, TMP_3), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){
+            var self = TMP_3._s || this;
+            var $a;
+            if (tmp == null) tmp = nil;
+            if (($a = truthy_opt = self.$js_truthy_optimize(self.$lhs())) !== false && $a !== nil) {
+                self.$push("((" + (tmp) + " = ", truthy_opt);
+                self.$push(") ? ");
+                self.$push(self.$expr(self.$rhs()));
+                return self.$push(" : " + (tmp) + ")");
+                } else {
+                self.$push("(" + (tmp) + " = ");
+                self.$push(self.$expr(self.$lhs()));
+                self.$push(", " + (tmp) + " !== false && " + (tmp) + " !== nil ?");
+                self.$push(self.$expr(self.$rhs()));
+                return self.$push(" : " + (tmp) + ")");
+              }
+          }, TMP_3._s = self, TMP_3), $a).call($b);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ReturnNode(){};
+      ((($base, $super) => {
+        function $ReturnNode(){}
         var self = $ReturnNode = $klass($base, $super, 'ReturnNode', $ReturnNode);
 
-        var def = $ReturnNode._proto, $scope = $ReturnNode._scope;
+        var def = $ReturnNode._proto;
+        var $scope = $ReturnNode._scope;
         self.$handle("return");
 
         self.$children("value");
@@ -17464,30 +19487,38 @@ if (str == null) str = nil;
         };
 
         def['$return_in_iter?'] = function() {
-          var $a, $b, self = this, parent_def = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var parent_def = nil;
           if (($a = ($b = self.$scope()['$iter?'](), $b !== false && $b !== nil ?parent_def = self.$scope().$find_parent_def() : $b)) !== false && $a !== nil) {
             return parent_def
             } else {
             return nil
-          };
+          }
         };
 
         def['$return_expr_in_def?'] = function() {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           if (($a = ($b = self['$expr?'](), $b !== false && $b !== nil ?self.$scope()['$def?']() : $b)) !== false && $a !== nil) {
             return self.$scope()
             } else {
             return nil
-          };
+          }
         };
 
         def.$scope_to_catch_return = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self['$return_in_iter?']()) !== false && $a !== nil) ? $a : self['$return_expr_in_def?']());
         };
 
-        return (def.$compile = function() {
-          var $a, self = this, def_scope = nil;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
+          var def_scope = nil;
           if (($a = def_scope = self.$scope_to_catch_return()) !== false && $a !== nil) {
             def_scope['$catch_return='](true);
             return self.$push("$opal.$return(", self.$return_val(), ")");
@@ -17495,15 +19526,16 @@ if (str == null) str = nil;
             return self.$push("return ", self.$return_val())
             } else {
             return self.$raise($scope.SyntaxError, "void value expression: cannot return as an expression")
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $JSReturnNode(){};
+      ((($base, $super) => {
+        function $JSReturnNode(){}
         var self = $JSReturnNode = $klass($base, $super, 'JSReturnNode', $JSReturnNode);
 
-        var def = $JSReturnNode._proto, $scope = $JSReturnNode._scope;
+        var def = $JSReturnNode._proto;
+        var $scope = $JSReturnNode._scope;
         self.$handle("js_return");
 
         self.$children("value");
@@ -17513,13 +19545,14 @@ if (str == null) str = nil;
           self.$push("return ");
           return self.$push(self.$expr(self.$value()));
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $JSTempNode(){};
+      ((($base, $super) => {
+        function $JSTempNode(){}
         var self = $JSTempNode = $klass($base, $super, 'JSTempNode', $JSTempNode);
 
-        var def = $JSTempNode._proto, $scope = $JSTempNode._scope;
+        var def = $JSTempNode._proto;
+        var $scope = $JSTempNode._scope;
         self.$handle("js_tmp");
 
         self.$children("value");
@@ -17528,13 +19561,14 @@ if (str == null) str = nil;
           var self = this;
           return self.$push(self.$value().$to_s());
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $BlockPassNode(){};
+      ((($base, $super) => {
+        function $BlockPassNode(){}
         var self = $BlockPassNode = $klass($base, $super, 'BlockPassNode', $BlockPassNode);
 
-        var def = $BlockPassNode._proto, $scope = $BlockPassNode._scope;
+        var def = $BlockPassNode._proto;
+        var $scope = $BlockPassNode._scope;
         self.$handle("block_pass");
 
         self.$children("value");
@@ -17543,33 +19577,40 @@ if (str == null) str = nil;
           var self = this;
           return self.$push(self.$expr(self.$s("call", self.$value(), "to_proc", self.$s("arglist"))));
         }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/logic.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$push', '$process', '$value', '$proto', '$scope', '$mid_to_jsid', '$to_s', '$[]', '$mid', '$new_name', '$old_name', '$class?', '$module?', '$<<', '$methods', '$old_mid', '$new_mid', '$stmt?', '$==', '$type', '$body', '$stmt', '$returns', '$compiler', '$wrap', '$each_with_index', '$expr', '$empty?', '$stmt_join', '$find_inline_yield', '$child_is_expr?', '$class_scope?', '$current_indent', '$raw_expression?', '$include?', '$first', '$===', '$[]=', '$+', '$s', '$has_temp?', '$add_temp']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $SvalueNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $SvalueNode(){}
         var self = $SvalueNode = $klass($base, $super, 'SvalueNode', $SvalueNode);
 
-        var def = $SvalueNode._proto, $scope = $SvalueNode._scope;
+        var def = $SvalueNode._proto;
+        var $scope = $SvalueNode._scope;
         def.level = nil;
         self.$handle("svalue");
 
@@ -17579,13 +19620,14 @@ if (str == null) str = nil;
           var self = this;
           return self.$push(self.$process(self.$value(), self.level));
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $UndefNode(){};
+      ((($base, $super) => {
+        function $UndefNode(){}
         var self = $UndefNode = $klass($base, $super, 'UndefNode', $UndefNode);
 
-        var def = $UndefNode._proto, $scope = $UndefNode._scope;
+        var def = $UndefNode._proto;
+        var $scope = $UndefNode._scope;
         self.$handle("undef");
 
         self.$children("mid");
@@ -17594,13 +19636,14 @@ if (str == null) str = nil;
           var self = this;
           return self.$push("delete " + (self.$scope().$proto()) + (self.$mid_to_jsid(self.$mid()['$[]'](1).$to_s())));
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $AliasNode(){};
+      ((($base, $super) => {
+        function $AliasNode(){}
         var self = $AliasNode = $klass($base, $super, 'AliasNode', $AliasNode);
 
-        var def = $AliasNode._proto, $scope = $AliasNode._scope;
+        var def = $AliasNode._proto;
+        var $scope = $AliasNode._scope;
         self.$handle("alias");
 
         self.$children("new_name", "old_name");
@@ -17615,55 +19658,69 @@ if (str == null) str = nil;
           return self.$mid_to_jsid(self.$old_name()['$[]'](1).$to_s());
         };
 
-        return (def.$compile = function() {
-          var $a, $b, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var self = this;
           if (($a = ((($b = self.$scope()['$class?']()) !== false && $b !== nil) ? $b : self.$scope()['$module?']())) !== false && $a !== nil) {
             self.$scope().$methods()['$<<']("$" + (self.$new_name()['$[]'](1)));
             return self.$push("$opal.defn(self, '$" + (self.$new_name()['$[]'](1)) + "', " + (self.$scope().$proto()) + (self.$old_mid()) + ")");
             } else {
             return self.$push("self._proto" + (self.$new_mid()) + " = self._proto" + (self.$old_mid()))
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $BeginNode(){};
+      ((($base, $super) => {
+        function $BeginNode(){}
         var self = $BeginNode = $klass($base, $super, 'BeginNode', $BeginNode);
 
-        var def = $BeginNode._proto, $scope = $BeginNode._scope;
+        var def = $BeginNode._proto;
+        var $scope = $BeginNode._scope;
         def.level = nil;
         self.$handle("begin");
 
         self.$children("body");
 
-        return (def.$compile = function() {
-          var $a, $b, $c, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var $c;
+          var self = this;
           if (($a = ($b = ($c = self['$stmt?'](), ($c === nil || $c === false)), $b !== false && $b !== nil ?self.$body().$type()['$==']("block") : $b)) !== false && $a !== nil) {
             self.$push(self.$stmt(self.$compiler().$returns(self.$body())));
             return self.$wrap("(function() {", "})()");
             } else {
             return self.$push(self.$process(self.$body(), self.level))
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ParenNode(){};
+      ((($base, $super) => {
+        function $ParenNode(){}
         var self = $ParenNode = $klass($base, $super, 'ParenNode', $ParenNode);
 
-        var def = $ParenNode._proto, $scope = $ParenNode._scope;
+        var def = $ParenNode._proto;
+        var $scope = $ParenNode._scope;
         def.level = nil;
         self.$handle("paren");
 
         self.$children("body");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           if (self.$body().$type()['$==']("block")) {
-            ($a = ($b = self.$body().$children()).$each_with_index, $a._p = (TMP_1 = function(child, idx){var self = TMP_1._s || this, $a;if (child == null) child = nil;if (idx == null) idx = nil;
-            if (($a = idx['$=='](0)) === false || $a === nil) {
-                self.$push(", ")};
-              return self.$push(self.$expr(child));}, TMP_1._s = self, TMP_1), $a).call($b);
+            ($a = ($b = self.$body().$children()).$each_with_index, $a._p = (TMP_1 = function(child, idx){
+              var self = TMP_1._s || this;
+              var $a;
+              if (child == null) child = nil;if (idx == null) idx = nil;
+              if (($a = idx['$=='](0)) === false || $a === nil) {
+                  self.$push(", ")}
+              return self.$push(self.$expr(child));
+            }, TMP_1._s = self, TMP_1), $a).call($b);
             return self.$wrap("(", ")");
             } else {
             self.$push(self.$process(self.$body(), self.level));
@@ -17672,112 +19729,142 @@ if (str == null) str = nil;
               } else {
               return self.$wrap("(", ")")
             };
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $BlockNode(){};
+      ((($base, $super) => {
+        function $BlockNode(){}
         var self = $BlockNode = $klass($base, $super, 'BlockNode', $BlockNode);
 
-        var def = $BlockNode._proto, $scope = $BlockNode._scope;
+        var def = $BlockNode._proto;
+        var $scope = $BlockNode._scope;
         def.level = nil;
         self.$handle("block");
 
         def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           if (($a = self.$children()['$empty?']()) !== false && $a !== nil) {
-            return self.$push("nil")};
-          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_2 = function(child, idx){var self = TMP_2._s || this, $a, yasgn = nil;
+            return self.$push("nil")}
+          return ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_2 = function(child, idx){
+            var self = TMP_2._s || this;
+            var $a;
+            var yasgn = nil;
             if (self.level == null) self.level = nil;
-if (child == null) child = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(self.$stmt_join())};
+            if (child == null) child = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(self.$stmt_join())}
             if (($a = yasgn = self.$find_inline_yield(child)) !== false && $a !== nil) {
               self.$push(self.$compiler().$process(yasgn, self.level));
-              self.$push(";");};
+              self.$push(";");}
             self.$push(self.$compiler().$process(child, self.level));
             if (($a = self['$child_is_expr?'](child)) !== false && $a !== nil) {
               return self.$push(";")
               } else {
               return nil
-            };}, TMP_2._s = self, TMP_2), $a).call($b);
+            }
+          }, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$stmt_join = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.$scope()['$class_scope?']()) !== false && $a !== nil) {
             return "\n\n" + (self.$current_indent())
             } else {
             return "\n" + (self.$current_indent())
-          };
+          }
         };
 
         def['$child_is_expr?'] = function(child) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = self['$raw_expression?'](child), $a !== false && $a !== nil ?["stmt", "stmt_closure"]['$include?'](self.level) : $a);
         };
 
         def['$raw_expression?'] = function(child) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = ["xstr", "dxstr"]['$include?'](child.$type()), ($a === nil || $a === false));
         };
 
-        return (def.$find_inline_yield = function(stmt) {
-          var $a, $b, TMP_3, $c, TMP_4, self = this, found = nil, $case = nil, arglist = nil;
+        return def.$find_inline_yield = function(stmt) {
+          var $a;
+          var $b;
+          var TMP_3;
+          var $c;
+          var TMP_4;
+          var self = this;
+          var found = nil;
+          var $case = nil;
+          var arglist = nil;
           found = nil;
           $case = stmt.$first();if ("js_return"['$===']($case)) {if (($a = found = self.$find_inline_yield(stmt['$[]'](1))) !== false && $a !== nil) {
-            found = found['$[]'](2)}}else if ("array"['$===']($case)) {($a = ($b = stmt['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_3 = function(el, idx){var self = TMP_3._s || this;if (el == null) el = nil;if (idx == null) idx = nil;
-          if (el.$first()['$==']("yield")) {
-              found = el;
-              return stmt['$[]='](idx['$+'](1), self.$s("js_tmp", "$yielded"));
-              } else {
-              return nil
-            }}, TMP_3._s = self, TMP_3), $a).call($b)}else if ("call"['$===']($case)) {arglist = stmt['$[]'](3);
-          ($a = ($c = arglist['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_4 = function(el, idx){var self = TMP_4._s || this;if (el == null) el = nil;if (idx == null) idx = nil;
-          if (el.$first()['$==']("yield")) {
-              found = el;
-              return arglist['$[]='](idx['$+'](1), self.$s("js_tmp", "$yielded"));
-              } else {
-              return nil
-            }}, TMP_4._s = self, TMP_4), $a).call($c);};
+              found = found['$[]'](2)}}else if ("array"['$===']($case)) {($a = ($b = stmt['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_3 = function(el, idx){var self = TMP_3._s || this;if (el == null) el = nil;if (idx == null) idx = nil;
+            if (el.$first()['$==']("yield")) {
+                found = el;
+                return stmt['$[]='](idx['$+'](1), self.$s("js_tmp", "$yielded"));
+                } else {
+                return nil
+              }}, TMP_3._s = self, TMP_3), $a).call($b)}else if ("call"['$===']($case)) {arglist = stmt['$[]'](3);
+            ($a = ($c = arglist['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_4 = function(el, idx){var self = TMP_4._s || this;if (el == null) el = nil;if (idx == null) idx = nil;
+            if (el.$first()['$==']("yield")) {
+                found = el;
+                return arglist['$[]='](idx['$+'](1), self.$s("js_tmp", "$yielded"));
+                } else {
+                return nil
+              }}, TMP_4._s = self, TMP_4), $a).call($c);}
           if (found !== false && found !== nil) {
             if (($a = self.$scope()['$has_temp?']("$yielded")) === false || $a === nil) {
               self.$scope().$add_temp("$yielded")};
             return self.$s("yasgn", "$yielded", found);
             } else {
             return nil
-          };
-        }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+          }
+        }, nil;
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/definitions.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$find_yielding_scope', '$uses_block!', '$block_name', '$yields_single_arg?', '$push', '$expr', '$first', '$wrap', '$s', '$uses_splat?', '$scope', '$def?', '$parent', '$==', '$size', '$any?', '$type', '$handle', '$compile_call', '$children', '$stmt?', '$with_temp', '$[]', '$yield_args', '$var_name']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $BaseYieldNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $BaseYieldNode(){}
         var self = $BaseYieldNode = $klass($base, $super, 'BaseYieldNode', $BaseYieldNode);
 
-        var def = $BaseYieldNode._proto, $scope = $BaseYieldNode._scope;
+        var def = $BaseYieldNode._proto;
+        var $scope = $BaseYieldNode._scope;
         def.$compile_call = function(children, level) {
-          var $a, $b, self = this, yielding_scope = nil, block_name = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var yielding_scope = nil;
+          var block_name = nil;
           yielding_scope = self.$find_yielding_scope();
           yielding_scope['$uses_block!']();
           block_name = ((($a = yielding_scope.$block_name()) !== false && $a !== nil) ? $a : "$yield");
@@ -17791,153 +19878,184 @@ if (child == null) child = nil;if (idx == null) idx = nil;
               } else {
               return self.$wrap("$opal.$yieldX(" + (block_name) + ", [", "])")
             };
-          };
+          }
         };
 
         def.$find_yielding_scope = function() {
-          var $a, $b, $c, self = this, working = nil;
+          var $a;
+          var $b;
+          var $c;
+          var self = this;
+          var working = nil;
           working = self.$scope();
           while (working !== false && working !== nil) {
           if (($b = ((($c = working.$block_name()) !== false && $c !== nil) ? $c : working['$def?']())) !== false && $b !== nil) {
             break;};
-          working = working.$parent();};
+          working = working.$parent();}
           return working;
         };
 
         def['$yields_single_arg?'] = function(children) {
-          var $a, $b, self = this;
+          var $a;
+          var $b;
+          var self = this;
           return ($a = ($b = self['$uses_splat?'](children), ($b === nil || $b === false)), $a !== false && $a !== nil ?children.$size()['$=='](1) : $a);
         };
 
-        return (def['$uses_splat?'] = function(children) {
-          var $a, $b, TMP_1, self = this;
+        return def['$uses_splat?'] = function(children) {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           return ($a = ($b = children)['$any?'], $a._p = (TMP_1 = function(child){var self = TMP_1._s || this;if (child == null) child = nil;
           return child.$type()['$==']("splat")}, TMP_1._s = self, TMP_1), $a).call($b);
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $YieldNode(){};
+      ((($base, $super) => {
+        function $YieldNode(){}
         var self = $YieldNode = $klass($base, $super, 'YieldNode', $YieldNode);
 
-        var def = $YieldNode._proto, $scope = $YieldNode._scope;
+        var def = $YieldNode._proto;
+        var $scope = $YieldNode._scope;
         def.level = nil;
         self.$handle("yield");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_2, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           self.$compile_call(self.$children(), self.level);
           if (($a = self['$stmt?']()) !== false && $a !== nil) {
             return self.$wrap("if (", " === $breaker) return $breaker.$v")
             } else {
             return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this;if (tmp == null) tmp = nil;
             return self.$wrap("(((" + (tmp) + " = ", ") === $breaker) ? $breaker.$v : " + (tmp) + ")")}, TMP_2._s = self, TMP_2), $a).call($b)
-          };
-        }, nil);
-      })(self, $scope.BaseYieldNode);
+          }
+        }, nil;
+      }))(self, $scope.BaseYieldNode);
 
-      (function($base, $super) {
-        function $YasgnNode(){};
+      ((($base, $super) => {
+        function $YasgnNode(){}
         var self = $YasgnNode = $klass($base, $super, 'YasgnNode', $YasgnNode);
 
-        var def = $YasgnNode._proto, $scope = $YasgnNode._scope;
+        var def = $YasgnNode._proto;
+        var $scope = $YasgnNode._scope;
         self.$handle("yasgn");
 
         self.$children("var_name", "yield_args");
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           self.$compile_call(($a = self).$s.apply($a, [].concat(self.$yield_args()['$[]']($range(1, -1, false)))), "stmt");
           return self.$wrap("if ((" + (self.$var_name()) + " = ", ") === $breaker) return $breaker.$v");
-        }, nil);
-      })(self, $scope.BaseYieldNode);
+        }, nil;
+      }))(self, $scope.BaseYieldNode);
 
-      (function($base, $super) {
-        function $ReturnableYieldNode(){};
+      ((($base, $super) => {
+        function $ReturnableYieldNode(){}
         var self = $ReturnableYieldNode = $klass($base, $super, 'ReturnableYieldNode', $ReturnableYieldNode);
 
-        var def = $ReturnableYieldNode._proto, $scope = $ReturnableYieldNode._scope;
+        var def = $ReturnableYieldNode._proto;
+        var $scope = $ReturnableYieldNode._scope;
         def.level = nil;
         self.$handle("returnable_yield");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_3, self = this;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
           self.$compile_call(self.$children(), self.level);
           return ($a = ($b = self).$with_temp, $a._p = (TMP_3 = function(tmp){var self = TMP_3._s || this;if (tmp == null) tmp = nil;
           return self.$wrap("return " + (tmp) + " = ", ", " + (tmp) + " === $breaker ? " + (tmp) + " : " + (tmp))}, TMP_3._s = self, TMP_3), $a).call($b);
-        }, nil);
-      })(self, $scope.BaseYieldNode);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.BaseYieldNode);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/yield.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$stmt?', '$lhs', '$returns', '$compiler', '$rhs', '$push', '$expr', '$body', '$rescue_val', '$wrap', '$line', '$process', '$body_sexp', '$ensr_sexp', '$wrap_in_closure?', '$begn', '$ensr', '$s', '$recv?', '$expr?', '$indent', '$body_code', '$each_with_index', '$==', '$type', '$[]', '$rescue_classes', '$empty?', '$rescue_variable', '$[]=', '$rescue_body', '$last', '$args', '$===', '$include?', '$dup', '$pop']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $RescueModNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $RescueModNode(){}
         var self = $RescueModNode = $klass($base, $super, 'RescueModNode', $RescueModNode);
 
-        var def = $RescueModNode._proto, $scope = $RescueModNode._scope;
+        var def = $RescueModNode._proto;
+        var $scope = $RescueModNode._scope;
         self.$handle("rescue_mod");
 
         self.$children("lhs", "rhs");
 
         def.$body = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$stmt?']()) !== false && $a !== nil) {
             return self.$lhs()
             } else {
             return self.$compiler().$returns(self.$lhs())
-          };
+          }
         };
 
         def.$rescue_val = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$stmt?']()) !== false && $a !== nil) {
             return self.$rhs()
             } else {
             return self.$compiler().$returns(self.$rhs())
-          };
+          }
         };
 
-        return (def.$compile = function() {
-          var $a, self = this;
+        return def.$compile = function() {
+          var $a;
+          var self = this;
           self.$push("try {", self.$expr(self.$body()), " } catch ($err) { ", self.$expr(self.$rescue_val()), " }");
           if (($a = self['$stmt?']()) !== false && $a !== nil) {
             return nil
             } else {
             return self.$wrap("(function() {", "})()")
-          };
-        }, nil);
-      })(self, $scope.Base);
+          }
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $EnsureNode(){};
+      ((($base, $super) => {
+        function $EnsureNode(){}
         var self = $EnsureNode = $klass($base, $super, 'EnsureNode', $EnsureNode);
 
-        var def = $EnsureNode._proto, $scope = $EnsureNode._scope;
+        var def = $EnsureNode._proto;
+        var $scope = $EnsureNode._scope;
         def.level = nil;
         self.$handle("ensure");
 
         self.$children("begn", "ensr");
 
         def.$compile = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           self.$push("try {");
           self.$line(self.$compiler().$process(self.$body_sexp(), self.level));
           self.$line("} finally {");
@@ -17947,40 +20065,50 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             return self.$wrap("(function() {", "; })()")
             } else {
             return nil
-          };
+          }
         };
 
         def.$body_sexp = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self['$wrap_in_closure?']()) !== false && $a !== nil) {
             return self.$compiler().$returns(self.$begn())
             } else {
             return self.$begn()
-          };
+          }
         };
 
         def.$ensr_sexp = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self.$ensr()) !== false && $a !== nil) ? $a : self.$s("nil"));
         };
 
-        return (def['$wrap_in_closure?'] = function() {
-          var $a, self = this;
+        return def['$wrap_in_closure?'] = function() {
+          var $a;
+          var self = this;
           return ((($a = self['$recv?']()) !== false && $a !== nil) ? $a : self['$expr?']());
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $RescueNode(){};
+      ((($base, $super) => {
+        function $RescueNode(){}
         var self = $RescueNode = $klass($base, $super, 'RescueNode', $RescueNode);
 
-        var def = $RescueNode._proto, $scope = $RescueNode._scope;
+        var def = $RescueNode._proto;
+        var $scope = $RescueNode._scope;
         self.$handle("rescue");
 
         self.$children("body");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, $c, TMP_2, self = this, handled_else = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var $c;
+          var TMP_2;
+          var self = this;
+          var handled_else = nil;
           handled_else = false;
           self.$push("try {");
           self.$line(($a = ($b = self).$indent, $a._p = (TMP_1 = function(){var self = TMP_1._s || this;
@@ -17988,23 +20116,29 @@ if (child == null) child = nil;if (idx == null) idx = nil;
 
           return self.$process(self.$body_code(), self.level)}, TMP_1._s = self, TMP_1), $a).call($b));
           self.$line("} catch ($err) {");
-          ($a = ($c = self.$children()['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_2 = function(child, idx){var self = TMP_2._s || this, $a, $b, TMP_3;if (child == null) child = nil;if (idx == null) idx = nil;
-          if (($a = child.$type()['$==']("resbody")) === false || $a === nil) {
-              handled_else = true};
+          ($a = ($c = self.$children()['$[]']($range(1, -1, false))).$each_with_index, $a._p = (TMP_2 = function(child, idx){
+            var self = TMP_2._s || this;
+            var $a;
+            var $b;
+            var TMP_3;
+            if (child == null) child = nil;if (idx == null) idx = nil;
+            if (($a = child.$type()['$==']("resbody")) === false || $a === nil) {
+                handled_else = true}
             if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push("else ")};
+              self.$push("else ")}
             return self.$push(($a = ($b = self).$indent, $a._p = (TMP_3 = function(){var self = TMP_3._s || this;
               if (self.level == null) self.level = nil;
 
-            return self.$process(child, self.level)}, TMP_3._s = self, TMP_3), $a).call($b));}, TMP_2._s = self, TMP_2), $a).call($c);
+            return self.$process(child, self.level)}, TMP_3._s = self, TMP_3), $a).call($b));
+          }, TMP_2._s = self, TMP_2), $a).call($c);
           if (($a = handled_else) === false || $a === nil) {
-            self.$push("else { throw $err; }")};
+            self.$push("else { throw $err; }")}
           self.$line("}");
           if (($a = self['$expr?']()) !== false && $a !== nil) {
             return self.$wrap("(function() { ", "})()")
             } else {
             return nil
-          };
+          }
         };
 
         return (def.$body_code = function() {
@@ -18015,123 +20149,165 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             return self.$body()
           };
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $ResBodyNode(){};
+      ((($base, $super) => {
+        function $ResBodyNode(){}
         var self = $ResBodyNode = $klass($base, $super, 'ResBodyNode', $ResBodyNode);
 
-        var def = $ResBodyNode._proto, $scope = $ResBodyNode._scope;
+        var def = $ResBodyNode._proto;
+        var $scope = $ResBodyNode._scope;
         def.level = nil;
         self.$handle("resbody");
 
         self.$children("args", "body");
 
         def.$compile = function() {
-          var $a, $b, TMP_4, self = this, variable = nil;
+          var $a;
+          var $b;
+          var TMP_4;
+          var self = this;
+          var variable = nil;
           self.$push("if (");
-          ($a = ($b = self.$rescue_classes()).$each_with_index, $a._p = (TMP_4 = function(cls, idx){var self = TMP_4._s || this, $a, call = nil;if (cls == null) cls = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(", ")};
+          ($a = ($b = self.$rescue_classes()).$each_with_index, $a._p = (TMP_4 = function(cls, idx){
+            var self = TMP_4._s || this;
+            var $a;
+            var call = nil;
+            if (cls == null) cls = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(", ")}
             call = self.$s("call", cls, "===", self.$s("arglist", self.$s("js_tmp", "$err")));
-            return self.$push(self.$expr(call));}, TMP_4._s = self, TMP_4), $a).call($b);
+            return self.$push(self.$expr(call));
+          }, TMP_4._s = self, TMP_4), $a).call($b);
           if (($a = self.$rescue_classes()['$empty?']()) !== false && $a !== nil) {
-            self.$push("true")};
+            self.$push("true")}
           self.$push(") {");
           if (($a = variable = self.$rescue_variable()) !== false && $a !== nil) {
             variable['$[]='](2, self.$s("js_tmp", "$err"));
-            self.$push(self.$expr(variable), ";");};
+            self.$push(self.$expr(variable), ";");}
           self.$line(self.$process(self.$rescue_body(), self.level));
           return self.$line("}");
         };
 
         def.$rescue_variable = function() {
-          var $a, $b, self = this, variable = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var variable = nil;
           variable = self.$args().$last();
           if (($a = ($b = $scope.Sexp['$==='](variable), $b !== false && $b !== nil ?["lasgn", "iasgn"]['$include?'](variable.$type()) : $b)) !== false && $a !== nil) {
             return variable.$dup()
             } else {
             return nil
-          };
+          }
         };
 
         def.$rescue_classes = function() {
-          var $a, $b, $c, self = this, classes = nil;
+          var $a;
+          var $b;
+          var $c;
+          var self = this;
+          var classes = nil;
           classes = self.$args().$children();
           if (($a = ($b = classes.$last(), $b !== false && $b !== nil ?($c = classes.$last().$type()['$==']("const"), ($c === nil || $c === false)) : $b)) !== false && $a !== nil) {
-            classes.$pop()};
+            classes.$pop()}
           return classes;
         };
 
-        return (def.$rescue_body = function() {
-          var $a, self = this;
+        return def.$rescue_body = function() {
+          var $a;
+          var self = this;
           return ((($a = self.$body()) !== false && $a !== nil) ? $a : self.$s("nil"));
-        }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/rescue.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$in_case', '$condition', '$[]=', '$case_stmt', '$add_local', '$push', '$expr', '$each_with_index', '$==', '$type', '$needs_closure?', '$returns', '$compiler', '$stmt', '$case_parts', '$wrap', '$stmt?', '$[]', '$s', '$js_truthy', '$when_checks', '$process', '$body_code', '$whens', '$body']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $CaseNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $CaseNode(){}
         var self = $CaseNode = $klass($base, $super, 'CaseNode', $CaseNode);
 
-        var def = $CaseNode._proto, $scope = $CaseNode._scope;
+        var def = $CaseNode._proto;
+        var $scope = $CaseNode._scope;
         self.$handle("case");
 
         self.$children("condition");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this, handled_else = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var handled_else = nil;
           handled_else = false;
-          return ($a = ($b = self.$compiler()).$in_case, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, $b, TMP_2, $c, $d;
-          if (($a = self.$condition()) !== false && $a !== nil) {
-              self.$case_stmt()['$[]=']("cond", true);
-              self.$add_local("$case");
-              self.$push("$case = ", self.$expr(self.$condition()), ";");};
-            ($a = ($b = self.$case_parts()).$each_with_index, $a._p = (TMP_2 = function(wen, idx){var self = TMP_2._s || this, $a, $b;if (wen == null) wen = nil;if (idx == null) idx = nil;
-            if (($a = (($b = wen !== false && wen !== nil) ? wen.$type()['$==']("when") : $b)) !== false && $a !== nil) {
-                if (($a = self['$needs_closure?']()) !== false && $a !== nil) {
-                  self.$compiler().$returns(wen)};
-                if (($a = idx['$=='](0)) === false || $a === nil) {
-                  self.$push("else ")};
-                return self.$push(self.$stmt(wen));
-              } else if (wen !== false && wen !== nil) {
-                handled_else = true;
-                if (($a = self['$needs_closure?']()) !== false && $a !== nil) {
-                  wen = self.$compiler().$returns(wen)};
-                return self.$push("else {", self.$stmt(wen), "}");
-                } else {
-                return nil
-              }}, TMP_2._s = self, TMP_2), $a).call($b);
+          return ($a = ($b = self.$compiler()).$in_case, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var $a;
+            var $b;
+            var TMP_2;
+            var $c;
+            var $d;
+            if (($a = self.$condition()) !== false && $a !== nil) {
+                self.$case_stmt()['$[]=']("cond", true);
+                self.$add_local("$case");
+                self.$push("$case = ", self.$expr(self.$condition()), ";");}
+            ($a = ($b = self.$case_parts()).$each_with_index, $a._p = (TMP_2 = function(wen, idx){
+              var self = TMP_2._s || this;
+              var $a;
+              var $b;
+              if (wen == null) wen = nil;if (idx == null) idx = nil;
+              if (($a = (($b = wen !== false && wen !== nil) ? wen.$type()['$==']("when") : $b)) !== false && $a !== nil) {
+                  if (($a = self['$needs_closure?']()) !== false && $a !== nil) {
+                    self.$compiler().$returns(wen)};
+                  if (($a = idx['$=='](0)) === false || $a === nil) {
+                    self.$push("else ")};
+                  return self.$push(self.$stmt(wen));
+                } else if (wen !== false && wen !== nil) {
+                  handled_else = true;
+                  if (($a = self['$needs_closure?']()) !== false && $a !== nil) {
+                    wen = self.$compiler().$returns(wen)};
+                  return self.$push("else {", self.$stmt(wen), "}");
+                  } else {
+                  return nil
+                }
+            }, TMP_2._s = self, TMP_2), $a).call($b);
             if (($a = ($c = self['$needs_closure?'](), $c !== false && $c !== nil ?($d = handled_else, ($d === nil || $d === false)) : $c)) !== false && $a !== nil) {
-              self.$push("else { return nil }")};
+              self.$push("else { return nil }")}
             if (($a = self['$needs_closure?']()) !== false && $a !== nil) {
               return self.$wrap("(function() {", "})()")
               } else {
               return nil
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
         };
 
         def['$needs_closure?'] = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ($a = self['$stmt?'](), ($a === nil || $a === false));
         };
 
@@ -18144,24 +20320,32 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           var self = this;
           return self.$compiler().$case_stmt();
         }, nil);
-      })(self, $scope.Base);
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $WhenNode(){};
+      ((($base, $super) => {
+        function $WhenNode(){}
         var self = $WhenNode = $klass($base, $super, 'WhenNode', $WhenNode);
 
-        var def = $WhenNode._proto, $scope = $WhenNode._scope;
+        var def = $WhenNode._proto;
+        var $scope = $WhenNode._scope;
         def.level = nil;
         self.$handle("when");
 
         self.$children("whens", "body");
 
         def.$compile = function() {
-          var $a, $b, TMP_3, self = this;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
           self.$push("if (");
-          ($a = ($b = self.$when_checks()).$each_with_index, $a._p = (TMP_3 = function(check, idx){var self = TMP_3._s || this, $a, call = nil;if (check == null) check = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(" || ")};
+          ($a = ($b = self.$when_checks()).$each_with_index, $a._p = (TMP_3 = function(check, idx){
+            var self = TMP_3._s || this;
+            var $a;
+            var call = nil;
+            if (check == null) check = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(" || ")}
             if (check.$type()['$==']("splat")) {
               self.$push("(function($splt) { for (var i = 0; i < $splt.length; i++) {");
               self.$push("if ($splt[i]['$===']($case)) { return true; }");
@@ -18171,7 +20355,8 @@ if (child == null) child = nil;if (idx == null) idx = nil;
               return self.$push(self.$expr(call));
               } else {
               return self.$push(self.$js_truthy(check))
-            };}, TMP_3._s = self, TMP_3), $a).call($b);
+            }
+          }, TMP_3._s = self, TMP_3), $a).call($b);
           return self.$push(") {", self.$process(self.$body_code(), self.level), "}");
         };
 
@@ -18185,55 +20370,72 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           return self.$compiler().$case_stmt();
         };
 
-        return (def.$body_code = function() {
-          var $a, self = this;
+        return def.$body_code = function() {
+          var $a;
+          var self = this;
           return ((($a = self.$body()) !== false && $a !== nil) ? $a : self.$s("nil"));
-        }, nil);
-      })(self, $scope.Base);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/case.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$children', '$arglist', '$iter', '$expr', '$iter_sexp', '$uses_block!', '$scope', '$def?', '$identify!', '$name', '$parent', '$defs', '$push', '$to_s', '$mid', '$iter?', '$get_super_chain', '$join', '$map', '$raise', '$s', '$handle', '$compile_dispatcher', '$wrap', '$has_splat?', '$args', '$fragment', '$uses_zuper=', '$any?', '$==', '$type']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $BaseSuperNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $BaseSuperNode(){}
         var self = $BaseSuperNode = $klass($base, $super, 'BaseSuperNode', $BaseSuperNode);
 
-        var def = $BaseSuperNode._proto, $scope = $BaseSuperNode._scope;
+        var def = $BaseSuperNode._proto;
+        var $scope = $BaseSuperNode._scope;
         self.$children("arglist", "iter");
 
         def.$compile_dispatcher = function() {
-          var $a, $b, TMP_1, self = this, iter = nil, scope_name = nil, class_name = nil, chain = nil, cur_defn = nil, mid = nil, trys = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var iter = nil;
+          var scope_name = nil;
+          var class_name = nil;
+          var chain = nil;
+          var cur_defn = nil;
+          var mid = nil;
+          var trys = nil;
           if (($a = ((($b = self.$arglist()) !== false && $b !== nil) ? $b : self.$iter())) !== false && $a !== nil) {
             iter = self.$expr(self.$iter_sexp())
             } else {
             self.$scope()['$uses_block!']();
             iter = "$iter";
-          };
+          }
           if (($a = self.$scope()['$def?']()) !== false && $a !== nil) {
             self.$scope()['$uses_block!']();
             scope_name = self.$scope()['$identify!']();
-            class_name = (function() {if (($a = self.$scope().$parent().$name()) !== false && $a !== nil) {
+            class_name = ((() => {if (($a = self.$scope().$parent().$name()) !== false && $a !== nil) {
               return "$" + (self.$scope().$parent().$name())
               } else {
               return "self._klass._proto"
-            }; return nil; })();
+            }; return nil; }))();
             if (($a = self.$scope().$defs()) !== false && $a !== nil) {
               self.$push("$opal.find_super_dispatcher(self, '" + (self.$scope().$mid().$to_s()) + "', " + (scope_name) + ", ");
               self.$push(iter);
@@ -18250,25 +20452,28 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             return self.$push("$opal.find_iter_super_dispatcher(self, " + (mid) + ", (" + (trys) + " || " + (cur_defn) + "), null)");
             } else {
             return self.$raise("Cannot call super() from outside a method block")
-          };
+          }
         };
 
         def.$args = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           return ((($a = self.$arglist()) !== false && $a !== nil) ? $a : self.$s("arglist"));
         };
 
-        return (def.$iter_sexp = function() {
-          var $a, self = this;
+        return def.$iter_sexp = function() {
+          var $a;
+          var self = this;
           return ((($a = self.$iter()) !== false && $a !== nil) ? $a : self.$s("js_tmp", "null"));
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $DefinedSuperNode(){};
+      ((($base, $super) => {
+        function $DefinedSuperNode(){}
         var self = $DefinedSuperNode = $klass($base, $super, 'DefinedSuperNode', $DefinedSuperNode);
 
-        var def = $DefinedSuperNode._proto, $scope = $DefinedSuperNode._scope;
+        var def = $DefinedSuperNode._proto;
+        var $scope = $DefinedSuperNode._scope;
         self.$handle("defined_super");
 
         return (def.$compile = function() {
@@ -18276,19 +20481,24 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           self.$compile_dispatcher();
           return self.$wrap("((", ") != null ? \"super\" : nil)");
         }, nil);
-      })(self, $scope.BaseSuperNode);
+      }))(self, $scope.BaseSuperNode);
 
-      (function($base, $super) {
-        function $SuperNode(){};
+      ((($base, $super) => {
+        function $SuperNode(){}
         var self = $SuperNode = $klass($base, $super, 'SuperNode', $SuperNode);
 
-        var def = $SuperNode._proto, $scope = $SuperNode._scope;
+        var def = $SuperNode._proto;
+        var $scope = $SuperNode._scope;
         self.$handle("super");
 
         self.$children("arglist", "iter");
 
         def.$compile = function() {
-          var $a, $b, self = this, splat = nil, args = nil;
+          var $a;
+          var $b;
+          var self = this;
+          var splat = nil;
+          var args = nil;
           if (($a = ((($b = self.$arglist()) !== false && $b !== nil) ? $b : self.$iter())) !== false && $a !== nil) {
             splat = self['$has_splat?']();
             args = self.$expr(self.$args());
@@ -18299,73 +20509,92 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             args = self.$fragment("$zuper");
             } else {
             args = self.$fragment("$slice.call(arguments)")
-          };
+          }
           self.$compile_dispatcher();
           self.$push(".apply(self, ");
           ($a = self).$push.apply($a, [].concat(args));
           return self.$push(")");
         };
 
-        return (def['$has_splat?'] = function() {
-          var $a, $b, TMP_2, self = this;
+        return def['$has_splat?'] = function() {
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           return ($a = ($b = self.$args().$children())['$any?'], $a._p = (TMP_2 = function(child){var self = TMP_2._s || this;if (child == null) child = nil;
           return child.$type()['$==']("splat")}, TMP_2._s = self, TMP_2), $a).call($b);
-        }, nil);
-      })(self, $scope.BaseSuperNode);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.BaseSuperNode);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/super.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs([]);
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
+    var def = self._proto;
+    var $scope = self._scope;
     $opal.cdecl($scope, 'VERSION', "0.5.5")
-    
-  })(self)
-})(Opal);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/version.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$push', '$version_comment', '$line', '$in_scope', '$stmt', '$stmts', '$is_a?', '$add_temp', '$add_used_helpers', '$to_vars', '$scope', '$compile_method_stubs', '$compile_irb_vars', '$returns', '$compiler', '$body', '$irb?', '$to_a', '$helpers', '$each', '$method_missing?', '$method_calls', '$join', '$map']);
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $TopNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $TopNode(){}
         var self = $TopNode = $klass($base, $super, 'TopNode', $TopNode);
 
-        var def = $TopNode._proto, $scope = $TopNode._scope;
+        var def = $TopNode._proto;
+        var $scope = $TopNode._scope;
         self.$handle("top");
 
         self.$children("body");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
           self.$push(self.$version_comment());
           self.$line("(function($opal) {");
-          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, body_code = nil;
-          body_code = self.$stmt(self.$stmts());
+          ($a = ($b = self).$in_scope, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var $a;
+            var body_code = nil;
+            body_code = self.$stmt(self.$stmts());
             if (($a = body_code['$is_a?']($scope.Array)) === false || $a === nil) {
-              body_code = [body_code]};
+              body_code = [body_code]}
             self.$add_temp("self = $opal.top");
             self.$add_temp("$scope = $opal");
             self.$add_temp("nil = $opal.nil");
@@ -18373,7 +20602,8 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             self.$line(self.$scope().$to_vars());
             self.$compile_method_stubs();
             self.$compile_irb_vars();
-            return self.$line(body_code);}, TMP_1._s = self, TMP_1), $a).call($b);
+            return self.$line(body_code);
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           return self.$line("})(Opal);\n");
         };
 
@@ -18383,23 +20613,33 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         };
 
         def.$compile_irb_vars = function() {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (($a = self.$compiler()['$irb?']()) !== false && $a !== nil) {
             return self.$line("if (!$opal.irb_vars) { $opal.irb_vars = {}; }")
             } else {
             return nil
-          };
+          }
         };
 
         def.$add_used_helpers = function() {
-          var $a, $b, TMP_2, self = this, helpers = nil;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
+          var helpers = nil;
           helpers = self.$compiler().$helpers().$to_a();
           return ($a = ($b = helpers.$to_a()).$each, $a._p = (TMP_2 = function(h){var self = TMP_2._s || this;if (h == null) h = nil;
           return self.$add_temp("$" + (h) + " = $opal." + (h))}, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$compile_method_stubs = function() {
-          var $a, $b, TMP_3, self = this, calls = nil, stubs = nil;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var calls = nil;
+          var stubs = nil;
           if (($a = self.$compiler()['$method_missing?']()) !== false && $a !== nil) {
             calls = self.$compiler().$method_calls();
             stubs = ($a = ($b = calls.$to_a()).$map, $a._p = (TMP_3 = function(k){var self = TMP_3._s || this;if (k == null) k = nil;
@@ -18407,51 +20647,69 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             return self.$line("$opal.add_stubs([" + (stubs) + "]);");
             } else {
             return nil
-          };
+          }
         };
 
         return (def.$version_comment = function() {
           var self = this;
           return "/* Generated by Opal " + (($scope.Opal)._scope.VERSION) + " */";
         }, nil);
-      })(self, $scope.ScopeNode)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.ScopeNode)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/top.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$with_temp', '$js_truthy', '$test', '$in_while', '$wrap_in_closure?', '$[]=', '$while_loop', '$stmt', '$body', '$uses_redo?', '$push', '$while_open', '$while_close', '$line', '$compiler', '$wrap', '$[]', '$expr?', '$recv?']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $WhileNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $WhileNode(){}
         var self = $WhileNode = $klass($base, $super, 'WhileNode', $WhileNode);
 
-        var def = $WhileNode._proto, $scope = $WhileNode._scope;
+        var def = $WhileNode._proto;
+        var $scope = $WhileNode._scope;
         self.$handle("while");
 
         self.$children("test", "body");
 
         def.$compile = function() {
-          var $a, $b, TMP_1, self = this;
-          ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(redo_var){var self = TMP_1._s || this, $a, $b, TMP_2, test_code = nil;if (redo_var == null) redo_var = nil;
-          test_code = self.$js_truthy(self.$test());
-            return ($a = ($b = self.$compiler()).$in_while, $a._p = (TMP_2 = function(){var self = TMP_2._s || this, $a, body_code = nil;
-            if (($a = self['$wrap_in_closure?']()) !== false && $a !== nil) {
-                self.$while_loop()['$[]=']("closure", true)};
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(redo_var){
+            var self = TMP_1._s || this;
+            var $a;
+            var $b;
+            var TMP_2;
+            var test_code = nil;
+            if (redo_var == null) redo_var = nil;
+            test_code = self.$js_truthy(self.$test());
+            return ($a = ($b = self.$compiler()).$in_while, $a._p = (TMP_2 = function(){
+              var self = TMP_2._s || this;
+              var $a;
+              var body_code = nil;
+              if (($a = self['$wrap_in_closure?']()) !== false && $a !== nil) {
+                  self.$while_loop()['$[]=']("closure", true)}
               self.$while_loop()['$[]=']("redo_var", redo_var);
               body_code = self.$stmt(self.$body());
               if (($a = self['$uses_redo?']()) !== false && $a !== nil) {
@@ -18460,15 +20718,17 @@ if (child == null) child = nil;if (idx == null) idx = nil;
                 self.$push(self.$while_close());
                 } else {
                 self.$push(self.$while_open(), test_code, self.$while_close())
-              };
+              }
               if (($a = self['$uses_redo?']()) !== false && $a !== nil) {
-                self.$push("" + (redo_var) + " = false;")};
-              return self.$line(body_code, "}");}, TMP_2._s = self, TMP_2), $a).call($b);}, TMP_1._s = self, TMP_1), $a).call($b);
+                self.$push("" + (redo_var) + " = false;")}
+              return self.$line(body_code, "}");
+            }, TMP_2._s = self, TMP_2), $a).call($b);
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           if (($a = self['$wrap_in_closure?']()) !== false && $a !== nil) {
             return self.$wrap("(function() {", "; return nil; })()")
             } else {
             return nil
-          };
+          }
         };
 
         def.$while_open = function() {
@@ -18486,17 +20746,19 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           return self.$while_loop()['$[]']("use_redo");
         };
 
-        return (def['$wrap_in_closure?'] = function() {
-          var $a, self = this;
+        return def['$wrap_in_closure?'] = function() {
+          var $a;
+          var self = this;
           return ((($a = self['$expr?']()) !== false && $a !== nil) ? $a : self['$recv?']());
-        }, nil);
-      })(self, $scope.Base);
+        }, nil;
+      }))(self, $scope.Base);
 
-      (function($base, $super) {
-        function $UntilNode(){};
+      ((($base, $super) => {
+        function $UntilNode(){}
         var self = $UntilNode = $klass($base, $super, 'UntilNode', $UntilNode);
 
-        var def = $UntilNode._proto, $scope = $UntilNode._scope;
+        var def = $UntilNode._proto;
+        var $scope = $UntilNode._scope;
         self.$handle("until");
 
         def.$while_open = function() {
@@ -18508,125 +20770,187 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           var self = this;
           return ")) {";
         }, nil);
-      })(self, $scope.WhileNode);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, $scope.WhileNode);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/while.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$handle', '$each_with_index', '$even?', '$<<', '$children', '$all?', '$include?', '$type', '$keys_and_values', '$simple_keys?', '$compile_hash2', '$compile_hash', '$helper', '$==', '$push', '$expr', '$wrap', '$times', '$inspect', '$to_s', '$[]', '$[]=', '$size', '$join']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $HashNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $HashNode(){}
         var self = $HashNode = $klass($base, $super, 'HashNode', $HashNode);
 
-        var def = $HashNode._proto, $scope = $HashNode._scope;
+        var def = $HashNode._proto;
+        var $scope = $HashNode._scope;
         self.$handle("hash");
 
         def.$keys_and_values = function() {
-          var $a, $b, TMP_1, self = this, keys = nil, values = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var keys = nil;
+          var values = nil;
           $a = [[], []], keys = $a[0], values = $a[1];
-          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_1 = function(obj, idx){var self = TMP_1._s || this, $a;if (obj == null) obj = nil;if (idx == null) idx = nil;
-          if (($a = idx['$even?']()) !== false && $a !== nil) {
-              return keys['$<<'](obj)
-              } else {
-              return values['$<<'](obj)
-            }}, TMP_1._s = self, TMP_1), $a).call($b);
+          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_1 = function(obj, idx){
+            var self = TMP_1._s || this;
+            var $a;
+            if (obj == null) obj = nil;if (idx == null) idx = nil;
+            if (($a = idx['$even?']()) !== false && $a !== nil) {
+                return keys['$<<'](obj)
+                } else {
+                return values['$<<'](obj)
+              }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           return [keys, values];
         };
 
         def['$simple_keys?'] = function(keys) {
-          var $a, $b, TMP_2, self = this;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           return ($a = ($b = keys)['$all?'], $a._p = (TMP_2 = function(key){var self = TMP_2._s || this;if (key == null) key = nil;
           return ["sym", "str"]['$include?'](key.$type())}, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$compile = function() {
-          var $a, self = this, keys = nil, values = nil;
+          var $a;
+          var self = this;
+          var keys = nil;
+          var values = nil;
           $a = $opal.to_ary(self.$keys_and_values()), keys = ($a[0] == null ? nil : $a[0]), values = ($a[1] == null ? nil : $a[1]);
           if (($a = self['$simple_keys?'](keys)) !== false && $a !== nil) {
             return self.$compile_hash2(keys, values)
             } else {
             return self.$compile_hash()
-          };
+          }
         };
 
         def.$compile_hash = function() {
-          var $a, $b, TMP_3, self = this;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
           self.$helper("hash");
-          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_3 = function(child, idx){var self = TMP_3._s || this, $a;if (child == null) child = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(", ")};
-            return self.$push(self.$expr(child));}, TMP_3._s = self, TMP_3), $a).call($b);
+          ($a = ($b = self.$children()).$each_with_index, $a._p = (TMP_3 = function(child, idx){
+            var self = TMP_3._s || this;
+            var $a;
+            if (child == null) child = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(", ")}
+            return self.$push(self.$expr(child));
+          }, TMP_3._s = self, TMP_3), $a).call($b);
           return self.$wrap("$hash(", ")");
         };
 
-        return (def.$compile_hash2 = function(keys, values) {
-          var $a, $b, TMP_4, $c, TMP_5, self = this, hash_obj = nil, hash_keys = nil;
+        return def.$compile_hash2 = function(keys, values) {
+          var $a;
+          var $b;
+          var TMP_4;
+          var $c;
+          var TMP_5;
+          var self = this;
+          var hash_obj = nil;
+          var hash_keys = nil;
           $a = [$hash2([], {}), []], hash_obj = $a[0], hash_keys = $a[1];
           self.$helper("hash2");
-          ($a = ($b = keys.$size()).$times, $a._p = (TMP_4 = function(idx){var self = TMP_4._s || this, $a, key = nil;if (idx == null) idx = nil;
-          key = keys['$[]'](idx)['$[]'](1).$to_s().$inspect();
+          ($a = ($b = keys.$size()).$times, $a._p = (TMP_4 = function(idx){
+            var self = TMP_4._s || this;
+            var $a;
+            var key = nil;
+            if (idx == null) idx = nil;
+            key = keys['$[]'](idx)['$[]'](1).$to_s().$inspect();
             if (($a = hash_obj['$include?'](key)) === false || $a === nil) {
-              hash_keys['$<<'](key)};
-            return hash_obj['$[]='](key, self.$expr(values['$[]'](idx)));}, TMP_4._s = self, TMP_4), $a).call($b);
-          ($a = ($c = hash_keys).$each_with_index, $a._p = (TMP_5 = function(key, idx){var self = TMP_5._s || this, $a;if (key == null) key = nil;if (idx == null) idx = nil;
-          if (($a = idx['$=='](0)) === false || $a === nil) {
-              self.$push(", ")};
+              hash_keys['$<<'](key)}
+            return hash_obj['$[]='](key, self.$expr(values['$[]'](idx)));
+          }, TMP_4._s = self, TMP_4), $a).call($b);
+          ($a = ($c = hash_keys).$each_with_index, $a._p = (TMP_5 = function(key, idx){
+            var self = TMP_5._s || this;
+            var $a;
+            if (key == null) key = nil;if (idx == null) idx = nil;
+            if (($a = idx['$=='](0)) === false || $a === nil) {
+                self.$push(", ")}
             self.$push("" + (key) + ": ");
-            return self.$push(hash_obj['$[]'](key));}, TMP_5._s = self, TMP_5), $a).call($c);
+            return self.$push(hash_obj['$[]'](key));
+          }, TMP_5._s = self, TMP_5), $a).call($c);
           return self.$wrap("$hash2([" + (hash_keys.$join(", ")) + "], {", "})");
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/hash.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$empty?', '$children', '$push', '$each', '$==', '$type', '$expr', '$<<', '$fragment']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ArrayNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ArrayNode(){}
         var self = $ArrayNode = $klass($base, $super, 'ArrayNode', $ArrayNode);
 
-        var def = $ArrayNode._proto, $scope = $ArrayNode._scope;
+        var def = $ArrayNode._proto;
+        var $scope = $ArrayNode._scope;
         self.$handle("array");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this, code = nil, work = nil, join = nil;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var code = nil;
+          var work = nil;
+          var join = nil;
           if (($a = self.$children()['$empty?']()) !== false && $a !== nil) {
-            return self.$push("[]")};
+            return self.$push("[]")}
           $a = [[], []], code = $a[0], work = $a[1];
-          ($a = ($b = self.$children()).$each, $a._p = (TMP_1 = function(child){var self = TMP_1._s || this, $a, splat = nil, part = nil;if (child == null) child = nil;
-          splat = child.$type()['$==']("splat");
+          ($a = ($b = self.$children()).$each, $a._p = (TMP_1 = function(child){
+            var self = TMP_1._s || this;
+            var $a;
+            var splat = nil;
+            var part = nil;
+            if (child == null) child = nil;
+            splat = child.$type()['$==']("splat");
             part = self.$expr(child);
             if (splat !== false && splat !== nil) {
               if (($a = work['$empty?']()) !== false && $a !== nil) {
@@ -18648,77 +20972,100 @@ if (child == null) child = nil;if (idx == null) idx = nil;
               if (($a = work['$empty?']()) === false || $a === nil) {
                 work['$<<'](self.$fragment(", "))};
               return work['$<<'](part);
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           if (($a = work['$empty?']()) === false || $a === nil) {
             join = [self.$fragment("["), work, self.$fragment("]")];
             if (($a = code['$empty?']()) !== false && $a !== nil) {
               code = join
               } else {
               code.$push([self.$fragment(".concat("), join, self.$fragment(")")])
-            };};
+            };}
           return self.$push(code);
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/array.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $range = $opal.range;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $range = $opal.range;
   $opal.add_stubs(['$handle', '$children', '$type', '$value', '$===', '$push', '$inspect', '$to_s', '$expr', '$s', '$[]', '$respond_to?', '$__send__', '$mid_to_jsid', '$with_temp', '$handle_block_given_call', '$compiler', '$wrap', '$include?']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $DefinedNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $DefinedNode(){}
         var self = $DefinedNode = $klass($base, $super, 'DefinedNode', $DefinedNode);
 
-        var def = $DefinedNode._proto, $scope = $DefinedNode._scope;
+        var def = $DefinedNode._proto;
+        var $scope = $DefinedNode._scope;
         def.sexp = nil;
         self.$handle("defined");
 
         self.$children("value");
 
         def.$compile = function() {
-          var $a, self = this, type = nil, $case = nil;
+          var $a;
+          var self = this;
+          var type = nil;
+          var $case = nil;
           type = self.$value().$type();
-          return (function() {$case = type;if ("self"['$===']($case) || "nil"['$===']($case) || "false"['$===']($case) || "true"['$===']($case)) {return self.$push(type.$to_s().$inspect())}else if ("lasgn"['$===']($case) || "iasgn"['$===']($case) || "gasgn"['$===']($case) || "cvdecl"['$===']($case) || "masgn"['$===']($case) || "op_asgn_or"['$===']($case) || "op_asgn_and"['$===']($case)) {return self.$push("'assignment'")}else if ("paren"['$===']($case) || "not"['$===']($case)) {return self.$push(self.$expr(self.$s("defined", self.$value()['$[]'](1))))}else if ("lvar"['$===']($case)) {return self.$push("'local-variable'")}else {if (($a = self['$respond_to?']("compile_" + (type))) !== false && $a !== nil) {
+          return ((() => {$case = type;if ("self"['$===']($case) || "nil"['$===']($case) || "false"['$===']($case) || "true"['$===']($case)) {return self.$push(type.$to_s().$inspect())}else if ("lasgn"['$===']($case) || "iasgn"['$===']($case) || "gasgn"['$===']($case) || "cvdecl"['$===']($case) || "masgn"['$===']($case) || "op_asgn_or"['$===']($case) || "op_asgn_and"['$===']($case)) {return self.$push("'assignment'")}else if ("paren"['$===']($case) || "not"['$===']($case)) {return self.$push(self.$expr(self.$s("defined", self.$value()['$[]'](1))))}else if ("lvar"['$===']($case)) {return self.$push("'local-variable'")}else {if (($a = self['$respond_to?']("compile_" + (type))) !== false && $a !== nil) {
             return self.$__send__("compile_" + (type))
             } else {
             return self.$push("'expression'")
-          }}})();
+          }}}))();
         };
 
         def.$compile_call = function() {
-          var $a, $b, TMP_1, self = this, mid = nil, recv = nil;
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var mid = nil;
+          var recv = nil;
           mid = self.$mid_to_jsid(self.$value()['$[]'](2).$to_s());
-          recv = (function() {if (($a = self.$value()['$[]'](1)) !== false && $a !== nil) {
+          recv = ((() => {if (($a = self.$value()['$[]'](1)) !== false && $a !== nil) {
             return self.$expr(self.$value()['$[]'](1))
             } else {
             return "self"
-          }; return nil; })();
+          }; return nil; }))();
           return ($a = ($b = self).$with_temp, $a._p = (TMP_1 = function(tmp){var self = TMP_1._s || this;if (tmp == null) tmp = nil;
           self.$push("(((" + (tmp) + " = ", recv, "" + (mid) + ") && !" + (tmp) + ".rb_stub) || ", recv);
             return self.$push("['$respond_to_missing?']('" + (self.$value()['$[]'](2).$to_s()) + "') ? 'method' : nil)");}, TMP_1._s = self, TMP_1), $a).call($b);
         };
 
         def.$compile_ivar = function() {
-          var $a, $b, TMP_2, self = this;
-          return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){var self = TMP_2._s || this, name = nil;if (tmp == null) tmp = nil;
-          name = self.$value()['$[]'](1).$to_s()['$[]']($range(1, -1, false));
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
+          return ($a = ($b = self).$with_temp, $a._p = (TMP_2 = function(tmp){
+            var self = TMP_2._s || this;
+            var name = nil;
+            if (tmp == null) tmp = nil;
+            name = self.$value()['$[]'](1).$to_s()['$[]']($range(1, -1, false));
             self.$push("((" + (tmp) + " = self['" + (name) + "'], " + (tmp) + " != null && " + (tmp) + " !== nil) ? ");
-            return self.$push("'instance-variable' : nil)");}, TMP_2._s = self, TMP_2), $a).call($b);
+            return self.$push("'instance-variable' : nil)");
+          }, TMP_2._s = self, TMP_2), $a).call($b);
         };
 
         def.$compile_super = function() {
@@ -18764,7 +21111,11 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         };
 
         def.$compile_gvar = function() {
-          var $a, $b, TMP_3, self = this, name = nil;
+          var $a;
+          var $b;
+          var TMP_3;
+          var self = this;
+          var name = nil;
           name = self.$value()['$[]'](1).$to_s()['$[]']($range(1, -1, false));
           if (($a = ["~", "!"]['$include?'](name)) !== false && $a !== nil) {
             return self.$push("'global-variable'")
@@ -18774,48 +21125,62 @@ if (child == null) child = nil;if (idx == null) idx = nil;
               return self.$push("'global-variable' : nil)");}, TMP_3._s = self, TMP_3), $a).call($b)
             } else {
             return self.$push("($gvars[" + (name.$inspect()) + "] != null ? 'global-variable' : nil)")
-          };
+          }
         };
 
-        return (def.$compile_nth_ref = function() {
-          var $a, $b, TMP_4, self = this;
+        return def.$compile_nth_ref = function() {
+          var $a;
+          var $b;
+          var TMP_4;
+          var self = this;
           return ($a = ($b = self).$with_temp, $a._p = (TMP_4 = function(tmp){var self = TMP_4._s || this;if (tmp == null) tmp = nil;
           self.$push("((" + (tmp) + " = $gvars['~'], " + (tmp) + " != null && " + (tmp) + " != nil) ? ");
             return self.$push("'global-variable' : nil)");}, TMP_4._s = self, TMP_4), $a).call($b);
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/defined.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$children', '$new_temp', '$scope', '$==', '$type', '$rhs', '$-', '$size', '$push', '$expr', '$[]', '$raise', '$each_with_index', '$dup', '$<<', '$s', '$>=', '$[]=', '$to_sym', '$last', '$lhs', '$queue_temp']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $MassAssignNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $MassAssignNode(){}
         var self = $MassAssignNode = $klass($base, $super, 'MassAssignNode', $MassAssignNode);
 
-        var def = $MassAssignNode._proto, $scope = $MassAssignNode._scope;
+        var def = $MassAssignNode._proto;
+        var $scope = $MassAssignNode._scope;
         self.$handle("masgn");
 
         self.$children("lhs", "rhs");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this, tmp = nil, len = nil;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var tmp = nil;
+          var len = nil;
           tmp = self.$scope().$new_temp();
           len = 0;
           if (self.$rhs().$type()['$==']("array")) {
@@ -18828,9 +21193,17 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             self.$push(" : (" + (tmp) + ")._isArray ? " + (tmp) + " : (" + (tmp) + " = [" + (tmp) + "])");
             } else {
             self.$raise("unsupported mlhs type")
-          };
-          ($a = ($b = self.$lhs().$children()).$each_with_index, $a._p = (TMP_1 = function(child, idx){var self = TMP_1._s || this, $a, $b, $c, $d, part = nil, assign = nil;if (child == null) child = nil;if (idx == null) idx = nil;
-          self.$push(", ");
+          }
+          ($a = ($b = self.$lhs().$children()).$each_with_index, $a._p = (TMP_1 = function(child, idx){
+            var self = TMP_1._s || this;
+            var $a;
+            var $b;
+            var $c;
+            var $d;
+            var part = nil;
+            var assign = nil;
+            if (child == null) child = nil;if (idx == null) idx = nil;
+            self.$push(", ");
             if (child.$type()['$==']("splat")) {
               if (($a = part = child['$[]'](1)) !== false && $a !== nil) {
                 part = part.$dup();
@@ -18857,43 +21230,61 @@ if (child == null) child = nil;if (idx == null) idx = nil;
                 self.$raise("Bad lhs for masgn")
               };
               return self.$push(self.$expr(part));
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           return self.$scope().$queue_temp(tmp);
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/masgn.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$handle', '$each', '$==', '$first', '$expr', '$empty?', '$<<', '$fragment', '$+', '$children', '$push']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'Nodes');
 
-      var def = self._proto, $scope = self._scope;
-      (function($base, $super) {
-        function $ArglistNode(){};
+      var def = self._proto;
+      var $scope = self._scope;
+      ((($base, $super) => {
+        function $ArglistNode(){}
         var self = $ArglistNode = $klass($base, $super, 'ArglistNode', $ArglistNode);
 
-        var def = $ArglistNode._proto, $scope = $ArglistNode._scope;
+        var def = $ArglistNode._proto;
+        var $scope = $ArglistNode._scope;
         self.$handle("arglist");
 
-        return (def.$compile = function() {
-          var $a, $b, TMP_1, self = this, code = nil, work = nil, join = nil;
+        return def.$compile = function() {
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          var code = nil;
+          var work = nil;
+          var join = nil;
           $a = [[], []], code = $a[0], work = $a[1];
-          ($a = ($b = self.$children()).$each, $a._p = (TMP_1 = function(current){var self = TMP_1._s || this, $a, splat = nil, arg = nil;if (current == null) current = nil;
-          splat = current.$first()['$==']("splat");
+          ($a = ($b = self.$children()).$each, $a._p = (TMP_1 = function(current){
+            var self = TMP_1._s || this;
+            var $a;
+            var splat = nil;
+            var arg = nil;
+            if (current == null) current = nil;
+            splat = current.$first()['$==']("splat");
             arg = self.$expr(current);
             if (splat !== false && splat !== nil) {
               if (($a = work['$empty?']()) !== false && $a !== nil) {
@@ -18917,70 +21308,53 @@ if (child == null) child = nil;if (idx == null) idx = nil;
               if (($a = work['$empty?']()) === false || $a === nil) {
                 work['$<<'](self.$fragment(", "))};
               return work['$<<'](arg);
-            };}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b);
           if (($a = work['$empty?']()) === false || $a === nil) {
             join = work;
             if (($a = code['$empty?']()) !== false && $a !== nil) {
               code = join
               } else {
               code['$<<'](self.$fragment(".concat("))['$<<'](join)['$<<'](self.$fragment(")"))
-            };};
+            };}
           return ($a = self).$push.apply($a, [].concat(code));
-        }, nil);
-      })(self, $scope.Base)
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+        }, nil;
+      }))(self, $scope.Base)
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes/arglist.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
   $opal.add_stubs([]);
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
-  ;
   return true;
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/nodes.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $hash2 = $opal.hash2, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $hash2 = $opal.hash2;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$compile', '$new', '$define_method', '$fetch', '$compiler_option', '$attr_reader', '$attr_accessor', '$update', '$s', '$parse', '$file', '$flatten', '$process', '$join', '$map', '$to_proc', '$raise', '$warn', '$line=', '$+', '$<<', '$helpers', '$new_temp', '$queue_temp', '$push_while', '$pop_while', '$in_while?', '$[]', '$handlers', '$type', '$line', '$compile_to_fragments', '$returns', '$===', '$[]=', '$>', '$length', '$==', '$=~', '$tap', '$uses_block!', '$block_name', '$fragment', '$find_parent_def']);
-  ;
-  ;
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
+    var def = self._proto;
+    var $scope = self._scope;
     $opal.defs(self, '$compile', function(source, options) {
       var self = this;
       if (options == null) {
@@ -18989,26 +21363,40 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       return $scope.Compiler.$new().$compile(source, options);
     });
 
-    (function($base, $super) {
-      function $Compiler(){};
+    ((($base, $super) => {
+      function $Compiler(){}
       var self = $Compiler = $klass($base, $super, 'Compiler', $Compiler);
 
-      var def = $Compiler._proto, $scope = $Compiler._scope, TMP_3, TMP_4, TMP_5, TMP_6;
+      var def = $Compiler._proto;
+      var $scope = $Compiler._scope;
+      var TMP_3;
+      var TMP_4;
+      var TMP_5;
+      var TMP_6;
       def.options = def.source = def.sexp = def.fragments = def.helpers = def.method_calls = def.line = def.indent = def.unique = def.scope = def.case_stmt = def.handlers = def.requires = nil;
       $opal.cdecl($scope, 'INDENT', "  ");
 
       $opal.cdecl($scope, 'COMPARE', ["<", ">", "<=", ">="]);
 
       $opal.defs(self, '$compiler_option', function(name, default_value, mid) {
-        var $a, $b, TMP_1, $c, self = this;
+        var $a;
+        var $b;
+        var TMP_1;
+        var $c;
+        var self = this;
         if (mid == null) {
           mid = nil
         }
-        return ($a = ($b = self).$define_method, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, $b, TMP_2;
+        return ($a = ($b = self).$define_method, $a._p = (TMP_1 = function(){
+          var self = TMP_1._s || this;
+          var $a;
+          var $b;
+          var TMP_2;
           if (self.options == null) self.options = nil;
 
-        return ($a = ($b = self.options).$fetch, $a._p = (TMP_2 = function(){var self = TMP_2._s || this;
-          return default_value}, TMP_2._s = self, TMP_2), $a).call($b, name)}, TMP_1._s = self, TMP_1), $a).call($b, ((($c = mid) !== false && $c !== nil) ? $c : name));
+          return ($a = ($b = self.options).$fetch, $a._p = (TMP_2 = function(){var self = TMP_2._s || this;
+            return default_value}, TMP_2._s = self, TMP_2), $a).call($b, name)
+        }, TMP_1._s = self, TMP_1), $a).call($b, ((($c = mid) !== false && $c !== nil) ? $c : name));
       });
 
       self.$compiler_option("file", "(file)");
@@ -19038,7 +21426,9 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$compile = function(source, options) {
-        var $a, $b, self = this;
+        var $a;
+        var $b;
+        var self = this;
         if (options == null) {
           options = $hash2([], {})
         }
@@ -19050,7 +21440,8 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$source_map = function(source_file) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         if (source_file == null) {
           source_file = nil
         }
@@ -19058,12 +21449,14 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$helpers = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ((($a = self.helpers) !== false && $a !== nil) ? $a : self.helpers = $scope.Set.$new(["breaker", "slice"]));
       };
 
       def.$method_calls = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ((($a = self.method_calls) !== false && $a !== nil) ? $a : self.method_calls = $scope.Set.$new());
       };
 
@@ -19083,7 +21476,8 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$s = function(parts) {
-        var self = this, sexp = nil;
+        var self = this;
+        var sexp = nil;
         parts = $slice.call(arguments, 0);
         sexp = $scope.Sexp.$new(parts);
         sexp['$line='](self.line);
@@ -19109,7 +21503,12 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$indent = TMP_3 = function() {
-        var $a, self = this, $iter = TMP_3._p, block = $iter || nil, indent = nil, res = nil;
+        var $a;
+        var self = this;
+        var $iter = TMP_3._p;
+        var block = $iter || nil;
+        var indent = nil;
+        var res = nil;
         TMP_3._p = null;
         indent = self.indent;
         self.indent = self.indent['$+']($scope.INDENT);
@@ -19121,7 +21520,12 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$with_temp = TMP_4 = function() {
-        var $a, self = this, $iter = TMP_4._p, block = $iter || nil, tmp = nil, res = nil;
+        var $a;
+        var self = this;
+        var $iter = TMP_4._p;
+        var block = $iter || nil;
+        var tmp = nil;
+        var res = nil;
         TMP_4._p = null;
         tmp = self.scope.$new_temp();
         res = ((($a = $opal.$yield1(block, tmp)) === $breaker) ? $breaker.$v : $a);
@@ -19130,10 +21534,14 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$in_while = TMP_5 = function() {
-        var $a, self = this, $iter = TMP_5._p, $yield = $iter || nil, result = nil;
+        var $a;
+        var self = this;
+        var $iter = TMP_5._p;
+        var $yield = $iter || nil;
+        var result = nil;
         TMP_5._p = null;
         if ($yield === nil) {
-          return nil};
+          return nil}
         self.while_loop = self.scope.$push_while();
         result = ((($a = $opal.$yieldX($yield, [])) === $breaker) ? $breaker.$v : $a);
         self.scope.$pop_while();
@@ -19141,10 +21549,13 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$in_case = TMP_6 = function() {
-        var self = this, $iter = TMP_6._p, $yield = $iter || nil, old = nil;
+        var self = this;
+        var $iter = TMP_6._p;
+        var $yield = $iter || nil;
+        var old = nil;
         TMP_6._p = null;
         if ($yield === nil) {
-          return nil};
+          return nil}
         old = self.case_stmt;
         self.case_stmt = $hash2([], {});
         if ($opal.$yieldX($yield, []) === $breaker) return $breaker.$v;
@@ -19157,7 +21568,9 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$process = function(sexp, level) {
-        var $a, self = this, handler = nil;
+        var $a;
+        var self = this;
+        var handler = nil;
         if (level == null) {
           level = "expr"
         }
@@ -19166,24 +21579,30 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           return handler.$new(sexp, level, self).$compile_to_fragments();
           } else {
           return self.$raise("Unsupported sexp: " + (sexp.$type()))
-        };
+        }
       };
 
       def.$handlers = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ((($a = self.handlers) !== false && $a !== nil) ? $a : self.handlers = (($scope.Opal)._scope.Nodes)._scope.Base.$handlers());
       };
 
       def.$requires = function() {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return ((($a = self.requires) !== false && $a !== nil) ? $a : self.requires = []);
       };
 
       def.$returns = function(sexp) {
-        var $a, $b, TMP_7, self = this, $case = nil;
+        var $a;
+        var $b;
+        var TMP_7;
+        var self = this;
+        var $case = nil;
         if (($a = sexp) === false || $a === nil) {
-          return self.$returns(self.$s("nil"))};
-        return (function() {$case = sexp.$type();if ("break"['$===']($case) || "next"['$===']($case) || "redo"['$===']($case)) {return sexp}else if ("yield"['$===']($case)) {sexp['$[]='](0, "returnable_yield");
+          return self.$returns(self.$s("nil"))}
+        return ((() => {$case = sexp.$type();if ("break"['$===']($case) || "next"['$===']($case) || "redo"['$===']($case)) {return sexp}else if ("yield"['$===']($case)) {sexp['$[]='](0, "returnable_yield");
         return sexp;}else if ("scope"['$===']($case)) {sexp['$[]='](1, self.$returns(sexp['$[]'](1)));
         return sexp;}else if ("block"['$===']($case)) {if (sexp.$length()['$>'](1)) {
           sexp['$[]='](-1, self.$returns(sexp['$[]'](-1)))
@@ -19209,11 +21628,14 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         return sexp;}else if ("if"['$===']($case)) {sexp['$[]='](2, self.$returns(((($a = sexp['$[]'](2)) !== false && $a !== nil) ? $a : self.$s("nil"))));
         sexp['$[]='](3, self.$returns(((($a = sexp['$[]'](3)) !== false && $a !== nil) ? $a : self.$s("nil"))));
         return sexp;}else {return ($a = ($b = self.$s("js_return", sexp)).$tap, $a._p = (TMP_7 = function(s){var self = TMP_7._s || this;if (s == null) s = nil;
-        return s['$line='](sexp.$line())}, TMP_7._s = self, TMP_7), $a).call($b)}})();
+        return s['$line='](sexp.$line())}, TMP_7._s = self, TMP_7), $a).call($b)}}))();
       };
 
-      return (def.$handle_block_given_call = function(sexp) {
-        var $a, $b, self = this, scope = nil;
+      return def.$handle_block_given_call = function(sexp) {
+        var $a;
+        var $b;
+        var self = this;
+        var scope = nil;
         self.scope['$uses_block!']();
         if (($a = self.scope.$block_name()) !== false && $a !== nil) {
           return self.$fragment("(" + (self.scope.$block_name()) + " !== nil)", sexp)
@@ -19221,24 +21643,31 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           return self.$fragment("(" + (scope.$block_name()) + " !== nil)", sexp)
           } else {
           return self.$fragment("false", sexp)
-        };
-      }, nil);
-    })(self, null);
-    
-  })(self);
-})(Opal);
+        }
+      }, nil;
+    }))(self, null);
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/compiler.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $hash2 = $opal.hash2;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
   $opal.add_stubs(['$[]', '$[]=', '$keys', '$attr_reader', '$instance_exec', '$to_proc', '$new', '$<<', '$join']);
-  return (function($base, $super) {
-    function $Template(){};
+  return ((($base, $super) => {
+    function $Template(){}
     var self = $Template = $klass($base, $super, 'Template', $Template);
 
-    var def = $Template._proto, $scope = $Template._scope, TMP_1;
+    var def = $Template._proto;
+    var $scope = $Template._scope;
+    var TMP_1;
     def.name = def.body = nil;
     self._cache = $hash2([], {});
 
@@ -19266,7 +21695,10 @@ if (child == null) child = nil;if (idx == null) idx = nil;
     self.$attr_reader("body");
 
     def.$initialize = TMP_1 = function(name) {
-      var $a, self = this, $iter = TMP_1._p, body = $iter || nil;
+      var $a;
+      var self = this;
+      var $iter = TMP_1._p;
+      var body = $iter || nil;
       TMP_1._p = null;
       $a = [name, body], self.name = $a[0], self.body = $a[1];
       return $scope.Template['$[]='](name, self);
@@ -19278,18 +21710,21 @@ if (child == null) child = nil;if (idx == null) idx = nil;
     };
 
     def.$render = function(ctx) {
-      var $a, $b, self = this;
+      var $a;
+      var $b;
+      var self = this;
       if (ctx == null) {
         ctx = self
       }
       return ($a = ($b = ctx).$instance_exec, $a._p = self.body.$to_proc(), $a).call($b, $scope.OutputBuffer.$new());
     };
 
-    return (function($base, $super) {
-      function $OutputBuffer(){};
+    return ((($base, $super) => {
+      function $OutputBuffer(){}
       var self = $OutputBuffer = $klass($base, $super, 'OutputBuffer', $OutputBuffer);
 
-      var def = $OutputBuffer._proto, $scope = $OutputBuffer._scope;
+      var def = $OutputBuffer._proto;
+      var $scope = $OutputBuffer._scope;
       def.buffer = nil;
       def.$initialize = function() {
         var self = this;
@@ -19310,33 +21745,40 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         var self = this;
         return self.buffer.$join();
       }, nil);
-    })(self, null);
-  })(self, null)
-})(Opal);
+    }))(self, null);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/template.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $klass = $opal.klass, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $klass = $opal.klass;
+  var $module = $opal.module;
   $opal.add_stubs(['$module_function']);
-  ;
-  return (function($base, $super) {
-    function $ERB(){};
+  return ((($base, $super) => {
+    function $ERB(){}
     var self = $ERB = $klass($base, $super, 'ERB', $ERB);
 
-    var def = $ERB._proto, $scope = $ERB._scope;
-    return (function($base) {
+    var def = $ERB._proto;
+    var $scope = $ERB._scope;
+    return (($base => {
       var self = $module($base, 'Util');
 
-      var def = self._proto, $scope = self._scope;
+      var def = self._proto;
+      var $scope = self._scope;
       var escapes = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'};
 
       var escape_regexp = /[&<>"']/g;
 
       def.$html_escape = function(str) {
         var self = this;
-        return ("" + str).replace(escape_regexp, function (m) { return escapes[m] });
+        return ("" + str).replace(escape_regexp, m => escapes[m]);
       };
 
       $opal.defn(self, '$h', def.$html_escape);
@@ -19344,28 +21786,36 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       self.$module_function("h");
 
       self.$module_function("html_escape");
-            ;$opal.donate(self, ["$html_escape", "$h"]);
-    })(self)
-  })(self, null);
-})(Opal);
+      $opal.donate(self, ["$html_escape", "$h"]);
+    }))(self);
+  }))(self, null);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/erb.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass, $hash2 = $opal.hash2, $gvars = $opal.gvars;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
+  var $hash2 = $opal.hash2;
+  var $gvars = $opal.gvars;
   $opal.add_stubs(['$build', '$new', '$delete', '$clone', '$paths', '$<<', '$require_asset', '$join', '$compile_ruby', '$find_asset', '$[]', '$[]=', '$build_asset', '$=~', '$untaint', '$each', '$exist?', '$raise', '$extname', '$__send__', '$compile', '$requires', '$read', '$result', '$binding', '$extend', '$popen', '$puts', '$close_write']);
-  ;
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base, $super) {
-      function $Builder(){};
+    var def = self._proto;
+    var $scope = self._scope;
+    ((($base, $super) => {
+      function $Builder(){}
       var self = $Builder = $klass($base, $super, 'Builder', $Builder);
 
-      var def = $Builder._proto, $scope = $Builder._scope;
+      var def = $Builder._proto;
+      var $scope = $Builder._scope;
       def.paths = def.segments = def.handled = def.options = nil;
       $opal.cdecl($scope, 'BUILDERS', $hash2([".rb", ".js", ".erb"], {".rb": "build_ruby", ".js": "build_js", ".erb": "build_erb"}));
 
@@ -19375,7 +21825,8 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       });
 
       def.$initialize = function(options) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         if (options == null) {
           options = $hash2([], {})
         }
@@ -19407,44 +21858,68 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$require_asset = function(path) {
-        var $a, self = this, location = nil;
+        var $a;
+        var self = this;
+        var location = nil;
         location = self.$find_asset(path);
         if (($a = self.handled['$[]'](location)) !== false && $a !== nil) {
           return nil
           } else {
           self.handled['$[]='](location, true);
           return self.$build_asset(location);
-        };
+        }
       };
 
       def.$find_asset = function(path) {try {
-
-        var $a, $b, TMP_1, self = this, file_types = nil;
+        var $a;
+        var $b;
+        var TMP_1;
+        var self = this;
+        var file_types = nil;
         if (($a = path['$=~'](/\A(\w[-.\w]*\/?)+\Z/)) !== false && $a !== nil) {
-          path.$untaint()};
+          path.$untaint()}
         file_types = [".rb", ".js", ".js.erb"];
-        ($a = ($b = self.paths).$each, $a._p = (TMP_1 = function(root){var self = TMP_1._s || this, $a, $b, TMP_2;if (root == null) root = nil;
-        return ($a = ($b = file_types).$each, $a._p = (TMP_2 = function(type){var self = TMP_2._s || this, $a, test = nil;if (type == null) type = nil;
-          test = $scope.File.$join(root, "" + (path) + (type));
+        ($a = ($b = self.paths).$each, $a._p = (TMP_1 = function(root){
+          var self = TMP_1._s || this;
+          var $a;
+          var $b;
+          var TMP_2;
+          if (root == null) root = nil;
+          return ($a = ($b = file_types).$each, $a._p = (TMP_2 = function(type){
+            var self = TMP_2._s || this;
+            var $a;
+            var test = nil;
+            if (type == null) type = nil;
+            test = $scope.File.$join(root, "" + (path) + (type));
             if (($a = $scope.File['$exist?'](test)) !== false && $a !== nil) {
               $opal.$return(test)
               } else {
               return nil
-            };}, TMP_2._s = self, TMP_2), $a).call($b)}, TMP_1._s = self, TMP_1), $a).call($b);
+            }
+          }, TMP_2._s = self, TMP_2), $a).call($b);
+        }, TMP_1._s = self, TMP_1), $a).call($b);
         return self.$raise("Could not find asset: " + (path));
-        } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
+      } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
       };
 
       def.$build_asset = function(path) {
-        var $a, self = this, ext = nil, builder = nil;
+        var $a;
+        var self = this;
+        var ext = nil;
+        var builder = nil;
         ext = $scope.File.$extname(path);
         if (($a = builder = $scope.BUILDERS['$[]'](ext)) === false || $a === nil) {
-          self.$raise("Unknown builder for " + (ext))};
+          self.$raise("Unknown builder for " + (ext))}
         return self.segments['$<<'](self.$__send__(builder, path));
       };
 
       def.$compile_ruby = function(str, options) {
-        var $a, $b, TMP_3, self = this, compiler = nil, result = nil;
+        var $a;
+        var $b;
+        var TMP_3;
+        var self = this;
+        var compiler = nil;
+        var result = nil;
         if (options == null) {
           options = nil
         }
@@ -19467,19 +21942,23 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       };
 
       def.$build_erb = function(path) {
-        var $a, self = this;
+        var $a;
+        var self = this;
         return (($a = $opal.Object._scope.ERB) == null ? $opal.cm('ERB') : $a).$new($scope.File.$read(path)).$result(self.$binding());
       };
 
-      return (function($base) {
+      return (($base => {
         var self = $module($base, 'Util');
 
-        var def = self._proto, $scope = self._scope;
+        var def = self._proto;
+        var $scope = self._scope;
         self.$extend(self);
 
         def.$uglify = function(str) {try {
-
-          var $a, $b, TMP_4, self = this;
+          var $a;
+          var $b;
+          var TMP_4;
+          var self = this;
           try {
           return ($a = ($b = $scope.IO).$popen, $a._p = (TMP_4 = function(i){var self = TMP_4._s || this;if (i == null) i = nil;
             i.$puts(str);
@@ -19489,13 +21968,15 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             $gvars["stderr"].$puts("\"uglifyjs\" command not found (install with: \"npm install -g uglify-js\")");
             return nil;
             }else { throw $err; }
-          };
-          } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
+          }
+        } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
         };
 
         def.$gzip = function(str) {try {
-
-          var $a, $b, TMP_5, self = this;
+          var $a;
+          var $b;
+          var TMP_5;
+          var self = this;
           try {
           return ($a = ($b = $scope.IO).$popen, $a._p = (TMP_5 = function(i){var self = TMP_5._s || this;if (i == null) i = nil;
             i.$puts(str);
@@ -19505,31 +21986,37 @@ if (child == null) child = nil;if (idx == null) idx = nil;
             $gvars["stderr"].$puts("\"gzip\" command not found, it is required to produce the .gz version");
             return nil;
             }else { throw $err; }
-          };
-          } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
+          }
+        } catch ($returner) { if ($returner === $opal.returner) { return $returner.$v } throw $returner; }
         };
-                ;$opal.donate(self, ["$uglify", "$gzip"]);
-      })(self);
-    })(self, null)
-    
-  })(self);
-})(Opal);
+        $opal.donate(self, ["$uglify", "$gzip"]);
+      }))(self);
+    }))(self, null)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/builder.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module, $klass = $opal.klass;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
+  var $klass = $opal.klass;
   $opal.add_stubs(['$compile', '$new', '$fix_quotes', '$find_contents', '$find_code', '$wrap_compiled', '$gsub', '$=~']);
-  ;
-  return (function($base) {
+  return (($base => {
     var self = $module($base, 'Opal');
 
-    var def = self._proto, $scope = self._scope;
-    (function($base) {
+    var def = self._proto;
+    var $scope = self._scope;
+    (($base => {
       var self = $module($base, 'ERB');
 
-      var def = self._proto, $scope = self._scope;
+      var def = self._proto;
+      var $scope = self._scope;
       $opal.defs(self, '$compile', function(source, file_name) {
         var self = this;
         if (file_name == null) {
@@ -19538,14 +22025,16 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         return $scope.Compiler.$new().$compile(source, file_name);
       });
 
-      (function($base, $super) {
-        function $Compiler(){};
+      ((($base, $super) => {
+        function $Compiler(){}
         var self = $Compiler = $klass($base, $super, 'Compiler', $Compiler);
 
-        var def = $Compiler._proto, $scope = $Compiler._scope;
+        var def = $Compiler._proto;
+        var $scope = $Compiler._scope;
         def.result = def.file_name = nil;
         def.$compile = function(source, file_name) {
-          var $a, self = this;
+          var $a;
+          var self = this;
           if (file_name == null) {
             file_name = "(erb)"
           }
@@ -19565,18 +22054,28 @@ if (child == null) child = nil;if (idx == null) idx = nil;
         $opal.cdecl($scope, 'BLOCK_EXPR', /\s+(do|\{)(\s*\|[^|]*\|)?\s*\Z/);
 
         def.$find_contents = function() {
-          var $a, $b, TMP_1, self = this;
-          return self.result = ($a = ($b = self.result).$gsub, $a._p = (TMP_1 = function(){var self = TMP_1._s || this, $a, inner = nil;
-          inner = nil.$gsub(/\\'/, "'").$gsub(/\\"/, "\"");
+          var $a;
+          var $b;
+          var TMP_1;
+          var self = this;
+          return self.result = ($a = ($b = self.result).$gsub, $a._p = (TMP_1 = function(){
+            var self = TMP_1._s || this;
+            var $a;
+            var inner = nil;
+            inner = nil.$gsub(/\\'/, "'").$gsub(/\\"/, "\"");
             if (($a = inner['$=~']($scope.BLOCK_EXPR)) !== false && $a !== nil) {
               return "\")\noutput_buffer.append= " + (inner) + "\noutput_buffer.append(\""
               } else {
               return "\")\noutput_buffer.append=(" + (inner) + ")\noutput_buffer.append(\""
-            };}, TMP_1._s = self, TMP_1), $a).call($b, /<%=([\s\S]+?)%>/);
+            }
+          }, TMP_1._s = self, TMP_1), $a).call($b, /<%=([\s\S]+?)%>/);
         };
 
         def.$find_code = function() {
-          var $a, $b, TMP_2, self = this;
+          var $a;
+          var $b;
+          var TMP_2;
+          var self = this;
           return self.result = ($a = ($b = self.result).$gsub, $a._p = (TMP_2 = function(){var self = TMP_2._s || this;
           return "\")\n" + (nil) + "\noutput_buffer.append(\""}, TMP_2._s = self, TMP_2), $a).call($b, /<%([\s\S]+?)%>/);
         };
@@ -19585,45 +22084,44 @@ if (child == null) child = nil;if (idx == null) idx = nil;
           var self = this;
           return self.result = "Template.new('" + (self.file_name) + "') do |output_buffer|\noutput_buffer.append(\"" + (self.result) + "\")\noutput_buffer.join\nend\n";
         }, nil);
-      })(self, null);
-      
-    })(self)
-    
-  })(self);
-})(Opal);
+      }))(self, null);
+    }))(self)
+  }))(self);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal/erb.js.map
 ;
 /* Generated by Opal 0.5.5 */
-(function($opal) {
-  var self = $opal.top, $scope = $opal, nil = $opal.nil, $breaker = $opal.breaker, $slice = $opal.slice, $module = $opal.module;
+(($opal => {
+  var self = $opal.top;
+  var $scope = $opal;
+  var nil = $opal.nil;
+  var $breaker = $opal.breaker;
+  var $slice = $opal.slice;
+  var $module = $opal.module;
   $opal.add_stubs(['$compile']);
-  ;
-  ;
-  ;
-  ;
-  (function($base) {
+  (($base => {
     var self = $module($base, 'Kernel');
 
-    var def = self._proto, $scope = self._scope;
+    var def = self._proto;
+    var $scope = self._scope;
     def.$eval = function(str) {
-      var self = this, code = nil;
+      var self = this;
+      var code = nil;
       code = $scope.Opal.$compile(str);
       return eval(code);
     }
         ;$opal.donate(self, ["$eval"]);
-  })(self);
-  
-  Opal.compile = function(str, options) {
+  }))(self);
+
+  Opal.compile = (str, options) => {
     if (options) {
       options = Opal.hash(options);
     }
     return Opal.Opal.$compile(str, options);
   };
 
-  Opal.eval = function(str, options) {
-   return eval(Opal.compile(str, options));
-  };
+  Opal.eval = (str, options) => eval(Opal.compile(str, options));
 
   function run_ruby_scripts() {
     var tags = document.getElementsByTagName('script');
@@ -19643,8 +22141,7 @@ if (child == null) child = nil;if (idx == null) idx = nil;
       window.attachEvent('onload', run_ruby_scripts);
     }
   }
-
-})(Opal);
+}))(Opal);
 
 //@ sourceMappingURL=/__opal_source_maps__/opal-parser.js.map
 ;

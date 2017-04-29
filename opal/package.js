@@ -11,14 +11,14 @@ Package._transitional_registerBuildPlugin({
   ]
 });
 
-Package.on_use(function(api) {
+Package.on_use(api => {
   api.export('Opal', ['client', 'server']);
   api.add_files('vendor/opal.js', ['client', 'server']);
   api.add_files('plugin/file.rb', 'server');
   api.add_files('plugin/print.rb', 'server');
 });
 
-Package.on_test(function (api) {
+Package.on_test(api => {
   api.use(['opal', 'tinytest', 'coffeescript']);
   api.add_files([
     'tests/opal_tests.rb',
